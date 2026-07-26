@@ -4,3 +4,4 @@ build/
 .DS_Store
 CodexMeter.xcodeproj/xcuserdata/
 .idea/
+.private/
