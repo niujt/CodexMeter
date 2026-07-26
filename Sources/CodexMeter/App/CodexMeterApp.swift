@@ -29,8 +29,14 @@ extension UsageSnapshot {
 private struct MenuBarUsageLabel: View {
     let rate: RateWindow?
 
+    private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
+    private var quotaColor: Color {
+        if remaining < 20 { return .red }
+        if remaining < 50 { return .yellow }
+        return .green
+    }
+
     var body: some View {
-        let remaining = max(0, 100 - Int((rate?.usedPercent ?? 0).rounded()))
         HStack(spacing: 4) {
             Image("CodexUsageTemplate")
                 .renderingMode(.template)
@@ -41,5 +47,6 @@ private struct MenuBarUsageLabel: View {
             Text("\(remaining)%")
                 .monospacedDigit()
         }
+        .foregroundStyle(quotaColor)
     }
 }
