@@ -1,0 +1,263 @@
+import SwiftUI
+
+struct UsagePopoverView: View {
+    let store: UsageStore
+    let compact: Bool
+    @Environment(\.openWindow) private var openWindow
+    @State private var projectRange = 1
+    @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
+    @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Codex 用量")
+                        .font(.headline)
+                    Text("本机记录")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button {
+                    Task { await store.refresh() }
+                } label: {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !store.isRefreshing)) { context in
+                        Image(systemName: "arrow.clockwise")
+                            .rotationEffect(.degrees(
+                                store.isRefreshing
+                                    ? context.date.timeIntervalSinceReferenceDate
+                                        .truncatingRemainder(dividingBy: 0.8) * 450
+                                    : 0
+                            ))
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(store.isRefreshing)
+                .help("刷新")
+            }
+
+            if !compact { HStack(spacing: 10) {
+                UsageCard(title: "今天", value: store.snapshot.today.total)
+                UsageCard(title: "近 7 天", value: store.snapshot.lastSevenDays.total)
+                UsageCard(title: "本月", value: store.snapshot.thisMonth.total)
+            }}
+
+            if !compact, store.snapshot.contextWindow > 0 {
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("当前会话上下文")
+                        Spacer()
+                        Text("\(UsageFormatters.tokens(store.snapshot.currentContextUsed)) / \(UsageFormatters.tokens(store.snapshot.contextWindow))")
+                            .monospacedDigit()
+                    }
+                    .font(.callout.weight(.medium))
+                    ProgressView(
+                        value: Double(store.snapshot.currentContextUsed),
+                        total: Double(store.snapshot.contextWindow)
+                    )
+                }
+            }
+
+            if let weekRate = store.snapshot.sevenDayRate {
+                Divider()
+                RateLimitView(title: "7 天额度", window: weekRate)
+                PredictionView(window: weekRate, records: store.snapshot.recentRecords)
+            }
+
+            Divider()
+            if !compact { TokenBreakdownView(usage: store.snapshot.today, sessions: store.snapshot.sessionCount) }
+            if !compact, !store.snapshot.topProjects.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("项目用量排名").font(.callout.weight(.semibold))
+                        Spacer()
+                        Picker("时间范围", selection: $projectRange) {
+                            Text("今日").tag(0); Text("7 天").tag(1); Text("30 天").tag(2)
+                        }.pickerStyle(.segmented).frame(width: 190)
+                    }
+                    ForEach(projects, id: \.name) { project in
+                        HStack { Text(project.name).lineLimit(1); Spacer(); Text(UsageFormatters.tokens(project.tokens)).monospacedDigit() }
+                    }
+                }.font(.caption)
+            }
+            if !compact, !store.snapshot.topModels.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("模型用量占比（近 7 天）").font(.callout.weight(.semibold))
+                    ForEach(store.snapshot.topModels, id: \.name) { model in
+                        HStack {
+                            Text(model.name)
+                            Spacer()
+                            Text("\(model.tokens * 100 / max(1, store.snapshot.lastSevenDays.total))% · \(model.requests) 次")
+                                .foregroundStyle(.secondary)
+                            Text(UsageFormatters.tokens(model.tokens)).monospacedDigit()
+                        }
+                    }
+                }.font(.caption)
+            }
+            if !compact, !store.snapshot.dailyUsage.isEmpty {
+                Divider()
+                UsageTrendView(records: store.snapshot.recentRecords)
+            }
+            Divider()
+            if compact {
+                HStack {
+                    Button("打开详情") { openWindow(id: "dashboard") }
+                        .buttonStyle(.borderedProminent)
+                    Button("退出") { NSApplication.shared.terminate(nil) }
+                        .buttonStyle(.bordered)
+                }
+                Picker("低额度提醒", selection: $lowRateThreshold) {
+                    ForEach([5, 10, 20, 30, 50, 100], id: \.self) { Text("剩余 \($0)% 以下").tag($0) }
+                }
+                Toggle("同日提醒去重", isOn: $deduplicateAlerts)
+                    .controlSize(.small)
+            }
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("输入 \(UsageFormatters.tokens(store.snapshot.today.input)) · 输出 \(UsageFormatters.tokens(store.snapshot.today.output))")
+                    Text("\(store.snapshot.sessionCount) 个会话 · \(store.snapshot.fileCount) 个记录文件")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                Spacer()
+                if !compact { Button("退出") { NSApplication.shared.terminate(nil) }.buttonStyle(.bordered) }
+            }
+
+            if let error = store.errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            }
+
+            if store.isRefreshing {
+                Text("正在读取本机 Codex 记录…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if store.snapshot.fileCount == 0 {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(
+                        store.snapshot.dataDirectoryExists
+                            ? "未在 \(store.snapshot.dataPath) 找到会话记录"
+                            : "无法访问 \(store.snapshot.dataPath)"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .textSelection(.enabled)
+
+                    Button("选择 Codex 数据目录…") {
+                        store.chooseCodexFolder()
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: compact ? 380 : .infinity, alignment: .leading)
+        .task {
+            await store.refresh()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                await store.refresh()
+            }
+        }
+    }
+
+    private var projects: [ProjectUsage] {
+        switch projectRange { case 0: return store.snapshot.todayProjects; case 2: return store.snapshot.monthProjects; default: return store.snapshot.topProjects }
+    }
+
+}
+
+private struct UsageTrendView: View {
+    let records: [UsageRecord]
+    @State private var dimension = "全部"
+    @State private var selection = "全部"
+    var body: some View {
+        let options = dimension == "模型" ? Array(Set(records.map(\.model))).sorted() : Array(Set(records.map(\.project))).sorted()
+        let filtered = selection == "全部" || dimension == "全部" ? records : records.filter { dimension == "模型" ? $0.model == selection : $0.project == selection }
+        let days = Dictionary(grouping: filtered, by: { Calendar.current.startOfDay(for: $0.date) }).map { DailyUsage(date: $0.key, tokens: $0.value.reduce(0) { $0 + $1.tokens }) }.sorted { $0.date < $1.date }
+        let maximum = max(1, days.map(\.tokens).max() ?? 1)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text("近 7 天趋势").font(.callout.weight(.semibold))
+                Spacer()
+                Picker("维度", selection: $dimension) { Text("全部").tag("全部"); Text("模型").tag("模型"); Text("项目").tag("项目") }
+                    .pickerStyle(.segmented).frame(width: 150)
+                if dimension != "全部" { Picker("筛选", selection: $selection) { Text("全部").tag("全部"); ForEach(options, id: \.self) { Text($0).tag($0) } }.frame(width: 120) }
+            }
+            HStack(alignment: .bottom, spacing: 7) {
+                ForEach(days, id: \.date) { day in
+                    VStack(spacing: 3) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(.blue)
+                            .frame(height: max(4, 40 * CGFloat(day.tokens) / CGFloat(maximum)))
+                        Text(day.date.formatted(.dateTime.weekday(.narrow)))
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }.frame(maxWidth: .infinity)
+                }
+            }.frame(height: 60)
+        }
+        .onChange(of: dimension) { _, _ in selection = "全部" }
+    }
+}
+
+private struct TokenBreakdownView: View {
+    let usage: TokenUsage
+    let sessions: Int
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("今日 Token").font(.callout.weight(.semibold))
+            Text("输入 \(UsageFormatters.tokens(usage.input)) · 输出 \(UsageFormatters.tokens(usage.output)) · 推理 \(UsageFormatters.tokens(usage.reasoningOutput))")
+            Text("缓存 \(UsageFormatters.tokens(usage.cachedInput)) · 合计 \(UsageFormatters.tokens(usage.total)) · \(sessions) 个会话")
+                .foregroundStyle(.secondary)
+        }.font(.caption)
+    }
+}
+
+private struct PredictionView: View {
+    let window: RateWindow
+    let records: [UsageRecord]
+    var body: some View {
+        let resetHours = max(0, window.resetsAt.timeIntervalSinceNow / 3_600)
+        let windows: [(Double, Double)] = [(1, 0.5), (6, 0.3), (24, 0.2)]
+        let samples = windows.compactMap { hours, weight -> (Double, Double)? in
+            let tokens = records.filter { $0.date >= .now.addingTimeInterval(-hours * 3_600) }.reduce(0) { $0 + $1.tokens }
+            return tokens > 0 ? (Double(tokens) / hours, weight) : nil
+        }
+        let tokenRate = samples.reduce(0) { $0 + $1.0 * $1.1 } / max(0.001, samples.reduce(0) { $0 + $1.1 })
+        let elapsedHours = max(0.1, Double(window.windowMinutes) / 60 - resetHours)
+        let fallbackRate = window.usedPercent / elapsedHours
+        let rate = tokenRate > 0 ? fallbackRate : fallbackRate
+        let remaining = rate > 0 ? (100 - window.usedPercent) / rate : nil
+        VStack(alignment: .leading, spacing: 4) {
+            Text("用量预测").font(.callout.weight(.semibold))
+            Text(remaining.map { "预计还能使用 \(UsageFormatters.duration(hours: $0))" } ?? "样本不足，暂不预测")
+            Text((remaining ?? .infinity) < resetHours ? "可能在重置前耗尽" : "预计可支撑到重置")
+                .foregroundStyle((remaining ?? .infinity) < resetHours ? .orange : .green)
+            Text(samples.isEmpty ? "样本不足，使用额度周期平均速度估算" : "结合近 1 / 6 / 24 小时趋势估算").font(.caption2).foregroundStyle(.secondary)
+        }.font(.caption)
+    }
+}
+
+struct UsageCard: View {
+    let title: String
+    let value: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(UsageFormatters.tokens(value))
+                .font(.title3.weight(.semibold))
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+    }
+}
