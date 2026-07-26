@@ -8,7 +8,7 @@
 
 从 [GitHub Releases](https://github.com/niujt/CodexMeter/releases/latest) 下载 `CodexMeter-1.0.0-macos.dmg`，打开后将 `CodexMeter.app` 拖入 Applications。
 
-当前发布包使用不带个人身份信息的本地签名，macOS 首次打开时可能提示无法验证开发者：在 Applications 中按住 Control 点击应用，选择“打开”即可。
+当前发布包使用不带个人身份信息的本地签名，macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 CodexMeter 的提示后选择“仍要打开”。
 
 以下截图均为脱敏的演示数据，不包含真实项目、会话或 Token 用量。
 
