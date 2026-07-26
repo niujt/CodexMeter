@@ -20,6 +20,12 @@
 
 ![CodexMeter 菜单栏下拉面板](docs/screenshots/menu-popover.png)
 
+## 桌面小组件
+
+在 macOS 桌面编辑模式中添加“Codex 用量”小组件。小号展示额度概览，中号同时展示三段 Token 用量、7 天额度与当前上下文。
+
+![CodexMeter 桌面小组件](docs/screenshots/desktop-widget.png)
+
 ## 功能
 
 - 菜单栏显示 7 天额度剩余百分比，并按剩余量变色：≥ 50% 为绿色、20%–49% 为黄色、< 20% 为红色
