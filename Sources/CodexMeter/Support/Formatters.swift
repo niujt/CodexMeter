@@ -36,4 +36,11 @@ enum UsageFormatters {
         let minutes = max(0, Int(hours * 60))
         return "\(minutes / 60)小时\(minutes % 60)分"
     }
+
+    static func turnDuration(seconds: Double) -> String {
+        if seconds >= 60 {
+            return "\(Int((seconds / 60).rounded()))分"
+        }
+        return "\(max(1, Int(seconds.rounded())))秒"
+    }
 }

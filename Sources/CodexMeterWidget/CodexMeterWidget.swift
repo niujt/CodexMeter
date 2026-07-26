@@ -9,13 +9,13 @@ struct CodexMeterWidgetBundle: WidgetBundle {
 }
 
 struct CodexMeterWidget: Widget {
-    let kind = "CodexMeterWidgetV2"
+    let kind = "CodexMeterWidgetV4"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: UsageProvider()) { entry in
             CodexMeterWidgetView(entry: entry)
         }
-        .configurationDisplayName("Codex 用量")
+        .configurationDisplayName("Codex 用量（上下文版）")
         .description("查看 Codex Token 用量和额度。")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
@@ -67,7 +67,10 @@ private struct CodexMeterWidgetView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .containerBackground(for: .widget) { Color.clear }
+            .foregroundStyle(.white)
+            .containerBackground(for: .widget) {
+                Rectangle().fill(.regularMaterial)
+            }
         }
     }
 
@@ -92,7 +95,10 @@ private struct CodexMeterWidgetView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .containerBackground(for: .widget) { Color.clear }
+            .foregroundStyle(.white)
+            .containerBackground(for: .widget) {
+                Rectangle().fill(.regularMaterial)
+            }
         default:
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
@@ -118,11 +124,19 @@ private struct CodexMeterWidgetView: View {
                     ProgressView(value: max(0, 100 - percent), total: 100)
                 }
                 Spacer(minLength: 0)
-                Text("更新于 \(usage.updatedAt, style: .time)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                if usage.contextLimit > 0 {
+                    Text("上下文 \(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("更新于 \(usage.updatedAt, style: .time)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .containerBackground(for: .widget) { Color.clear }
+            .containerBackground(for: .widget) {
+                Color.clear
+            }
         }
     }
 

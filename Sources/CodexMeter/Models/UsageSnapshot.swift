@@ -38,7 +38,13 @@ struct ProjectUsage: Sendable, Equatable {
     let name: String
     let tokens: Int
 }
-struct ModelUsage: Sendable, Equatable { let name: String; let tokens: Int; let requests: Int }
+struct ModelUsage: Sendable, Equatable {
+    let name: String
+    let tokens: Int
+    let requests: Int
+    /// User prompt to final assistant reply, not network/API latency.
+    let averageTurnSeconds: Double?
+}
 struct DailyUsage: Sendable, Equatable { let date: Date; let tokens: Int }
 struct UsageRecord: Sendable, Equatable { let date: Date; let project: String; let model: String; let tokens: Int }
 

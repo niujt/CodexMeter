@@ -61,7 +61,7 @@ end
 
 widget.build_configurations.each do |configuration|
   configuration.build_settings.merge!(
-    "PRODUCT_BUNDLE_IDENTIFIER" => "com.codexmeter.CodexMeter.WidgetV2",
+    "PRODUCT_BUNDLE_IDENTIFIER" => "com.codexmeter.CodexMeter.WidgetV4",
     "INFOPLIST_FILE" => "Resources/WidgetInfo.plist",
     "CODE_SIGN_ENTITLEMENTS" => "Resources/CodexMeterWidget.entitlements",
     "CODE_SIGN_STYLE" => "Automatic",

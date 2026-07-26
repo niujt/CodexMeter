@@ -63,7 +63,11 @@ struct UsagePopoverView: View {
             if let weekRate = store.snapshot.sevenDayRate {
                 Divider()
                 RateLimitView(title: "7 天额度", window: weekRate)
-                PredictionView(window: weekRate, records: store.snapshot.recentRecords)
+                PredictionView(
+                    window: weekRate,
+                    weeklyTokens: store.snapshot.lastSevenDays.total,
+                    observedTurns: store.snapshot.topModels.reduce(0) { $0 + $1.requests }
+                )
             }
 
             Divider()
@@ -93,6 +97,10 @@ struct UsagePopoverView: View {
                             Spacer()
                             Text("\(model.tokens * 100 / max(1, store.snapshot.lastSevenDays.total))% · \(model.requests) 次")
                                 .foregroundStyle(.secondary)
+                            if let seconds = model.averageTurnSeconds {
+                                Text("平均 \(UsageFormatters.turnDuration(seconds: seconds))")
+                                    .foregroundStyle(.secondary)
+                            }
                             Text(UsageFormatters.tokens(model.tokens)).monospacedDigit()
                         }
                     }
@@ -176,32 +184,45 @@ private struct UsageTrendView: View {
     let records: [UsageRecord]
     @State private var dimension = "全部"
     @State private var selection = "全部"
+    @State private var granularity = "按天"
     var body: some View {
         let options = dimension == "模型" ? Array(Set(records.map(\.model))).sorted() : Array(Set(records.map(\.project))).sorted()
-        let filtered = selection == "全部" || dimension == "全部" ? records : records.filter { dimension == "模型" ? $0.model == selection : $0.project == selection }
-        let days = Dictionary(grouping: filtered, by: { Calendar.current.startOfDay(for: $0.date) }).map { DailyUsage(date: $0.key, tokens: $0.value.reduce(0) { $0 + $1.tokens }) }.sorted { $0.date < $1.date }
-        let maximum = max(1, days.map(\.tokens).max() ?? 1)
+        let selected = selection == "全部" || dimension == "全部" ? records : records.filter { dimension == "模型" ? $0.model == selection : $0.project == selection }
+        let filtered = granularity == "按小时"
+            ? selected.filter { $0.date >= .now.addingTimeInterval(-24 * 3_600) }
+            : selected
+        let buckets = Dictionary(grouping: filtered, by: bucketStart).map { DailyUsage(date: $0.key, tokens: $0.value.reduce(0) { $0 + $1.tokens }) }.sorted { $0.date < $1.date }
+        let maximum = max(1, buckets.map(\.tokens).max() ?? 1)
         VStack(alignment: .leading, spacing: 5) {
             HStack {
-                Text("近 7 天趋势").font(.callout.weight(.semibold))
+                Text(granularity == "按小时" ? "近 24 小时趋势" : "近 7 天趋势").font(.callout.weight(.semibold))
                 Spacer()
+                Picker("粒度", selection: $granularity) { Text("按天").tag("按天"); Text("按小时").tag("按小时") }
+                    .pickerStyle(.segmented).frame(width: 110)
                 Picker("维度", selection: $dimension) { Text("全部").tag("全部"); Text("模型").tag("模型"); Text("项目").tag("项目") }
                     .pickerStyle(.segmented).frame(width: 150)
                 if dimension != "全部" { Picker("筛选", selection: $selection) { Text("全部").tag("全部"); ForEach(options, id: \.self) { Text($0).tag($0) } }.frame(width: 120) }
             }
             HStack(alignment: .bottom, spacing: 7) {
-                ForEach(days, id: \.date) { day in
+                ForEach(buckets, id: \.date) { day in
                     VStack(spacing: 3) {
                         RoundedRectangle(cornerRadius: 2)
                             .fill(.blue)
                             .frame(height: max(4, 40 * CGFloat(day.tokens) / CGFloat(maximum)))
-                        Text(day.date.formatted(.dateTime.weekday(.narrow)))
+                        Text(granularity == "按小时" ? day.date.formatted(.dateTime.hour()) : day.date.formatted(.dateTime.weekday(.narrow)))
                             .font(.caption2).foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity)
                 }
             }.frame(height: 60)
         }
         .onChange(of: dimension) { _, _ in selection = "全部" }
+    }
+
+    private func bucketStart(_ record: UsageRecord) -> Date {
+        if granularity == "按小时" {
+            return Calendar.current.dateInterval(of: .hour, for: record.date)?.start ?? record.date
+        }
+        return Calendar.current.startOfDay(for: record.date)
     }
 }
 
@@ -220,25 +241,32 @@ private struct TokenBreakdownView: View {
 
 private struct PredictionView: View {
     let window: RateWindow
-    let records: [UsageRecord]
+    let weeklyTokens: Int
+    let observedTurns: Int
     var body: some View {
         let resetHours = max(0, window.resetsAt.timeIntervalSinceNow / 3_600)
-        let windows: [(Double, Double)] = [(1, 0.5), (6, 0.3), (24, 0.2)]
-        let samples = windows.compactMap { hours, weight -> (Double, Double)? in
-            let tokens = records.filter { $0.date >= .now.addingTimeInterval(-hours * 3_600) }.reduce(0) { $0 + $1.tokens }
-            return tokens > 0 ? (Double(tokens) / hours, weight) : nil
-        }
-        let tokenRate = samples.reduce(0) { $0 + $1.0 * $1.1 } / max(0.001, samples.reduce(0) { $0 + $1.1 })
+        let velocity = RateHistory.weightedVelocity()
         let elapsedHours = max(0.1, Double(window.windowMinutes) / 60 - resetHours)
         let fallbackRate = window.usedPercent / elapsedHours
-        let rate = tokenRate > 0 ? fallbackRate : fallbackRate
+        let rate = velocity?.percentPerHour ?? fallbackRate
         let remaining = rate > 0 ? (100 - window.usedPercent) / rate : nil
+        let remainingTokens = window.usedPercent > 0
+            ? Double(weeklyTokens) * (100 - window.usedPercent) / window.usedPercent
+            : nil
+        let estimatedTurns = remainingTokens.flatMap { tokens in
+            observedTurns > 0 ? Int((tokens / Double(observedTurns)).rounded(.down)) : nil
+        }
         VStack(alignment: .leading, spacing: 4) {
             Text("用量预测").font(.callout.weight(.semibold))
             Text(remaining.map { "预计还能使用 \(UsageFormatters.duration(hours: $0))" } ?? "样本不足，暂不预测")
+            if let estimatedTurns {
+                Text("按近 7 天平均 Token / 轮估算，约还能完成 \(estimatedTurns) 轮")
+                    .foregroundStyle(.secondary)
+            }
             Text((remaining ?? .infinity) < resetHours ? "可能在重置前耗尽" : "预计可支撑到重置")
                 .foregroundStyle((remaining ?? .infinity) < resetHours ? .orange : .green)
-            Text(samples.isEmpty ? "样本不足，使用额度周期平均速度估算" : "结合近 1 / 6 / 24 小时趋势估算").font(.caption2).foregroundStyle(.secondary)
+            Text(velocity.map { "按近 \($0.description) 小时额度变化加权估算" } ?? "样本不足，使用额度周期平均速度估算")
+                .font(.caption2).foregroundStyle(.secondary)
         }.font(.caption)
     }
 }
