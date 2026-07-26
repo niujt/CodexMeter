@@ -6,6 +6,12 @@
 
 ![CodexMeter 概览](docs/screenshots/dashboard.png)
 
+## 菜单栏摘要
+
+菜单栏会显示当前 7 天额度剩余比例；点击后可快速查看额度、预测、提醒阈值并打开完整详情。
+
+![CodexMeter 菜单栏下拉面板](docs/screenshots/menu-popover.png)
+
 ## 功能
 
 - 菜单栏显示 7 天额度剩余百分比，并按剩余量变色：≥ 50% 为绿色、20%–49% 为黄色、< 20% 为红色
