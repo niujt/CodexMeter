@@ -4,6 +4,12 @@
 
 > 数据只在本机读取与计算，不上传会话内容或用量数据。
 
+## 下载
+
+从 [GitHub Releases](https://github.com/niujt/CodexMeter/releases/latest) 下载 `CodexMeter-1.0.0-macos.dmg`，打开后将 `CodexMeter.app` 拖入 Applications。
+
+当前发布包使用不带个人身份信息的本地签名，macOS 首次打开时可能提示无法验证开发者：在 Applications 中按住 Control 点击应用，选择“打开”即可。
+
 以下截图均为脱敏的演示数据，不包含真实项目、会话或 Token 用量。
 
 ![CodexMeter 概览](docs/screenshots/dashboard.png)
