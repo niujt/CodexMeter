@@ -4,6 +4,8 @@
 
 > 数据只在本机读取与计算，不上传会话内容或用量数据。
 
+以下截图均为脱敏的演示数据，不包含真实项目、会话或 Token 用量。
+
 ![CodexMeter 概览](docs/screenshots/dashboard.png)
 
 ## 菜单栏摘要

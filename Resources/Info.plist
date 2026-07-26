@@ -12,8 +12,6 @@
     <string>1.0</string>
     <key>CFBundleVersion</key>
     <string>8</string>
-    <key>CodexHome</key>
-    <string>$HOME/.codex</string>
     <key>AppGroupIdentifier</key>
     <string>$(TeamIdentifierPrefix)com.codexmeter.CodexMeter</string>
     <key>CFBundlePackageType</key>

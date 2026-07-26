@@ -6,7 +6,7 @@ require "fileutils"
 
 root = File.expand_path("..", __dir__)
 project_path = File.join(root, "CodexMeter.xcodeproj")
-team_id = ENV.fetch("DEVELOPMENT_TEAM", "DEVELOPMENT_TEAM")
+team_id = ENV["DEVELOPMENT_TEAM"]
 FileUtils.rm_rf(project_path)
 project = Xcodeproj::Project.new(project_path)
 
@@ -51,12 +51,12 @@ main.build_configurations.each do |configuration|
     "INFOPLIST_FILE" => "Resources/Info.plist",
     "CODE_SIGN_ENTITLEMENTS" => "Resources/CodexMeter.entitlements",
     "CODE_SIGN_STYLE" => "Automatic",
-    "DEVELOPMENT_TEAM" => team_id,
     "SWIFT_VERSION" => "6.0",
     "MACOSX_DEPLOYMENT_TARGET" => "14.0",
     "ASSETCATALOG_COMPILER_APPICON_NAME" => "AppIcon",
     "CODE_SIGNING_ALLOWED" => "YES"
   )
+  configuration.build_settings["DEVELOPMENT_TEAM"] = team_id if team_id && !team_id.empty?
 end
 
 widget.build_configurations.each do |configuration|
@@ -65,11 +65,11 @@ widget.build_configurations.each do |configuration|
     "INFOPLIST_FILE" => "Resources/WidgetInfo.plist",
     "CODE_SIGN_ENTITLEMENTS" => "Resources/CodexMeterWidget.entitlements",
     "CODE_SIGN_STYLE" => "Automatic",
-    "DEVELOPMENT_TEAM" => team_id,
     "SWIFT_VERSION" => "6.0",
     "MACOSX_DEPLOYMENT_TARGET" => "14.0",
     "SKIP_INSTALL" => "YES"
   )
+  configuration.build_settings["DEVELOPMENT_TEAM"] = team_id if team_id && !team_id.empty?
 end
 
 project.root_object.build_configuration_list.build_configurations.each do |configuration|
