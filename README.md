@@ -1,4 +1,4 @@
-# CodexMeter
+# Codex Health
 
 一个原生 macOS 菜单栏应用和桌面小组件，用于从本机 Codex 会话记录中查看 Token 用量、上下文与 7 天额度。
 
@@ -6,25 +6,25 @@
 
 ## 下载
 
-从 [GitHub Releases](https://github.com/niujt/CodexMeter/releases/latest) 下载 `CodexMeter-1.0.0-macos.dmg`，打开后将 `CodexMeter.app` 拖入 Applications。
+从 [GitHub Releases](https://github.com/niujt/CodexMeter/releases/latest) 下载最新版 DMG，打开后将 `Codex Health.app` 拖入 Applications。
 
-当前发布包使用不带个人身份信息的本地签名，macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 CodexMeter 的提示后选择“仍要打开”。
+当前发布包使用不带个人身份信息的本地签名，macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
 
 以下截图均为脱敏的演示数据，不包含真实项目、会话或 Token 用量。
 
-![CodexMeter 概览](docs/screenshots/dashboard.png)
+![Codex Health 概览](docs/screenshots/dashboard.png)
 
 ## 菜单栏摘要
 
 菜单栏会显示当前 7 天额度剩余比例；点击后可快速查看额度、预测、提醒阈值并打开完整详情。
 
-![CodexMeter 菜单栏下拉面板](docs/screenshots/menu-popover.png)
+![Codex Health 菜单栏下拉面板](docs/screenshots/menu-popover.png)
 
 ## 桌面小组件
 
-在 macOS 桌面编辑模式中添加“Codex 用量”小组件。小号展示额度概览，中号同时展示三段 Token 用量、7 天额度与当前上下文。
+在 macOS 桌面编辑模式中添加“Codex Health”小组件。小号展示额度概览，中号同时展示三段 Token 用量、7 天额度与当前上下文。
 
-![CodexMeter 桌面小组件](docs/screenshots/desktop-widget.png)
+![Codex Health 桌面小组件](docs/screenshots/desktop-widget.png)
 
 ## 功能
 
@@ -38,14 +38,14 @@
 - 低额度、预计提前耗尽、即将重置提醒；阈值和同日去重均可配置
 - WidgetKit 桌面小组件：小号展示额度概览，中号展示三段用量、额度与上下文
 
-![CodexMeter 分析详情](docs/screenshots/analytics.png)
+![Codex Health 分析详情](docs/screenshots/analytics.png)
 
 ## 使用
 
-1. 打开 `dist/CodexMeter.app`。
+1. 打开 `dist/Codex Health.app`。
 2. 第一次启动时，选择你的 Codex 数据目录（通常为 `~/.codex`）。
 3. 点击菜单栏图标查看摘要；选择“打开详情”查看完整分析。
-4. 在桌面编辑模式中添加“Codex 用量”小组件。
+4. 在桌面编辑模式中添加“Codex Health”小组件。
 
 应用会将已授权的数据目录保存为 macOS 安全书签，因此重新启动后仍可访问。
 
@@ -58,8 +58,8 @@ git clone https://github.com/niujt/CodexMeter.git
 cd CodexMeter
 ruby tools/generate_xcode_project.rb
 xcodebuild -project CodexMeter.xcodeproj -scheme CodexMeter -configuration Debug -derivedDataPath build build
-ditto build/Build/Products/Debug/CodexMeter.app dist/CodexMeter.app
-open dist/CodexMeter.app
+ditto "build/Build/Products/Debug/Codex Health.app" "dist/Codex Health.app"
+open "dist/Codex Health.app"
 ```
 
 开发时也可以执行：
@@ -77,4 +77,4 @@ open dist/CodexMeter.app
 
 ## 隐私
 
-CodexMeter 不会上传 `.codex` 目录、会话内容或统计数据。小组件通过 App Group 读取应用写入的本地摘要缓存。
+Codex Health 不会上传 `.codex` 目录、会话内容或统计数据。小组件通过 App Group 读取应用写入的本地摘要缓存。

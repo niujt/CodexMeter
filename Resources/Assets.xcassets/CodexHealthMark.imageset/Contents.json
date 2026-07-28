@@ -1,0 +1,8 @@
+{
+  "images" : [
+    { "filename" : "CodexHealthMark.png", "idiom" : "universal", "scale" : "1x" },
+    { "filename" : "CodexHealthMark@2x.png", "idiom" : "universal", "scale" : "2x" },
+    { "filename" : "CodexHealthMark@3x.png", "idiom" : "universal", "scale" : "3x" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

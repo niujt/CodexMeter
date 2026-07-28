@@ -2,6 +2,10 @@ import Foundation
 import Observation
 import WidgetKit
 
+extension Notification.Name {
+    static let codexHealthUsageDidRefresh = Notification.Name("codexHealthUsageDidRefresh")
+}
+
 @MainActor
 @Observable
 final class UsageStore {
@@ -11,6 +15,10 @@ final class UsageStore {
     private let reader = CodexUsageReader()
     @ObservationIgnored private let folderAccess = CodexFolderAccess()
 
+    var selectedCodexPath: String {
+        folderAccess.selectedURL?.path ?? snapshot.dataPath
+    }
+
     func refresh() async {
         guard !isRefreshing else { return }
         isRefreshing = true
@@ -18,6 +26,7 @@ final class UsageStore {
 
         do {
             snapshot = try await reader.load(codexHome: folderAccess.selectedURL)
+            NotificationCenter.default.post(name: .codexHealthUsageDidRefresh, object: self)
             if let rate = snapshot.sevenDayRate { RateHistory.append(rate.usedPercent); UsageNotifier.evaluate(rate) }
             WidgetUsageCache.save(
                 WidgetUsageData(

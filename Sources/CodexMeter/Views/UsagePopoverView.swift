@@ -9,14 +9,44 @@ struct UsagePopoverView: View {
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
 
     var body: some View {
+        Group {
+            if compact {
+                HealthMenuPopover(store: store)
+            } else {
+                detailedContent
+            }
+        }
+        .task {
+            await store.refresh()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                await store.refresh()
+            }
+        }
+    }
+
+    private var detailedContent: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Codex 用量")
-                        .font(.headline)
-                    Text("本机记录")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            HStack(alignment: .center) {
+                if compact, let rate = store.snapshot.sevenDayRate {
+                    let remaining = max(0, 100 - Int(rate.usedPercent.rounded()))
+                    let color: Color = remaining < 20 ? .red : remaining < 50 ? .orange : .green
+                    Image("CodexHealthMark")
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .foregroundStyle(color)
+                        .frame(width: 28, height: 28)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Codex Health").font(.headline)
+                        Text("7 天额度 · 剩余 \(remaining)%")
+                            .font(.caption).foregroundStyle(color)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Codex Health").font(.headline)
+                        Text("本机记录").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 Button {
@@ -24,17 +54,10 @@ struct UsagePopoverView: View {
                 } label: {
                     TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !store.isRefreshing)) { context in
                         Image(systemName: "arrow.clockwise")
-                            .rotationEffect(.degrees(
-                                store.isRefreshing
-                                    ? context.date.timeIntervalSinceReferenceDate
-                                        .truncatingRemainder(dividingBy: 0.8) * 450
-                                    : 0
-                            ))
+                            .rotationEffect(.degrees(store.isRefreshing ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 0.8) * 450 : 0))
                     }
                 }
-                .buttonStyle(.plain)
-                .disabled(store.isRefreshing)
-                .help("刷新")
+                .buttonStyle(.plain).disabled(store.isRefreshing).help("刷新")
             }
 
             if !compact { HStack(spacing: 10) {
@@ -164,20 +187,116 @@ struct UsagePopoverView: View {
             }
         }
         .padding(16)
-        .frame(maxWidth: compact ? 380 : .infinity, alignment: .leading)
-        .task {
-            await store.refresh()
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
-                await store.refresh()
-            }
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var projects: [ProjectUsage] {
         switch projectRange { case 0: return store.snapshot.todayProjects; case 2: return store.snapshot.monthProjects; default: return store.snapshot.topProjects }
     }
 
+}
+
+private struct HealthMenuPopover: View {
+    let store: UsageStore
+    @Environment(\.openWindow) private var openWindow
+    @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
+    @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
+
+    private var rate: RateWindow? { store.snapshot.sevenDayRate }
+    private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
+    private var color: Color { remaining < 20 ? .red : remaining < 50 ? .orange : .green }
+    private var status: String { remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Codex Health").font(.headline.weight(.semibold))
+                Spacer()
+                Button { Task { await store.refresh() } } label: {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !store.isRefreshing)) { context in
+                        Image(systemName: "arrow.clockwise")
+                            .font(.title3)
+                            .rotationEffect(.degrees(store.isRefreshing ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 0.8) * 450 : 0))
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(store.isRefreshing)
+                .help("刷新")
+            }
+
+            HStack(spacing: 18) {
+                Text("\(remaining)%")
+                    .font(.system(size: 48, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                Divider().frame(height: 68)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(status).font(.title3.weight(.bold)).foregroundStyle(color)
+                    if let rate {
+                        Text("剩余 \(UsageFormatters.countdown(to: rate.resetsAt))")
+                            .font(.callout.weight(.medium))
+                        Text(rate.resetsAt.formatted(.dateTime.month().day().hour().minute()) + " 重置")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("等待额度数据").font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+
+            ProgressView(value: Double(remaining), total: 100)
+                .tint(color)
+                .controlSize(.regular)
+
+            Divider()
+            MenuRow(icon: "arrow.up.forward.app", title: "打开 Codex Health", shortcut: "⌘O") {
+                openWindow(id: "dashboard")
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "bell.badge").foregroundStyle(.blue).frame(width: 18)
+                Text("低额度提醒")
+                Spacer()
+                Picker("低额度提醒", selection: $lowRateThreshold) {
+                    ForEach([5, 10, 20, 30, 50], id: \.self) { Text("剩余 \($0)% 以下").tag($0) }
+                }
+                .labelsHidden()
+                .frame(width: 138)
+            }
+            .font(.callout)
+            Toggle("同日提醒去重", isOn: $deduplicateAlerts)
+                .toggleStyle(.checkbox)
+                .font(.callout)
+                .padding(.leading, 30)
+            MenuRow(icon: "rectangle.portrait.and.arrow.right", title: "退出", shortcut: "⌘Q") {
+                NSApplication.shared.terminate(nil)
+            }
+        }
+        .padding(18)
+        .frame(width: 360, alignment: .leading)
+        .background(Color(red: 0.025, green: 0.065, blue: 0.105))
+        .preferredColorScheme(.dark)
+    }
+}
+
+private struct MenuRow: View {
+    let icon: String
+    let title: String
+    let shortcut: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).frame(width: 18).foregroundStyle(.blue)
+                Text(title).foregroundStyle(.primary)
+                Spacer()
+                Text(shortcut).font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
 }
 
 private struct UsageTrendView: View {

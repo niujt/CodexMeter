@@ -20,13 +20,16 @@ actor CodexUsageReader {
         snapshot.dataDirectoryExists = fileManager.fileExists(atPath: root.path)
         snapshot.fileCount = files.count
         var latestRateTimestamp = Date.distantPast
-        var projects: [String: Int] = [:]
-        var todayProjects: [String: Int] = [:]
-        var monthProjects: [String: Int] = [:]
+        var latestCanonicalRateTimestamp = Date.distantPast
+        var latestNonZeroSevenDayRate: (window: RateWindow, timestamp: Date)?
+        var projects: [String: ProjectAccumulator] = [:]
+        var todayProjects: [String: ProjectAccumulator] = [:]
+        var monthProjects: [String: ProjectAccumulator] = [:]
         var models: [String: (tokens: Int, requests: Int, turnSeconds: Double, timedTurns: Int)] = [:]
         var daily: [Date: Int] = [:]
         let startOfToday = calendar.startOfDay(for: now)
         let sevenDaysAgo = calendar.date(byAdding: .day, value: -6, to: startOfToday) ?? startOfToday
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday
         let monthInterval = calendar.dateInterval(of: .month, for: now)
 
         for file in files {
@@ -37,8 +40,9 @@ actor CodexUsageReader {
             guard let event = try? latestTokenEvent(in: file) else { continue }
             snapshot.sessionCount += 1
             snapshot.allTime = snapshot.allTime + event.total
+            let projectPath = projectPath(in: file)
             if event.timestamp >= sevenDaysAgo {
-                projects[projectName(in: file), default: 0] += event.total.total
+                projects[projectPath, default: .empty].add(tokens: event.total.total, date: event.timestamp)
                 let model = modelName(in: file)
                 let timing = responseTiming(in: file)
                 models[model, default: (0, 0, 0, 0)].tokens += event.total.total
@@ -46,11 +50,16 @@ actor CodexUsageReader {
                 models[model, default: (0, 0, 0, 0)].turnSeconds += timing.seconds
                 models[model, default: (0, 0, 0, 0)].timedTurns += timing.count
                 daily[calendar.startOfDay(for: event.timestamp), default: 0] += event.total.total
-                snapshot.recentRecords.append(UsageRecord(date: event.timestamp, project: projectName(in: file), model: model, tokens: event.total.total))
             }
-            let project = projectName(in: file)
-            if event.timestamp >= startOfToday { todayProjects[project, default: 0] += event.total.total }
-            if event.timestamp >= (calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday) { monthProjects[project, default: 0] += event.total.total }
+            if event.timestamp >= startOfToday {
+                todayProjects[projectPath, default: .empty].add(tokens: event.total.total, date: event.timestamp)
+            }
+            if event.timestamp >= thirtyDaysAgo {
+                monthProjects[projectPath, default: .empty].add(tokens: event.total.total, date: event.timestamp)
+                snapshot.recentRecords.append(
+                    UsageRecord(date: event.timestamp, project: projectPath, model: modelName(in: file), tokens: event.total.total)
+                )
+            }
 
             if event.timestamp >= startOfToday {
                 snapshot.today = snapshot.today + event.total
@@ -62,18 +71,51 @@ actor CodexUsageReader {
                 snapshot.thisMonth = snapshot.thisMonth + event.total
             }
 
-            if event.timestamp > latestRateTimestamp {
+            // `codex` is the account-wide quota shown by the Codex status
+            // panel. Model-specific limits (for example codex_bengalfox) may
+            // be emitted immediately afterwards with their own fresh 0% rate;
+            // they must not replace the account-wide seven-day value.
+            let isCanonicalQuota = event.rateLimitID == "codex"
+            if isCanonicalQuota, event.timestamp > latestCanonicalRateTimestamp {
+                latestCanonicalRateTimestamp = event.timestamp
+                snapshot.primaryRate = event.primaryRate
+                snapshot.secondaryRate = event.secondaryRate
+            } else if latestCanonicalRateTimestamp == .distantPast,
+                      event.timestamp > latestRateTimestamp {
                 latestRateTimestamp = event.timestamp
                 snapshot.primaryRate = event.primaryRate
                 snapshot.secondaryRate = event.secondaryRate
+            }
+
+            if event.timestamp > latestRateTimestamp {
                 snapshot.currentContextUsed = event.currentContextUsed
                 snapshot.contextWindow = event.contextWindow
                 snapshot.lastUpdated = event.timestamp
             }
+
+            for window in [event.primaryRate, event.secondaryRate].compactMap({ $0 })
+            where window.windowMinutes == 10_080 && window.usedPercent > 0 {
+                if latestNonZeroSevenDayRate == nil || event.timestamp > latestNonZeroSevenDayRate!.timestamp {
+                    latestNonZeroSevenDayRate = (window, event.timestamp)
+                }
+            }
         }
-        snapshot.topProjects = projects.map { ProjectUsage(name: $0.key, tokens: $0.value) }
-            .sorted { $0.tokens > $1.tokens }
-            .prefix(4).map { $0 }
+
+        // Some rollout files can briefly emit a fresh 0%-used seven-day
+        // window with a different reset time while the existing window is
+        // still active. Treat that isolated jump as unconfirmed rather than
+        // resetting the menu bar to 100%. A genuine reset is accepted once
+        // the previous window has actually expired.
+        if let current = [snapshot.primaryRate, snapshot.secondaryRate]
+            .compactMap({ $0 })
+            .first(where: { $0.windowMinutes == 10_080 }),
+           current.usedPercent == 0,
+           let previous = latestNonZeroSevenDayRate,
+           previous.window.resetsAt > now {
+            snapshot.primaryRate = previous.window
+        }
+        snapshot.allProjects = ranked(projects)
+        snapshot.topProjects = Array(snapshot.allProjects.prefix(4))
         snapshot.todayProjects = ranked(todayProjects)
         snapshot.monthProjects = ranked(monthProjects)
         snapshot.topModels = models.map {
@@ -91,8 +133,9 @@ actor CodexUsageReader {
         return snapshot
     }
 
-    private func ranked(_ values: [String: Int]) -> [ProjectUsage] {
-        values.map { ProjectUsage(name: $0.key, tokens: $0.value) }.sorted { $0.tokens > $1.tokens }.prefix(4).map { $0 }
+    private func ranked(_ values: [String: ProjectAccumulator]) -> [ProjectUsage] {
+        values.map { ProjectUsage(path: $0.key, tokens: $0.value.tokens, sessions: $0.value.sessions, lastActive: $0.value.lastActive) }
+            .sorted { $0.tokens == $1.tokens ? ($0.lastActive ?? .distantPast) > ($1.lastActive ?? .distantPast) : $0.tokens > $1.tokens }
     }
 
     private func resolvedCodexHome() -> URL {
@@ -142,15 +185,15 @@ actor CodexUsageReader {
         return nil
     }
 
-    private func projectName(in file: URL) -> String {
-        guard let handle = try? FileHandle(forReadingFrom: file) else { return "其他" }
+    private func projectPath(in file: URL) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: file) else { return "" }
         defer { try? handle.close() }
         let data = (try? handle.read(upToCount: 32 * 1024)) ?? nil
         guard let data, let text = String(data: data, encoding: .utf8),
               let keyRange = text.range(of: "\"cwd\":\""),
-              let end = text[keyRange.upperBound...].firstIndex(of: "\"") else { return "其他" }
+              let end = text[keyRange.upperBound...].firstIndex(of: "\"") else { return "" }
         let cwd = String(text[keyRange.upperBound..<end])
-        return URL(fileURLWithPath: cwd).lastPathComponent
+        return cwd.replacingOccurrences(of: "\\/", with: "/")
     }
     private func modelName(in file: URL) -> String {
         guard let handle = try? FileHandle(forReadingFrom: file) else { return "其他" }
@@ -212,6 +255,7 @@ private struct TokenEvent {
     let contextWindow: Int
     let primaryRate: RateWindow?
     let secondaryRate: RateWindow?
+    let rateLimitID: String?
 
     init?(json: [String: Any]) {
         guard json["type"] as? String == "event_msg",
@@ -235,10 +279,25 @@ private struct TokenEvent {
         self.contextWindow = info.int("model_context_window")
 
         let limits = payload["rate_limits"] as? [String: Any]
+        self.rateLimitID = limits?["limit_id"] as? String
         self.primaryRate = RateWindow(json: limits?["primary"] as? [String: Any])
         self.secondaryRate = RateWindow(json: limits?["secondary"] as? [String: Any])
     }
 
+}
+
+private struct ProjectAccumulator {
+    var tokens = 0
+    var sessions = 0
+    var lastActive: Date?
+
+    static let empty = Self()
+
+    mutating func add(tokens: Int, date: Date) {
+        self.tokens += tokens
+        sessions += 1
+        if lastActive == nil || date > lastActive! { lastActive = date }
+    }
 }
 
 private func parseTimestamp(_ text: String) -> Date? {

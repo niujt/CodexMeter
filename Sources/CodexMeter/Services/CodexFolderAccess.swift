@@ -21,7 +21,7 @@ final class CodexFolderAccess {
     func chooseFolder() throws -> URL? {
         let panel = NSOpenPanel()
         panel.title = "选择 Codex 数据目录"
-        panel.message = "请选择 ~/.codex 文件夹，以授权 CodexMeter 读取本机记录。"
+        panel.message = "请选择 ~/.codex 文件夹，以授权 Codex Health 读取本机记录。"
         panel.prompt = "授权读取"
         panel.canChooseFiles = false
         panel.canChooseDirectories = true

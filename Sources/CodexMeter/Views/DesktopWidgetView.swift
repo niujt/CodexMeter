@@ -7,7 +7,7 @@ struct DesktopWidgetView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label("Codex 用量", systemImage: "gauge.with.dots.needle.33percent")
+                Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                     .font(.headline)
                 Spacer()
                 Button(action: dismiss) {

@@ -56,6 +56,8 @@ main.build_configurations.each do |configuration|
     "ASSETCATALOG_COMPILER_APPICON_NAME" => "AppIcon",
     "CODE_SIGNING_ALLOWED" => "YES"
   )
+  configuration.build_settings["PRODUCT_NAME"] = "Codex Health"
+  configuration.build_settings["EXECUTABLE_NAME"] = "CodexMeter"
   configuration.build_settings["DEVELOPMENT_TEAM"] = team_id if team_id && !team_id.empty?
 end
 

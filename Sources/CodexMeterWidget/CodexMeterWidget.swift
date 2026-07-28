@@ -15,7 +15,7 @@ struct CodexMeterWidget: Widget {
         StaticConfiguration(kind: kind, provider: UsageProvider()) { entry in
             CodexMeterWidgetView(entry: entry)
         }
-        .configurationDisplayName("Codex 用量（上下文版）")
+        .configurationDisplayName("Codex Health")
         .description("查看 Codex Token 用量和额度。")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
@@ -60,10 +60,10 @@ private struct CodexMeterWidgetView: View {
             content(usage)
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Codex 用量", systemImage: "gauge.with.dots.needle.33percent")
+                Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                     .font(.headline)
                 Spacer()
-                Text("打开 CodexMeter\n以读取本机用量")
+                Text("打开 Codex Health\n以读取本机用量")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -79,7 +79,7 @@ private struct CodexMeterWidgetView: View {
         switch family {
         case .systemSmall:
             VStack(alignment: .leading, spacing: 8) {
-                Label("Codex 用量", systemImage: "gauge.with.dots.needle.33percent")
+                Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                     .font(.caption.weight(.semibold))
                 Spacer()
                 Text(remainingText(usage))
@@ -102,7 +102,7 @@ private struct CodexMeterWidgetView: View {
         default:
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Label("Codex 用量", systemImage: "gauge.with.dots.needle.33percent")
+                    Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                         .font(.headline)
                     Spacer()
                     Text(remainingText(usage))

@@ -7,36 +7,39 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		23BD4AE16D751F9F729BD3AD /* CodexMeterWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 45A472E7B0DE23C67D32801A /* CodexMeterWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		2C6F7E8CC10808FB874B8ED6 /* AnalyticsDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B42568D260B341508CECE7B0 /* AnalyticsDashboardView.swift */; };
-		2CF1C4F4870133E0C9D6AF64 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E4E88476D30D321E3DA24949 /* Assets.xcassets */; };
-		399A48AF8F1D4AAF41C771F5 /* RateLimitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99BCAC7DC6D9BB88E103C2 /* RateLimitView.swift */; };
-		423C91C262C13815BF0EF352 /* CodexMeterWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5502AFAD3D46015652B3A72 /* CodexMeterWidget.swift */; };
-		42966E6B80CBA1B498628506 /* RateHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93BA0076637EC7B659714821 /* RateHistory.swift */; };
-		4BD771174E9AACC6FED742DE /* UsagePopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBBC914DE7790E1B20EA9BD /* UsagePopoverView.swift */; };
-		6D148E9D4610037D17E881CC /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8152253F47D403D3006FB366 /* Cocoa.framework */; };
-		7E103C8AD7F6D725CC2126F3 /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48B1215EC97718CEA5DC9A84 /* UsageStore.swift */; };
-		871318FE76AF89F3436D789D /* DesktopWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3193909FF12D3F2DDB78F23C /* DesktopWidgetView.swift */; };
-		8AC493A722EAD7EF4465BF6F /* CodexFolderAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D8978CBF824637C3C06B17 /* CodexFolderAccess.swift */; };
-		A65D063F33FF2898948B7C30 /* CodexUsageReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24E007E87A89527F720FC96 /* CodexUsageReader.swift */; };
-		B1668A9A33423B0FC598D002 /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C96D0D5CC1DC3BBEFF951E7 /* Formatters.swift */; };
-		D95B753ADDECE4FA52DBB96D /* CodexMeterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314EF274AB68F72C031BE98A /* CodexMeterApp.swift */; };
-		E56180BE072CA1F0E41CCA4E /* DesktopWidgetController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28C6ECD4271C95DA92FB79F5 /* DesktopWidgetController.swift */; };
-		E670A239165EAE6CD8549AA4 /* WidgetUsageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E1AFB6069E08C229D32586 /* WidgetUsageCache.swift */; };
-		E80A1880CFBAAE6E421E37D0 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8152253F47D403D3006FB366 /* Cocoa.framework */; };
-		F2DC487675833910C298B7F3 /* WidgetUsageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E1AFB6069E08C229D32586 /* WidgetUsageCache.swift */; };
-		F6655F064A7A386BEF28BC22 /* UsageSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA2078797829958C431BB26D /* UsageSnapshot.swift */; };
-		F8A9DFB1AF2A321A8E4BB6B6 /* UsageNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78DEE0CDBAE271A86B55C7D /* UsageNotifier.swift */; };
+		1A011CF9C3543D1AA3561AE0 /* RateLimitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D16BAAF299E859892B138A /* RateLimitView.swift */; };
+		2B32E4686F7EA743978AD390 /* CodexFolderAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E69407D7632A4091F79FD5 /* CodexFolderAccess.swift */; };
+		38D055E160C4163D14A30C4F /* WidgetUsageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */; };
+		4802D9AD7D21F45991157B54 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88F62FBA68EF45CBCDA030EF /* SettingsView.swift */; };
+		67296E405A4D62D6131B9677 /* CodexMeterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B961FB9311FE5B13659888 /* CodexMeterApp.swift */; };
+		6E734A7D26050D421FD07666 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B6BB423F7D3A2569A4F3256 /* Cocoa.framework */; };
+		718A3C8A6AD03AAD2962F124 /* UsageNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09764D2144F99D08963848D1 /* UsageNotifier.swift */; };
+		72C8AE23FD2E354DF0747D89 /* CodexUsageReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D08383147571548BA77F3B4 /* CodexUsageReader.swift */; };
+		73C75633894F5B3BE5397A9B /* DesktopWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952959A3BCF91451169A380A /* DesktopWidgetView.swift */; };
+		7AE1469C2B21BA2C8B7CC90D /* AnalyticsDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5CFCBAD6DC3C71D1A3144DA /* AnalyticsDashboardView.swift */; };
+		7B9213CCE8549C58FC736BF7 /* UsageSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82670BF12FC78B0C163EDCA9 /* UsageSnapshot.swift */; };
+		876DB4D739225FCFA364468F /* CodexMeterWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A4562971271D7E88C6E8481A /* CodexMeterWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		9250A303AE0DDCDBCD82C40C /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31FA0DE0369933150A7BFC4 /* UsageStore.swift */; };
+		9FB8D66BD03290F0DA27B33B /* ProjectsUsageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C96BC0E83BEADE3C8EB613F /* ProjectsUsageView.swift */; };
+		A1AF8676F4ED910B3A596482 /* DesktopWidgetController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */; };
+		A6D17D0CE64A7642254FB7EC /* WidgetUsageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */; };
+		AA4DCBEF6B1127316E94106A /* CodexMeterWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40494190ED16302FF8C9FE4 /* CodexMeterWidget.swift */; };
+		B8507C2D8C2B1DADBFC0A849 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F9D9FD6DAC4F96A86D1453D /* Assets.xcassets */; };
+		BA8B85969E48E3F6C6CB0D86 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B6BB423F7D3A2569A4F3256 /* Cocoa.framework */; };
+		CAEA2FCFB2E53DE2B5CE22C9 /* UsagePopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBA2DCB237A29B20A1D0088 /* UsagePopoverView.swift */; };
+		D632DE1472DD6235CCFA0A74 /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C084753CF7975D037DA942A /* Formatters.swift */; };
+		DEDDFB8DD0A18B8D1E247911 /* RateHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEF9EFECE2A6BFEDBC8EE9C6 /* RateHistory.swift */; };
+		FEBADF776B5F64FA07883229 /* ProjectPathStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		565F6D7A8B496635D7F35698 /* Embed App Extensions */ = {
+		01B64D62DF9A203A6853F049 /* Embed App Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				23BD4AE16D751F9F729BD3AD /* CodexMeterWidget.appex in Embed App Extensions */,
+				876DB4D739225FCFA364468F /* CodexMeterWidget.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -44,151 +47,157 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		08E1AFB6069E08C229D32586 /* WidgetUsageCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WidgetUsageCache.swift; path = Support/WidgetUsageCache.swift; sourceTree = "<group>"; };
-		0A5B2A4ECFBDF2AB88E2EE12 /* CodexMeter.entitlements */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.entitlements; path = CodexMeter.entitlements; sourceTree = "<group>"; };
-		171607A5A876318E5DD70A7B /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		28C6ECD4271C95DA92FB79F5 /* DesktopWidgetController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DesktopWidgetController.swift; path = Services/DesktopWidgetController.swift; sourceTree = "<group>"; };
-		314EF274AB68F72C031BE98A /* CodexMeterApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexMeterApp.swift; path = App/CodexMeterApp.swift; sourceTree = "<group>"; };
-		3193909FF12D3F2DDB78F23C /* DesktopWidgetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DesktopWidgetView.swift; path = Views/DesktopWidgetView.swift; sourceTree = "<group>"; };
-		3B99BCAC7DC6D9BB88E103C2 /* RateLimitView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RateLimitView.swift; path = Views/RateLimitView.swift; sourceTree = "<group>"; };
-		45A472E7B0DE23C67D32801A /* CodexMeterWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CodexMeterWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		48B1215EC97718CEA5DC9A84 /* UsageStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageStore.swift; path = Stores/UsageStore.swift; sourceTree = "<group>"; };
-		66D987C7BDADD950D9F78137 /* CodexMeter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodexMeter.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		67F595016B1B24297E87CCBE /* WidgetInfo.plist */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.xml; path = WidgetInfo.plist; sourceTree = "<group>"; };
-		8152253F47D403D3006FB366 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
-		93BA0076637EC7B659714821 /* RateHistory.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RateHistory.swift; path = Support/RateHistory.swift; sourceTree = "<group>"; };
-		9C96D0D5CC1DC3BBEFF951E7 /* Formatters.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Formatters.swift; path = Support/Formatters.swift; sourceTree = "<group>"; };
-		9CBBC914DE7790E1B20EA9BD /* UsagePopoverView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsagePopoverView.swift; path = Views/UsagePopoverView.swift; sourceTree = "<group>"; };
-		A0D8978CBF824637C3C06B17 /* CodexFolderAccess.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexFolderAccess.swift; path = Services/CodexFolderAccess.swift; sourceTree = "<group>"; };
-		B3F1330DFD113E995378C774 /* CodexMeterWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.entitlements; path = CodexMeterWidget.entitlements; sourceTree = "<group>"; };
-		B42568D260B341508CECE7B0 /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AnalyticsDashboardView.swift; path = Views/AnalyticsDashboardView.swift; sourceTree = "<group>"; };
-		DA2078797829958C431BB26D /* UsageSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageSnapshot.swift; path = Models/UsageSnapshot.swift; sourceTree = "<group>"; };
-		E24E007E87A89527F720FC96 /* CodexUsageReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexUsageReader.swift; path = Services/CodexUsageReader.swift; sourceTree = "<group>"; };
-		E4E88476D30D321E3DA24949 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		F5502AFAD3D46015652B3A72 /* CodexMeterWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodexMeterWidget.swift; sourceTree = "<group>"; };
-		F78DEE0CDBAE271A86B55C7D /* UsageNotifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageNotifier.swift; path = Support/UsageNotifier.swift; sourceTree = "<group>"; };
+		09764D2144F99D08963848D1 /* UsageNotifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageNotifier.swift; path = Support/UsageNotifier.swift; sourceTree = "<group>"; };
+		09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DesktopWidgetController.swift; path = Services/DesktopWidgetController.swift; sourceTree = "<group>"; };
+		09E69407D7632A4091F79FD5 /* CodexFolderAccess.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexFolderAccess.swift; path = Services/CodexFolderAccess.swift; sourceTree = "<group>"; };
+		0D08383147571548BA77F3B4 /* CodexUsageReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexUsageReader.swift; path = Services/CodexUsageReader.swift; sourceTree = "<group>"; };
+		1B6BB423F7D3A2569A4F3256 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WidgetUsageCache.swift; path = Support/WidgetUsageCache.swift; sourceTree = "<group>"; };
+		4A361FC002D72C790C39C382 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		571075B30C712B7BBC5BFDBA /* CodexMeter.entitlements */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.entitlements; path = CodexMeter.entitlements; sourceTree = "<group>"; };
+		5C96BC0E83BEADE3C8EB613F /* ProjectsUsageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProjectsUsageView.swift; path = Views/ProjectsUsageView.swift; sourceTree = "<group>"; };
+		6F9D9FD6DAC4F96A86D1453D /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		82670BF12FC78B0C163EDCA9 /* UsageSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageSnapshot.swift; path = Models/UsageSnapshot.swift; sourceTree = "<group>"; };
+		88F62FBA68EF45CBCDA030EF /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = Views/SettingsView.swift; sourceTree = "<group>"; };
+		952959A3BCF91451169A380A /* DesktopWidgetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DesktopWidgetView.swift; path = Views/DesktopWidgetView.swift; sourceTree = "<group>"; };
+		9C084753CF7975D037DA942A /* Formatters.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Formatters.swift; path = Support/Formatters.swift; sourceTree = "<group>"; };
+		A1B961FB9311FE5B13659888 /* CodexMeterApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexMeterApp.swift; path = App/CodexMeterApp.swift; sourceTree = "<group>"; };
+		A31FA0DE0369933150A7BFC4 /* UsageStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageStore.swift; path = Stores/UsageStore.swift; sourceTree = "<group>"; };
+		A4562971271D7E88C6E8481A /* CodexMeterWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CodexMeterWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProjectPathStore.swift; path = Stores/ProjectPathStore.swift; sourceTree = "<group>"; };
+		CCC70382AB23D6AA70634006 /* CodexMeterWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.entitlements; path = CodexMeterWidget.entitlements; sourceTree = "<group>"; };
+		D40494190ED16302FF8C9FE4 /* CodexMeterWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodexMeterWidget.swift; sourceTree = "<group>"; };
+		DEF9EFECE2A6BFEDBC8EE9C6 /* RateHistory.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RateHistory.swift; path = Support/RateHistory.swift; sourceTree = "<group>"; };
+		F04004A0A79CA697E5B19A7B /* CodexMeter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodexMeter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F1D16BAAF299E859892B138A /* RateLimitView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RateLimitView.swift; path = Views/RateLimitView.swift; sourceTree = "<group>"; };
+		F5CFCBAD6DC3C71D1A3144DA /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AnalyticsDashboardView.swift; path = Views/AnalyticsDashboardView.swift; sourceTree = "<group>"; };
+		F8060034B7326B85098D331C /* WidgetInfo.plist */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.xml; path = WidgetInfo.plist; sourceTree = "<group>"; };
+		FEBA2DCB237A29B20A1D0088 /* UsagePopoverView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsagePopoverView.swift; path = Views/UsagePopoverView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		19067BDC1549E92D3BF43307 /* Frameworks */ = {
+		4123FED9B0FE1437037FB350 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6D148E9D4610037D17E881CC /* Cocoa.framework in Frameworks */,
+				BA8B85969E48E3F6C6CB0D86 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		42CB18C4E83D0F14D93E3E2E /* Frameworks */ = {
+		977FE7B6DF1DCEF2C82534BC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E80A1880CFBAAE6E421E37D0 /* Cocoa.framework in Frameworks */,
+				6E734A7D26050D421FD07666 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		182C4EEF5A010793336D0212 /* Resources */ = {
+		1481F0CC755750378D9FD762 = {
 			isa = PBXGroup;
 			children = (
-				171607A5A876318E5DD70A7B /* Info.plist */,
-				67F595016B1B24297E87CCBE /* WidgetInfo.plist */,
-				0A5B2A4ECFBDF2AB88E2EE12 /* CodexMeter.entitlements */,
-				B3F1330DFD113E995378C774 /* CodexMeterWidget.entitlements */,
-				E4E88476D30D321E3DA24949 /* Assets.xcassets */,
-			);
-			name = Resources;
-			path = Resources;
-			sourceTree = "<group>";
-		};
-		2305C925DDB71A656773B0FC /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				66D987C7BDADD950D9F78137 /* CodexMeter.app */,
-				45A472E7B0DE23C67D32801A /* CodexMeterWidget.appex */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		2549A460C75530648EEB1A78 = {
-			isa = PBXGroup;
-			children = (
-				2305C925DDB71A656773B0FC /* Products */,
-				48D8FF83CB7457A1DB7CEB0E /* Frameworks */,
-				7CCDA12ECC779C4BE2DEAD5D /* Sources */,
-				182C4EEF5A010793336D0212 /* Resources */,
+				8FA71ACE7C4FAD5E64A63E4C /* Products */,
+				352CC441759AE2FC44092FDE /* Frameworks */,
+				226EC66461C886363D41D762 /* Sources */,
+				D1EC0E82BB06DFED0A7DE89C /* Resources */,
 			);
 			sourceTree = "<group>";
 		};
-		48D8FF83CB7457A1DB7CEB0E /* Frameworks */ = {
+		226EC66461C886363D41D762 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				C2A52B0FF8EC2F2FB182E40F /* OS X */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		7CCDA12ECC779C4BE2DEAD5D /* Sources */ = {
-			isa = PBXGroup;
-			children = (
-				A40AC7075369F5EFA2F5D9AD /* CodexMeter */,
-				A433E7AE4CAC19F7A50ED372 /* CodexMeterWidget */,
+				CB781484ECC1375ED7E91D0C /* CodexMeter */,
+				F5DD3F26297D8ECAE1774423 /* CodexMeterWidget */,
 			);
 			name = Sources;
 			path = Sources;
 			sourceTree = "<group>";
 		};
-		A40AC7075369F5EFA2F5D9AD /* CodexMeter */ = {
+		352CC441759AE2FC44092FDE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				314EF274AB68F72C031BE98A /* CodexMeterApp.swift */,
-				DA2078797829958C431BB26D /* UsageSnapshot.swift */,
-				A0D8978CBF824637C3C06B17 /* CodexFolderAccess.swift */,
-				E24E007E87A89527F720FC96 /* CodexUsageReader.swift */,
-				28C6ECD4271C95DA92FB79F5 /* DesktopWidgetController.swift */,
-				48B1215EC97718CEA5DC9A84 /* UsageStore.swift */,
-				9C96D0D5CC1DC3BBEFF951E7 /* Formatters.swift */,
-				93BA0076637EC7B659714821 /* RateHistory.swift */,
-				F78DEE0CDBAE271A86B55C7D /* UsageNotifier.swift */,
-				08E1AFB6069E08C229D32586 /* WidgetUsageCache.swift */,
-				B42568D260B341508CECE7B0 /* AnalyticsDashboardView.swift */,
-				3193909FF12D3F2DDB78F23C /* DesktopWidgetView.swift */,
-				3B99BCAC7DC6D9BB88E103C2 /* RateLimitView.swift */,
-				9CBBC914DE7790E1B20EA9BD /* UsagePopoverView.swift */,
+				677FF2CA102875E4EEA46B74 /* OS X */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		677FF2CA102875E4EEA46B74 /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				1B6BB423F7D3A2569A4F3256 /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
+		8FA71ACE7C4FAD5E64A63E4C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F04004A0A79CA697E5B19A7B /* CodexMeter.app */,
+				A4562971271D7E88C6E8481A /* CodexMeterWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CB781484ECC1375ED7E91D0C /* CodexMeter */ = {
+			isa = PBXGroup;
+			children = (
+				A1B961FB9311FE5B13659888 /* CodexMeterApp.swift */,
+				82670BF12FC78B0C163EDCA9 /* UsageSnapshot.swift */,
+				09E69407D7632A4091F79FD5 /* CodexFolderAccess.swift */,
+				0D08383147571548BA77F3B4 /* CodexUsageReader.swift */,
+				09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */,
+				CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */,
+				A31FA0DE0369933150A7BFC4 /* UsageStore.swift */,
+				9C084753CF7975D037DA942A /* Formatters.swift */,
+				DEF9EFECE2A6BFEDBC8EE9C6 /* RateHistory.swift */,
+				09764D2144F99D08963848D1 /* UsageNotifier.swift */,
+				23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */,
+				F5CFCBAD6DC3C71D1A3144DA /* AnalyticsDashboardView.swift */,
+				952959A3BCF91451169A380A /* DesktopWidgetView.swift */,
+				5C96BC0E83BEADE3C8EB613F /* ProjectsUsageView.swift */,
+				F1D16BAAF299E859892B138A /* RateLimitView.swift */,
+				88F62FBA68EF45CBCDA030EF /* SettingsView.swift */,
+				FEBA2DCB237A29B20A1D0088 /* UsagePopoverView.swift */,
 			);
 			name = CodexMeter;
 			path = CodexMeter;
 			sourceTree = "<group>";
 		};
-		A433E7AE4CAC19F7A50ED372 /* CodexMeterWidget */ = {
+		D1EC0E82BB06DFED0A7DE89C /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				F5502AFAD3D46015652B3A72 /* CodexMeterWidget.swift */,
+				4A361FC002D72C790C39C382 /* Info.plist */,
+				F8060034B7326B85098D331C /* WidgetInfo.plist */,
+				571075B30C712B7BBC5BFDBA /* CodexMeter.entitlements */,
+				CCC70382AB23D6AA70634006 /* CodexMeterWidget.entitlements */,
+				6F9D9FD6DAC4F96A86D1453D /* Assets.xcassets */,
+			);
+			name = Resources;
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		F5DD3F26297D8ECAE1774423 /* CodexMeterWidget */ = {
+			isa = PBXGroup;
+			children = (
+				D40494190ED16302FF8C9FE4 /* CodexMeterWidget.swift */,
 			);
 			name = CodexMeterWidget;
 			path = CodexMeterWidget;
 			sourceTree = "<group>";
 		};
-		C2A52B0FF8EC2F2FB182E40F /* OS X */ = {
-			isa = PBXGroup;
-			children = (
-				8152253F47D403D3006FB366 /* Cocoa.framework */,
-			);
-			name = "OS X";
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		771DEE07273EE18A9BFC17AE /* CodexMeter */ = {
+		0D5C4BB107441F381436A8F2 /* CodexMeter */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = E47A9F6D08C8DCF13D07111E /* Build configuration list for PBXNativeTarget "CodexMeter" */;
+			buildConfigurationList = 9C7FF7C10137E2A3628B712F /* Build configuration list for PBXNativeTarget "CodexMeter" */;
 			buildPhases = (
-				EBECB4945D3F4012500CA107 /* Sources */,
-				19067BDC1549E92D3BF43307 /* Frameworks */,
-				81D9CA1BDFF95CD2D9898F7E /* Resources */,
-				565F6D7A8B496635D7F35698 /* Embed App Extensions */,
+				467872C167E4370C4E1DB216 /* Sources */,
+				977FE7B6DF1DCEF2C82534BC /* Frameworks */,
+				F9234154B87F26FADC05BD87 /* Resources */,
+				01B64D62DF9A203A6853F049 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
@@ -196,16 +205,16 @@
 			);
 			name = CodexMeter;
 			productName = CodexMeter;
-			productReference = 66D987C7BDADD950D9F78137 /* CodexMeter.app */;
+			productReference = F04004A0A79CA697E5B19A7B /* CodexMeter.app */;
 			productType = "com.apple.product-type.application";
 		};
-		A655BEE2CF3B76A205AFD4F6 /* CodexMeterWidget */ = {
+		A0FD86ED894576ECE9D00CB0 /* CodexMeterWidget */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 6140F0BEE27162F4F2A17AA5 /* Build configuration list for PBXNativeTarget "CodexMeterWidget" */;
+			buildConfigurationList = 9FE7C7961A05FCFC35C7B54E /* Build configuration list for PBXNativeTarget "CodexMeterWidget" */;
 			buildPhases = (
-				AE6B73CA9D7D013A6CC07818 /* Sources */,
-				42CB18C4E83D0F14D93E3E2E /* Frameworks */,
-				E0BABCA634D3C13D65E09871 /* Resources */,
+				91A40800F9F5C555464F091A /* Sources */,
+				4123FED9B0FE1437037FB350 /* Frameworks */,
+				B9E3AE0F4B2C1AB9FB7AB565 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -213,19 +222,19 @@
 			);
 			name = CodexMeterWidget;
 			productName = CodexMeterWidget;
-			productReference = 45A472E7B0DE23C67D32801A /* CodexMeterWidget.appex */;
+			productReference = A4562971271D7E88C6E8481A /* CodexMeterWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		08E2356E5A66C5E2A3F1F7C0 /* Project object */ = {
+		5803061C04E2710F0547F370 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 			};
-			buildConfigurationList = A3B3EE2AFF6CA4BF15E5568D /* Build configuration list for PBXProject "CodexMeter" */;
+			buildConfigurationList = D0FB4C99558331E1A84E6586 /* Build configuration list for PBXProject "CodexMeter" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -233,90 +242,75 @@
 				en,
 				Base,
 			);
-			mainGroup = 2549A460C75530648EEB1A78;
+			mainGroup = 1481F0CC755750378D9FD762;
 			minimizedProjectReferenceProxies = 0;
 			preferredProjectObjectVersion = 100;
-			productRefGroup = 2305C925DDB71A656773B0FC /* Products */;
+			productRefGroup = 8FA71ACE7C4FAD5E64A63E4C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				771DEE07273EE18A9BFC17AE /* CodexMeter */,
-				A655BEE2CF3B76A205AFD4F6 /* CodexMeterWidget */,
+				0D5C4BB107441F381436A8F2 /* CodexMeter */,
+				A0FD86ED894576ECE9D00CB0 /* CodexMeterWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		81D9CA1BDFF95CD2D9898F7E /* Resources */ = {
+		B9E3AE0F4B2C1AB9FB7AB565 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2CF1C4F4870133E0C9D6AF64 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		E0BABCA634D3C13D65E09871 /* Resources */ = {
+		F9234154B87F26FADC05BD87 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8507C2D8C2B1DADBFC0A849 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AE6B73CA9D7D013A6CC07818 /* Sources */ = {
+		467872C167E4370C4E1DB216 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				423C91C262C13815BF0EF352 /* CodexMeterWidget.swift in Sources */,
-				E670A239165EAE6CD8549AA4 /* WidgetUsageCache.swift in Sources */,
+				67296E405A4D62D6131B9677 /* CodexMeterApp.swift in Sources */,
+				7B9213CCE8549C58FC736BF7 /* UsageSnapshot.swift in Sources */,
+				2B32E4686F7EA743978AD390 /* CodexFolderAccess.swift in Sources */,
+				72C8AE23FD2E354DF0747D89 /* CodexUsageReader.swift in Sources */,
+				A1AF8676F4ED910B3A596482 /* DesktopWidgetController.swift in Sources */,
+				FEBADF776B5F64FA07883229 /* ProjectPathStore.swift in Sources */,
+				9250A303AE0DDCDBCD82C40C /* UsageStore.swift in Sources */,
+				D632DE1472DD6235CCFA0A74 /* Formatters.swift in Sources */,
+				DEDDFB8DD0A18B8D1E247911 /* RateHistory.swift in Sources */,
+				718A3C8A6AD03AAD2962F124 /* UsageNotifier.swift in Sources */,
+				A6D17D0CE64A7642254FB7EC /* WidgetUsageCache.swift in Sources */,
+				7AE1469C2B21BA2C8B7CC90D /* AnalyticsDashboardView.swift in Sources */,
+				73C75633894F5B3BE5397A9B /* DesktopWidgetView.swift in Sources */,
+				9FB8D66BD03290F0DA27B33B /* ProjectsUsageView.swift in Sources */,
+				1A011CF9C3543D1AA3561AE0 /* RateLimitView.swift in Sources */,
+				4802D9AD7D21F45991157B54 /* SettingsView.swift in Sources */,
+				CAEA2FCFB2E53DE2B5CE22C9 /* UsagePopoverView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		EBECB4945D3F4012500CA107 /* Sources */ = {
+		91A40800F9F5C555464F091A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D95B753ADDECE4FA52DBB96D /* CodexMeterApp.swift in Sources */,
-				F6655F064A7A386BEF28BC22 /* UsageSnapshot.swift in Sources */,
-				8AC493A722EAD7EF4465BF6F /* CodexFolderAccess.swift in Sources */,
-				A65D063F33FF2898948B7C30 /* CodexUsageReader.swift in Sources */,
-				E56180BE072CA1F0E41CCA4E /* DesktopWidgetController.swift in Sources */,
-				7E103C8AD7F6D725CC2126F3 /* UsageStore.swift in Sources */,
-				B1668A9A33423B0FC598D002 /* Formatters.swift in Sources */,
-				42966E6B80CBA1B498628506 /* RateHistory.swift in Sources */,
-				F8A9DFB1AF2A321A8E4BB6B6 /* UsageNotifier.swift in Sources */,
-				F2DC487675833910C298B7F3 /* WidgetUsageCache.swift in Sources */,
-				2C6F7E8CC10808FB874B8ED6 /* AnalyticsDashboardView.swift in Sources */,
-				871318FE76AF89F3436D789D /* DesktopWidgetView.swift in Sources */,
-				399A48AF8F1D4AAF41C771F5 /* RateLimitView.swift in Sources */,
-				4BD771174E9AACC6FED742DE /* UsagePopoverView.swift in Sources */,
+				AA4DCBEF6B1127316E94106A /* CodexMeterWidget.swift in Sources */,
+				38D055E160C4163D14A30C4F /* WidgetUsageCache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		4BDC4EEB5793A8D196C4B9A7 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_ENTITLEMENTS = Resources/CodexMeter.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = Resources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.codexmeter.CodexMeter;
-				SDKROOT = macosx;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
-		};
-		4EAF38CF140CA306F0D90A4C /* Release */ = {
+		446C9ACE6E21FD8CFEB6BBB6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Resources/CodexMeterWidget.entitlements;
@@ -330,7 +324,27 @@
 			};
 			name = Release;
 		};
-		64FF9068773711206D2C24C6 /* Debug */ = {
+		6C642810257DE3AD819E0F14 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_ENTITLEMENTS = Resources/CodexMeter.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_NAME = CodexMeter;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codexmeter.CodexMeter;
+				PRODUCT_NAME = "Codex Health";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		826CF07753B23EE6DDDCE230 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -392,25 +406,7 @@
 			};
 			name = Debug;
 		};
-		E45D7C2ABC5984817E5D0B40 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_ENTITLEMENTS = Resources/CodexMeter.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = Resources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.codexmeter.CodexMeter;
-				SDKROOT = macosx;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Release;
-		};
-		EE133A1B7CEE31CB94D1E913 /* Release */ = {
+		AFC37BD8DDDB0910F58A04BA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -465,7 +461,27 @@
 			};
 			name = Release;
 		};
-		FE87422CB6165CCBBEFD560E /* Debug */ = {
+		BFCEC68B9C5C442DB5D3561D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_ENTITLEMENTS = Resources/CodexMeter.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_NAME = CodexMeter;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codexmeter.CodexMeter;
+				PRODUCT_NAME = "Codex Health";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		E9547F17443F948403AA66DF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Resources/CodexMeterWidget.entitlements;
@@ -482,34 +498,34 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		6140F0BEE27162F4F2A17AA5 /* Build configuration list for PBXNativeTarget "CodexMeterWidget" */ = {
+		9C7FF7C10137E2A3628B712F /* Build configuration list for PBXNativeTarget "CodexMeter" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4EAF38CF140CA306F0D90A4C /* Release */,
-				FE87422CB6165CCBBEFD560E /* Debug */,
+				6C642810257DE3AD819E0F14 /* Release */,
+				BFCEC68B9C5C442DB5D3561D /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A3B3EE2AFF6CA4BF15E5568D /* Build configuration list for PBXProject "CodexMeter" */ = {
+		9FE7C7961A05FCFC35C7B54E /* Build configuration list for PBXNativeTarget "CodexMeterWidget" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				64FF9068773711206D2C24C6 /* Debug */,
-				EE133A1B7CEE31CB94D1E913 /* Release */,
+				446C9ACE6E21FD8CFEB6BBB6 /* Release */,
+				E9547F17443F948403AA66DF /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		E47A9F6D08C8DCF13D07111E /* Build configuration list for PBXNativeTarget "CodexMeter" */ = {
+		D0FB4C99558331E1A84E6586 /* Build configuration list for PBXProject "CodexMeter" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E45D7C2ABC5984817E5D0B40 /* Release */,
-				4BDC4EEB5793A8D196C4B9A7 /* Debug */,
+				826CF07753B23EE6DDDCE230 /* Debug */,
+				AFC37BD8DDDB0910F58A04BA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 08E2356E5A66C5E2A3F1F7C0 /* Project object */;
+	rootObject = 5803061C04E2710F0547F370 /* Project object */;
 }

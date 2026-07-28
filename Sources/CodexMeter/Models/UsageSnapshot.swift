@@ -36,7 +36,18 @@ struct RateWindow: Sendable, Equatable {
 
 struct ProjectUsage: Sendable, Equatable {
     let name: String
+    let path: String
     let tokens: Int
+    let sessions: Int
+    let lastActive: Date?
+
+    init(path: String, tokens: Int, sessions: Int = 0, lastActive: Date? = nil) {
+        self.path = path
+        self.name = path.isEmpty ? "未归属路径" : URL(fileURLWithPath: path).lastPathComponent
+        self.tokens = tokens
+        self.sessions = sessions
+        self.lastActive = lastActive
+    }
 }
 struct ModelUsage: Sendable, Equatable {
     let name: String
@@ -49,6 +60,7 @@ struct DailyUsage: Sendable, Equatable { let date: Date; let tokens: Int }
 struct UsageRecord: Sendable, Equatable { let date: Date; let project: String; let model: String; let tokens: Int }
 
 struct UsageSnapshot: Sendable, Equatable {
+    var allProjects: [ProjectUsage] = []
     var topProjects: [ProjectUsage] = []
     var todayProjects: [ProjectUsage] = []
     var monthProjects: [ProjectUsage] = []
