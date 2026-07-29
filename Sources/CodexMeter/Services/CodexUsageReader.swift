@@ -20,8 +20,6 @@ actor CodexUsageReader {
         snapshot.dataDirectoryExists = fileManager.fileExists(atPath: root.path)
         snapshot.fileCount = files.count
         var latestRateTimestamp = Date.distantPast
-        var latestCanonicalRateTimestamp = Date.distantPast
-        var latestNonZeroSevenDayRate: (window: RateWindow, timestamp: Date)?
         var projects: [String: ProjectAccumulator] = [:]
         var todayProjects: [String: ProjectAccumulator] = [:]
         var monthProjects: [String: ProjectAccumulator] = [:]
@@ -71,49 +69,50 @@ actor CodexUsageReader {
                 snapshot.thisMonth = snapshot.thisMonth + event.total
             }
 
-            // `codex` is the account-wide quota shown by the Codex status
-            // panel. Model-specific limits (for example codex_bengalfox) may
-            // be emitted immediately afterwards with their own fresh 0% rate;
-            // they must not replace the account-wide seven-day value.
-            let isCanonicalQuota = event.rateLimitID == "codex"
-            if isCanonicalQuota, event.timestamp > latestCanonicalRateTimestamp {
-                latestCanonicalRateTimestamp = event.timestamp
-                snapshot.primaryRate = event.primaryRate
-                snapshot.secondaryRate = event.secondaryRate
-            } else if latestCanonicalRateTimestamp == .distantPast,
-                      event.timestamp > latestRateTimestamp {
+            // The official Codex status panel follows the newest quota event.
+            // A quota can receive a new limit ID after it resets, so preferring
+            // an older hard-coded ID leaves the app stuck on a stale percentage.
+            if event.timestamp > latestRateTimestamp {
                 latestRateTimestamp = event.timestamp
                 snapshot.primaryRate = event.primaryRate
                 snapshot.secondaryRate = event.secondaryRate
-            }
-
-            if event.timestamp > latestRateTimestamp {
+                snapshot.selectedRateLimitID = event.rateLimitID
                 snapshot.currentContextUsed = event.currentContextUsed
                 snapshot.contextWindow = event.contextWindow
                 snapshot.lastUpdated = event.timestamp
             }
 
-            for window in [event.primaryRate, event.secondaryRate].compactMap({ $0 })
-            where window.windowMinutes == 10_080 && window.usedPercent > 0 {
-                if latestNonZeroSevenDayRate == nil || event.timestamp > latestNonZeroSevenDayRate!.timestamp {
-                    latestNonZeroSevenDayRate = (window, event.timestamp)
-                }
+            if event.timestamp >= thirtyDaysAgo,
+               let window = [event.primaryRate, event.secondaryRate]
+                .compactMap({ $0 })
+                .first(where: { $0.windowMinutes == 10_080 }) {
+                snapshot.rateTimeline.append(
+                    RateTimelineEvent(
+                        date: event.timestamp,
+                        usedPercent: window.usedPercent,
+                        resetsAt: window.resetsAt,
+                        limitID: event.rateLimitID
+                    )
+                )
             }
         }
 
-        // Some rollout files can briefly emit a fresh 0%-used seven-day
-        // window with a different reset time while the existing window is
-        // still active. Treat that isolated jump as unconfirmed rather than
-        // resetting the menu bar to 100%. A genuine reset is accepted once
-        // the previous window has actually expired.
-        if let current = [snapshot.primaryRate, snapshot.secondaryRate]
-            .compactMap({ $0 })
-            .first(where: { $0.windowMinutes == 10_080 }),
-           current.usedPercent == 0,
-           let previous = latestNonZeroSevenDayRate,
-           previous.window.resetsAt > now {
-            snapshot.primaryRate = previous.window
+        // A session can emit many quota samples during the same seven-day
+        // period.  They are observations, not resets.  Keep the newest sample
+        // for each reset day so the history is a timeline of quota periods
+        // rather than a list of near-identical refreshes.
+        let relevantTimeline = snapshot.rateTimeline.filter {
+            snapshot.selectedRateLimitID == nil || $0.limitID == snapshot.selectedRateLimitID
         }
+        var latestSampleByCycle: [String: RateTimelineEvent] = [:]
+        for event in relevantTimeline {
+            let resetDay = calendar.startOfDay(for: event.resetsAt).timeIntervalSince1970
+            let limitID = event.limitID ?? "unknown"
+            let cycleKey = "\(limitID)-\(Int(resetDay))"
+            if let existing = latestSampleByCycle[cycleKey], existing.date >= event.date { continue }
+            latestSampleByCycle[cycleKey] = event
+        }
+        snapshot.rateTimeline = latestSampleByCycle.values.sorted { $0.date > $1.date }
         snapshot.allProjects = ranked(projects)
         snapshot.topProjects = Array(snapshot.allProjects.prefix(4))
         snapshot.todayProjects = ranked(todayProjects)

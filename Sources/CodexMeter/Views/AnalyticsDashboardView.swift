@@ -74,6 +74,10 @@ private struct HistoryRecordsView: View {
         return Dictionary(grouping: records, by: { calendar.startOfDay(for: $0.date) })
             .sorted { $0.key > $1.key }
     }
+    private var rateTimeline: [RateTimelineEvent] {
+        let cutoff = Date.now.addingTimeInterval(-Double(range.days) * 86_400)
+        return store.snapshot.rateTimeline.filter { $0.date >= cutoff }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -91,6 +95,23 @@ private struct HistoryRecordsView: View {
                 Spacer()
                 Text("\(records.count) 条 · \(UsageFormatters.tokens(total)) Token")
                     .foregroundStyle(.secondary)
+            }
+            if !rateTimeline.isEmpty {
+                DashboardCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Label("7 天额度周期时间线", systemImage: "arrow.triangle.2.circlepath")
+                                .font(.headline)
+                            Spacer()
+                            Text("按重置周期合并 · 仅本机记录")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(Array(rateTimeline.prefix(8).enumerated()), id: \.offset) { index, event in
+                            ResetTimelineRow(event: event, isLatest: index == 0)
+                        }
+                    }
+                }
             }
             if records.isEmpty {
                 ContentUnavailableView("没有符合条件的本地记录", systemImage: "clock.badge.questionmark", description: Text("当前可浏览最近 30 天内已写入 Token 计数的会话记录。"))
@@ -113,6 +134,42 @@ private struct HistoryRecordsView: View {
             }
         }
         .padding(28).frame(minWidth: 900, maxWidth: 1_420, alignment: .leading)
+    }
+}
+
+private struct ResetTimelineRow: View {
+    let event: RateTimelineEvent
+    let isLatest: Bool
+
+    private var used: Int { Int(event.usedPercent.rounded()) }
+    private var remaining: Int { max(0, 100 - used) }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: isLatest ? "clock.arrow.circlepath" : "circle.fill")
+                .font(.callout)
+                .foregroundStyle(isLatest ? DashboardPalette.blue : .secondary)
+                .frame(width: 20, height: 20)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(isLatest ? "当前额度周期" : "已观察到的额度周期")
+                    .font(.callout.weight(.semibold))
+                Text("最近采样 \(event.date.formatted(.dateTime.month().day().hour().minute())) · 已用 \(used)% · 剩余 \(remaining)%")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("重置时间")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(event.resetsAt.formatted(.dateTime.month().day().hour().minute()))
+                    .font(.caption.monospacedDigit().weight(.semibold))
+            }
+        }
+        .padding(.vertical, 7)
+        .overlay(alignment: .bottom) {
+            if !isLatest { Divider().opacity(0.45) }
+        }
     }
 }
 

@@ -58,6 +58,13 @@ struct ModelUsage: Sendable, Equatable {
 }
 struct DailyUsage: Sendable, Equatable { let date: Date; let tokens: Int }
 struct UsageRecord: Sendable, Equatable { let date: Date; let project: String; let model: String; let tokens: Int }
+/// A locally observed seven-day quota window. It contains no conversation content.
+struct RateTimelineEvent: Sendable, Equatable {
+    let date: Date
+    let usedPercent: Double
+    let resetsAt: Date
+    let limitID: String?
+}
 
 struct UsageSnapshot: Sendable, Equatable {
     var allProjects: [ProjectUsage] = []
@@ -67,12 +74,14 @@ struct UsageSnapshot: Sendable, Equatable {
     var topModels: [ModelUsage] = []
     var dailyUsage: [DailyUsage] = []
     var recentRecords: [UsageRecord] = []
+    var rateTimeline: [RateTimelineEvent] = []
     var today = TokenUsage()
     var lastSevenDays = TokenUsage()
     var thisMonth = TokenUsage()
     var allTime = TokenUsage()
     var primaryRate: RateWindow?
     var secondaryRate: RateWindow?
+    var selectedRateLimitID: String?
     var currentContextUsed = 0
     var contextWindow = 0
     var lastUpdated: Date?
