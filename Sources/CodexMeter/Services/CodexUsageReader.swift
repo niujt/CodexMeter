@@ -20,6 +20,8 @@ actor CodexUsageReader {
         snapshot.dataDirectoryExists = fileManager.fileExists(atPath: root.path)
         snapshot.fileCount = files.count
         var latestRateTimestamp = Date.distantPast
+        var latestMainMenuRateTimestamp = Date.distantPast
+        var latestSparkRateTimestamp = Date.distantPast
         var projects: [String: ProjectAccumulator] = [:]
         var todayProjects: [String: ProjectAccumulator] = [:]
         var monthProjects: [String: ProjectAccumulator] = [:]
@@ -36,12 +38,12 @@ actor CodexUsageReader {
             // reading a small tail is enough for the dashboard and avoids
             // blocking the menu-bar UI on a full archive scan.
             guard let event = try? latestTokenEvent(in: file) else { continue }
+            let model = modelName(in: file)
             snapshot.sessionCount += 1
             snapshot.allTime = snapshot.allTime + event.total
             let projectPath = projectPath(in: file)
             if event.timestamp >= sevenDaysAgo {
                 projects[projectPath, default: .empty].add(tokens: event.total.total, date: event.timestamp)
-                let model = modelName(in: file)
                 let timing = responseTiming(in: file)
                 models[model, default: (0, 0, 0, 0)].tokens += event.total.total
                 models[model, default: (0, 0, 0, 0)].requests += max(1, timing.count)
@@ -55,7 +57,7 @@ actor CodexUsageReader {
             if event.timestamp >= thirtyDaysAgo {
                 monthProjects[projectPath, default: .empty].add(tokens: event.total.total, date: event.timestamp)
                 snapshot.recentRecords.append(
-                    UsageRecord(date: event.timestamp, project: projectPath, model: modelName(in: file), tokens: event.total.total)
+                    UsageRecord(date: event.timestamp, project: projectPath, model: model, tokens: event.total.total)
                 )
             }
 
@@ -86,6 +88,7 @@ actor CodexUsageReader {
                let window = [event.primaryRate, event.secondaryRate]
                 .compactMap({ $0 })
                 .first(where: { $0.windowMinutes == 10_080 }) {
+                let isSpark = !model.isEmpty && isSparkModel(model)
                 snapshot.rateTimeline.append(
                     RateTimelineEvent(
                         date: event.timestamp,
@@ -94,6 +97,17 @@ actor CodexUsageReader {
                         limitID: event.rateLimitID
                     )
                 )
+                if isSpark {
+                    if event.timestamp >= latestSparkRateTimestamp {
+                        snapshot.sparkRate = window
+                        latestSparkRateTimestamp = event.timestamp
+                    }
+                } else {
+                    if event.timestamp >= latestMainMenuRateTimestamp {
+                        snapshot.mainMenuRate = window
+                        latestMainMenuRateTimestamp = event.timestamp
+                    }
+                }
             }
         }
 

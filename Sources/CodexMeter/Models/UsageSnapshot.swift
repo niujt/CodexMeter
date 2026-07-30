@@ -82,6 +82,8 @@ struct UsageSnapshot: Sendable, Equatable {
     var allTime = TokenUsage()
     var primaryRate: RateWindow?
     var secondaryRate: RateWindow?
+    var mainMenuRate: RateWindow?
+    var sparkRate: RateWindow?
     var selectedRateLimitID: String?
     var currentContextUsed = 0
     var contextWindow = 0
