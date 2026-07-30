@@ -28,13 +28,17 @@ extension UsageSnapshot {
             ?? primaryRate
     }
 
-    var sparkRate: RateWindow? {
-        guard let primaryRate, let secondaryRate else { return nil }
-        let mainRate = sevenDayRate
-        if let mainRate {
-            if mainRate == primaryRate { return secondaryRate }
-            if mainRate == secondaryRate { return primaryRate }
+    var mainMenuRate: RateWindow? {
+        if let primaryRate {
+            return primaryRate
         }
+        return secondaryRate
+    }
+
+    var sparkRate: RateWindow? {
+        guard let primaryRate else { return nil }
+        let candidate = secondaryRate ?? primaryRate
+        if candidate == primaryRate { return nil }
         return secondaryRate
     }
 
@@ -140,7 +144,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     }
 
     private func update(snapshot: UsageSnapshot) {
-        let remaining = snapshot.remainingPercent(for: snapshot.sevenDayRate)
+        let remaining = snapshot.remainingPercent(for: snapshot.mainMenuRate)
         let sparkRemaining = snapshot.remainingPercent(for: snapshot.sparkRate)
         statusItem.button?.title = "  \(remaining)%"
         statusItem.button?.contentTintColor = remaining < 20 ? .systemRed : remaining < 50 ? .systemOrange : .systemGreen
