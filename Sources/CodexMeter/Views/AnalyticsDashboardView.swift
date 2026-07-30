@@ -518,6 +518,9 @@ private struct DashboardContent: View {
 
     private var rate: RateWindow? { store.snapshot.sevenDayRate }
     private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
+    private var sparkRemaining: Int? {
+        store.snapshot.sparkRate.map { max(0, 100 - Int($0.usedPercent.rounded())) }
+    }
     private var quotaColor: Color { remaining < 20 ? .red : remaining < 50 ? DashboardPalette.orange : DashboardPalette.green }
     private var status: String { remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy" }
 
@@ -538,7 +541,13 @@ private struct DashboardContent: View {
             }
 
             HStack(spacing: 16) {
-                HealthHero(remaining: remaining, status: status, color: quotaColor, rate: rate)
+                HealthHero(
+                    remaining: remaining,
+                    sparkRemaining: sparkRemaining,
+                    status: status,
+                    color: quotaColor,
+                    rate: rate
+                )
                 TodayOverview(snapshot: store.snapshot)
             }
 
@@ -577,19 +586,33 @@ private struct DashboardCard<Content: View>: View {
 
 private struct HealthHero: View {
     let remaining: Int
+    let sparkRemaining: Int?
     let status: String
     let color: Color
     let rate: RateWindow?
     var body: some View {
         DashboardCard {
             HStack(spacing: 26) {
-                Text("\(remaining)%")
-                    .font(.system(size: 78, weight: .bold, design: .rounded))
-                    .foregroundStyle(LinearGradient(colors: [.blue, color], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(width: 210, alignment: .leading)
+                ZStack(alignment: .bottomTrailing) {
+                    Text("\(remaining)%")
+                        .font(.system(size: 78, weight: .bold, design: .rounded))
+                        .foregroundStyle(LinearGradient(colors: [.blue, color], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(width: 210, alignment: .leading)
+                    if let sparkRemaining {
+                        Text("Spark \(sparkRemaining)%")
+                            .font(.caption2.weight(.bold))
+                            .monospacedDigit()
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(DashboardPalette.orange, in: Capsule())
+                            .overlay(Capsule().stroke(.white.opacity(0.16)))
+                            .offset(x: -4, y: 7)
+                    }
+                }
                 Divider().overlay(.white.opacity(0.14)).frame(height: 110)
                 VStack(alignment: .leading, spacing: 10) {
                     Label(status, systemImage: "circle.fill")

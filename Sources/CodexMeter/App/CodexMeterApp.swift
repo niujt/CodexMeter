@@ -23,7 +23,8 @@ struct CodexMeterApp: App {
 
 extension UsageSnapshot {
     var sevenDayRate: RateWindow? {
-        [primaryRate, secondaryRate].compactMap { $0 }.first { $0.windowMinutes == 10_080 }
+        mainMenuRate
+            ?? [primaryRate, secondaryRate].compactMap { $0 }.first { $0.windowMinutes == 10_080 }
             ?? secondaryRate
             ?? primaryRate
     }
@@ -123,8 +124,14 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
 
     private func update(snapshot: UsageSnapshot) {
         guard let button = statusItem.button else { return }
-        button.title = "  —"
-        button.contentTintColor = .systemBlue
+        guard let rate = snapshot.mainMenuRate ?? snapshot.sevenDayRate else {
+            button.title = "  —"
+            button.contentTintColor = .systemBlue
+            return
+        }
+        let remaining = snapshot.remainingPercent(for: rate)
+        button.title = "  \(remaining)%"
+        button.contentTintColor = remaining < 20 ? .systemRed : remaining < 50 ? .systemOrange : .systemGreen
     }
 
     private static func menuBarMark() -> NSImage {
@@ -147,48 +154,5 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         }
         image.isTemplate = false
         return image
-    }
-}
-
-private final class SparkBadgeView: NSView {
-    private let label = NSTextField(labelWithString: "")
-
-    init() {
-        super.init(frame: .zero)
-        setup()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setup()
-    }
-
-    private func setup() {
-        translatesAutoresizingMaskIntoConstraints = false
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.systemOrange.withAlphaComponent(0.95).cgColor
-        layer?.cornerRadius = 7
-        layer?.masksToBounds = true
-
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.alignment = .center
-        label.textColor = .white
-        label.font = .systemFont(ofSize: 9, weight: .semibold)
-        addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
-
-        isHidden = true
-    }
-
-    func update(percentage: Int?) {
-        guard let percentage else {
-            isHidden = true
-            return
-        }
-        label.stringValue = "\(percentage)%"
-        isHidden = false
     }
 }

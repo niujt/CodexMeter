@@ -37,6 +37,45 @@ struct CodexUsageReaderTests {
         #expect(snapshot.contextWindow == 258_400)
     }
 
+    @Test
+    func separatesMainAndSparkSevenDayQuota() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let sessions = root.appendingPathComponent("sessions/2026/07/30")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let switchedSession = [
+            session(model: "gpt-5-codex", timestamp: "2026-07-30T01:00:00.000Z", usedPercent: 13),
+            session(model: "gpt-5.3-codex-spark", timestamp: "2026-07-30T02:00:00.000Z", usedPercent: 4)
+        ].joined(separator: "\n")
+        try switchedSession.write(
+            to: sessions.appendingPathComponent("switched-models.jsonl"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let snapshot = try await CodexUsageReader(calendar: calendar).load(
+            now: ISO8601DateFormatter().date(from: "2026-07-30T12:00:00Z")!,
+            codexHome: root
+        )
+
+        #expect(snapshot.mainMenuRate?.usedPercent == 13)
+        #expect(snapshot.sparkRate?.usedPercent == 4)
+        #expect(snapshot.sevenDayRate?.usedPercent == 13)
+        #expect(snapshot.rateTimeline.count == 1)
+        #expect(snapshot.rateTimeline.first?.usedPercent == 13)
+    }
+
+    private func session(model: String, timestamp: String, usedPercent: Int) -> String {
+        """
+        {"timestamp":"\(timestamp)","type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"model":"\(model)"}}}
+        {"timestamp":"\(timestamp)","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":80,"cached_input_tokens":0,"output_tokens":20,"reasoning_output_tokens":0,"total_tokens":100},"last_token_usage":{"total_tokens":50},"model_context_window":258400},"rate_limits":{"limit_id":"\(model)","secondary":{"used_percent":\(usedPercent),"window_minutes":10080,"resets_at":1785726000}}}}
+        """
+    }
+
     private func event(timestamp: String, input: Int, output: Int, total: Int) -> String {
         """
         {"timestamp":"\(timestamp)","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":\(input),"cached_input_tokens":0,"output_tokens":\(output),"reasoning_output_tokens":0,"total_tokens":\(total)},"last_token_usage":{"total_tokens":50},"model_context_window":258400},"rate_limits":{"primary":{"used_percent":25,"window_minutes":300,"resets_at":1785121200}}}}

@@ -84,28 +84,31 @@ actor CodexUsageReader {
                 snapshot.lastUpdated = event.timestamp
             }
 
-            if event.timestamp >= thirtyDaysAgo,
-               let window = [event.primaryRate, event.secondaryRate]
-                .compactMap({ $0 })
-                .first(where: { $0.windowMinutes == 10_080 }) {
-                let isSpark = !model.isEmpty && isSparkModel(model)
-                snapshot.rateTimeline.append(
-                    RateTimelineEvent(
-                        date: event.timestamp,
-                        usedPercent: window.usedPercent,
-                        resetsAt: window.resetsAt,
-                        limitID: event.rateLimitID
-                    )
-                )
-                if isSpark {
-                    if event.timestamp >= latestSparkRateTimestamp {
+            // One rollout can switch between Codex and Codex-Spark. Inspect
+            // quota samples with the model active at that point instead of
+            // assigning the file's final model to every quota event.
+            for sample in quotaSamples(in: file) where sample.event.timestamp >= thirtyDaysAgo {
+                guard let window = [sample.event.primaryRate, sample.event.secondaryRate]
+                    .compactMap({ $0 })
+                    .first(where: { $0.windowMinutes == 10_080 }) else { continue }
+                if isSparkModel(sample.model) {
+                    if sample.event.timestamp >= latestSparkRateTimestamp {
                         snapshot.sparkRate = window
-                        latestSparkRateTimestamp = event.timestamp
+                        latestSparkRateTimestamp = sample.event.timestamp
                     }
                 } else {
-                    if event.timestamp >= latestMainMenuRateTimestamp {
+                    snapshot.rateTimeline.append(
+                        RateTimelineEvent(
+                            date: sample.event.timestamp,
+                            usedPercent: window.usedPercent,
+                            resetsAt: window.resetsAt,
+                            limitID: sample.event.rateLimitID
+                        )
+                    )
+                    if sample.event.timestamp >= latestMainMenuRateTimestamp {
                         snapshot.mainMenuRate = window
-                        latestMainMenuRateTimestamp = event.timestamp
+                        snapshot.selectedRateLimitID = sample.event.rateLimitID
+                        latestMainMenuRateTimestamp = sample.event.timestamp
                     }
                 }
             }
@@ -247,6 +250,43 @@ actor CodexUsageReader {
         return String(text[fallbackRange.upperBound..<end])
     }
 
+    private func quotaSamples(in file: URL) -> [(event: TokenEvent, model: String)] {
+        guard let scannedText = tailText(in: file, maxBytes: 1024 * 1024) else { return [] }
+        // Most rollouts never use Spark. Only parse the wider tail when it
+        // actually contains a Spark marker; keep the normal 512 KB fast path
+        // for the rest of the local archive.
+        let text = scannedText.localizedCaseInsensitiveContains("codex-spark")
+            ? scannedText
+            : String(scannedText.suffix(512 * 1024))
+        var activeModel = "其他"
+        var samples: [(TokenEvent, String)] = []
+        for line in text.split(separator: "\n") {
+            guard let data = line.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+
+            if object["type"] as? String == "turn_context",
+               let payload = object["payload"] as? [String: Any],
+               let model = payload["model"] as? String,
+               !model.isEmpty {
+                activeModel = model
+                continue
+            }
+            if object["type"] as? String == "event_msg",
+               let payload = object["payload"] as? [String: Any],
+               payload["type"] as? String == "thread_settings_applied",
+               let settings = payload["thread_settings"] as? [String: Any],
+               let model = settings["model"] as? String,
+               !model.isEmpty {
+                activeModel = model
+                continue
+            }
+            if let event = TokenEvent(json: object) {
+                samples.append((event, activeModel))
+            }
+        }
+        return samples
+    }
+
     /// Codex does not record server-side latency. This derives a useful,
     /// clearly-labelled end-to-end time from a user message to the following
     /// final assistant message, using only the bounded session tail.
@@ -278,11 +318,11 @@ actor CodexUsageReader {
         return (seconds, count)
     }
 
-    private func tailText(in file: URL) -> String? {
+    private func tailText(in file: URL, maxBytes: UInt64 = 512 * 1024) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: file) else { return nil }
         defer { try? handle.close() }
         guard let size = try? handle.seekToEnd() else { return nil }
-        let tailSize = min(size, 512 * 1024)
+        let tailSize = min(size, maxBytes)
         try? handle.seek(toOffset: size - tailSize)
         guard let data = try? handle.readToEnd() else { return nil }
         return String(data: data, encoding: .utf8)
