@@ -199,10 +199,33 @@ actor CodexUsageReader {
         defer { try? handle.close() }
         guard let size = try? handle.seekToEnd() else { return "其他" }
         try? handle.seek(toOffset: size > 512 * 1024 ? size - 512 * 1024 : 0)
-        guard let data = try? handle.readToEnd(), let text = String(data: data, encoding: .utf8),
-              let range = text.range(of: "\"model\":\"", options: .backwards),
-              let end = text[range.upperBound...].firstIndex(of: "\"") else { return "其他" }
-        return String(text[range.upperBound..<end])
+        guard let data = try? handle.readToEnd(), let text = String(data: data, encoding: .utf8) else { return "其他" }
+
+        var seenTokenCount = false
+        for line in text.split(separator: "\n").reversed() {
+            guard let lineData = String(line).data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                  object["type"] as? String == "event_msg",
+                  let payload = object["payload"] as? [String: Any],
+                  let payloadType = payload["type"] as? String else { continue }
+
+            if payloadType == "token_count" {
+                seenTokenCount = true
+                continue
+            }
+            guard seenTokenCount else { continue }
+
+            if payloadType == "thread_settings_applied",
+               let settings = payload["thread_settings"] as? [String: Any],
+               let model = settings["model"] as? String,
+               !model.isEmpty {
+                return model
+            }
+        }
+
+        guard let fallbackRange = text.range(of: "\"model\":\"", options: .backwards),
+              let end = text[fallbackRange.upperBound...].firstIndex(of: "\"") else { return "其他" }
+        return String(text[fallbackRange.upperBound..<end])
     }
 
     /// Codex does not record server-side latency. This derives a useful,
