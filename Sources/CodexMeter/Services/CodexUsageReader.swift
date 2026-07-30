@@ -117,7 +117,7 @@ actor CodexUsageReader {
         snapshot.topProjects = Array(snapshot.allProjects.prefix(4))
         snapshot.todayProjects = ranked(todayProjects)
         snapshot.monthProjects = ranked(monthProjects)
-        snapshot.topModels = models.map {
+        let rankedModels = models.map {
             ModelUsage(
                 name: $0.key,
                 tokens: $0.value.tokens,
@@ -127,7 +127,12 @@ actor CodexUsageReader {
                     : nil
             )
         }
-            .sorted { $0.tokens > $1.tokens }.prefix(4).map { $0 }
+            .sorted { $0.tokens > $1.tokens }
+        snapshot.panelModels = Array(rankedModels.prefix(4))
+        snapshot.topModels = rankedModels
+            .filter { !isSparkModel($0.name) }
+            .prefix(4)
+            .map { $0 }
         snapshot.dailyUsage = daily.map { DailyUsage(date: $0.key, tokens: $0.value) }.sorted { $0.date < $1.date }
         return snapshot
     }
@@ -332,6 +337,10 @@ private extension Dictionary where Key == String, Value == Any {
     func int(_ key: String) -> Int {
         (self[key] as? NSNumber)?.intValue ?? 0
     }
+}
+
+private func isSparkModel(_ name: String) -> Bool {
+    name.localizedCaseInsensitiveContains("spark")
 }
 
 private extension RateWindow {

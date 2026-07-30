@@ -72,6 +72,7 @@ struct UsageSnapshot: Sendable, Equatable {
     var todayProjects: [ProjectUsage] = []
     var monthProjects: [ProjectUsage] = []
     var topModels: [ModelUsage] = []
+    var panelModels: [ModelUsage] = []
     var dailyUsage: [DailyUsage] = []
     var recentRecords: [UsageRecord] = []
     var rateTimeline: [RateTimelineEvent] = []

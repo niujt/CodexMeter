@@ -89,7 +89,7 @@ struct UsagePopoverView: View {
                 PredictionView(
                     window: weekRate,
                     weeklyTokens: store.snapshot.lastSevenDays.total,
-                    observedTurns: store.snapshot.topModels.reduce(0) { $0 + $1.requests }
+                    observedTurns: store.snapshot.panelModels.reduce(0) { $0 + $1.requests }
                 )
             }
 
@@ -110,11 +110,11 @@ struct UsagePopoverView: View {
                     }
                 }.font(.caption)
             }
-            if !compact, !store.snapshot.topModels.isEmpty {
+            if !compact, !store.snapshot.panelModels.isEmpty {
                 Divider()
                 VStack(alignment: .leading, spacing: 4) {
                     Text("模型用量占比（近 7 天）").font(.callout.weight(.semibold))
-                    ForEach(store.snapshot.topModels, id: \.name) { model in
+                    ForEach(store.snapshot.panelModels, id: \.name) { model in
                         HStack {
                             Text(model.name)
                             Spacer()
