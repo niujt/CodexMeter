@@ -33,6 +33,8 @@ extension UsageSnapshot {
 private final class MenuBarController: NSObject, NSApplicationDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
+    private let fallbackStore = UsageStore()
+    private lazy var popoverController = NSHostingController(rootView: UsagePopoverView(store: fallbackStore, compact: true))
     private weak var store: UsageStore?
     private var refreshTimer: Timer?
     private var usageRefreshObserver: NSObjectProtocol?
@@ -47,12 +49,15 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         button.action = #selector(togglePopover(_:))
         button.toolTip = "Codex Health"
         popover.behavior = .transient
+        popover.contentViewController = popoverController
+        popover.contentSize = NSSize(width: 392, height: 292)
     }
 
     func configure(with store: UsageStore) {
         guard self.store !== store else { return }
         self.store = store
-        popover.contentViewController = NSHostingController(rootView: UsagePopoverView(store: store, compact: true))
+        popoverController.rootView = UsagePopoverView(store: store, compact: true)
+        popover.contentViewController = popoverController
         if let usageRefreshObserver { NotificationCenter.default.removeObserver(usageRefreshObserver) }
         usageRefreshObserver = NotificationCenter.default.addObserver(
             forName: .codexHealthUsageDidRefresh,
