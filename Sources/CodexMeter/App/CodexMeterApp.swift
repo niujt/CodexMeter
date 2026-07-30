@@ -39,7 +39,6 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private let fallbackStore = UsageStore()
     private lazy var popoverController = NSHostingController(rootView: UsagePopoverView(store: fallbackStore, compact: true))
-    private let sparkBadge = SparkBadgeView()
     private weak var store: UsageStore?
     private var refreshTimer: Timer?
     private var usageRefreshObserver: NSObjectProtocol?
@@ -50,13 +49,6 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         button.image = Self.menuBarMark()
         button.imagePosition = .imageLeading
         button.title = "  —"
-        button.addSubview(sparkBadge)
-        NSLayoutConstraint.activate([
-            sparkBadge.widthAnchor.constraint(equalToConstant: 24),
-            sparkBadge.heightAnchor.constraint(equalToConstant: 14),
-            sparkBadge.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
-            sparkBadge.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -2)
-        ])
         button.target = self
         button.action = #selector(togglePopover(_:))
         button.toolTip = "Codex Health"
@@ -130,13 +122,9 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     }
 
     private func update(snapshot: UsageSnapshot) {
-        let mainRate = snapshot.mainMenuRate ?? snapshot.sevenDayRate
-        let sparkRate = snapshot.sparkRate
-        let remaining = snapshot.remainingPercent(for: mainRate)
-        let sparkRemaining = snapshot.remainingPercent(for: sparkRate)
-        statusItem.button?.title = "  \(remaining)%"
-        statusItem.button?.contentTintColor = remaining < 20 ? .systemRed : remaining < 50 ? .systemOrange : .systemGreen
-        sparkBadge.update(percentage: sparkRate == nil ? nil : sparkRemaining)
+        guard let button = statusItem.button else { return }
+        button.title = "  —"
+        button.contentTintColor = .systemBlue
     }
 
     private static func menuBarMark() -> NSImage {
