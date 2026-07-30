@@ -27,6 +27,20 @@ extension UsageSnapshot {
             ?? secondaryRate
             ?? primaryRate
     }
+
+    var sparkRate: RateWindow? {
+        guard let primaryRate, let secondaryRate else { return nil }
+        let mainRate = sevenDayRate
+        if let mainRate {
+            if mainRate == primaryRate { return secondaryRate }
+            if mainRate == secondaryRate { return primaryRate }
+        }
+        return secondaryRate
+    }
+
+    func remainingPercent(for rate: RateWindow?) -> Int {
+        max(0, 100 - Int((rate?.usedPercent ?? 0).rounded()))
+    }
 }
 
 @MainActor
@@ -35,6 +49,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private let fallbackStore = UsageStore()
     private lazy var popoverController = NSHostingController(rootView: UsagePopoverView(store: fallbackStore, compact: true))
+    private let sparkBadge = SparkBadgeView()
     private weak var store: UsageStore?
     private var refreshTimer: Timer?
     private var usageRefreshObserver: NSObjectProtocol?
@@ -45,6 +60,13 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         button.image = Self.menuBarMark()
         button.imagePosition = .imageLeading
         button.title = "  —"
+        button.addSubview(sparkBadge)
+        NSLayoutConstraint.activate([
+            sparkBadge.widthAnchor.constraint(equalToConstant: 24),
+            sparkBadge.heightAnchor.constraint(equalToConstant: 14),
+            sparkBadge.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
+            sparkBadge.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -2)
+        ])
         button.target = self
         button.action = #selector(togglePopover(_:))
         button.toolTip = "Codex Health"
@@ -66,7 +88,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         ) { [weak self, weak store] _ in
             Task { @MainActor [weak self, weak store] in
                 guard let self, let store else { return }
-                self.update(rate: store.snapshot.sevenDayRate)
+                self.update(snapshot: store.snapshot)
             }
         }
         refreshStatus()
@@ -113,14 +135,16 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         Task { [weak self, weak store] in
             guard let self, let store else { return }
             await store.refresh()
-            update(rate: store.snapshot.sevenDayRate)
+            update(snapshot: store.snapshot)
         }
     }
 
-    private func update(rate: RateWindow?) {
-        let remaining = max(0, 100 - Int((rate?.usedPercent ?? 0).rounded()))
+    private func update(snapshot: UsageSnapshot) {
+        let remaining = snapshot.remainingPercent(for: snapshot.sevenDayRate)
+        let sparkRemaining = snapshot.remainingPercent(for: snapshot.sparkRate)
         statusItem.button?.title = "  \(remaining)%"
         statusItem.button?.contentTintColor = remaining < 20 ? .systemRed : remaining < 50 ? .systemOrange : .systemGreen
+        sparkBadge.update(percentage: snapshot.sparkRate == nil ? nil : sparkRemaining)
     }
 
     private static func menuBarMark() -> NSImage {
@@ -143,5 +167,48 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         }
         image.isTemplate = false
         return image
+    }
+}
+
+private final class SparkBadgeView: NSView {
+    private let label = NSTextField(labelWithString: "")
+
+    init() {
+        super.init(frame: .zero)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    private func setup() {
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.systemOrange.withAlphaComponent(0.95).cgColor
+        layer?.cornerRadius = 7
+        layer?.masksToBounds = true
+
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.alignment = .center
+        label.textColor = .white
+        label.font = .systemFont(ofSize: 9, weight: .semibold)
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+
+        isHidden = true
+    }
+
+    func update(percentage: Int?) {
+        guard let percentage else {
+            isHidden = true
+            return
+        }
+        label.stringValue = "\(percentage)%"
+        isHidden = false
     }
 }
