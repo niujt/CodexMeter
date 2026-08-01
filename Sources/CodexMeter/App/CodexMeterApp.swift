@@ -36,13 +36,14 @@ struct CodexMeterApp: App {
     @NSApplicationDelegateAdaptor(MenuBarController.self) private var menuBar
 
     var body: some Scene {
-        Window("Codex Health", id: "dashboard") {
+        WindowGroup("Codex Health", id: "dashboard") {
             AnalyticsDashboardView(store: store)
                 .frame(minWidth: 1_180, minHeight: 760)
                 .task { menuBar.configure(with: store) }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1_300, height: 860)
+        .defaultLaunchBehavior(.suppressed)
 
         Settings {
             SettingsView(store: store)
