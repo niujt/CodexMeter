@@ -82,3 +82,48 @@ struct CodexUsageReaderTests {
         """
     }
 }
+
+struct QuotaRateCacheTests {
+    @Test
+    func restoresOnlyUnexpiredQuotaRates() {
+        let suite = "QuotaRateCacheTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+
+        var source = UsageSnapshot.empty
+        source.mainMenuRate = RateWindow(usedPercent: 13, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(3_600))
+        source.sparkRate = RateWindow(usedPercent: 4, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(7_200))
+        QuotaRateCache.save(source, defaults: defaults, now: now)
+
+        var restored = UsageSnapshot.empty
+        QuotaRateCache.restore(into: &restored, defaults: defaults, now: now.addingTimeInterval(60))
+        #expect(restored.mainMenuRate?.usedPercent == 13)
+        #expect(restored.sparkRate?.usedPercent == 4)
+        #expect(restored.mainRateIsCached)
+        #expect(restored.sparkRateIsCached)
+
+        var expired = UsageSnapshot.empty
+        QuotaRateCache.restore(into: &expired, defaults: defaults, now: now.addingTimeInterval(7_201))
+        #expect(expired.mainMenuRate == nil)
+        #expect(expired.sparkRate == nil)
+    }
+
+    @Test
+    func doesNotReplaceFreshQuotaWithCache() {
+        let suite = "QuotaRateCacheTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+
+        var cached = UsageSnapshot.empty
+        cached.mainMenuRate = RateWindow(usedPercent: 13, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(3_600))
+        QuotaRateCache.save(cached, defaults: defaults, now: now)
+
+        var fresh = UsageSnapshot.empty
+        fresh.mainMenuRate = RateWindow(usedPercent: 21, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(3_600))
+        QuotaRateCache.restoreMissing(into: &fresh, defaults: defaults, now: now)
+        #expect(fresh.mainMenuRate?.usedPercent == 21)
+        #expect(!fresh.mainRateIsCached)
+    }
+}

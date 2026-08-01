@@ -1,13 +1,42 @@
 import AppKit
 import SwiftUI
 
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .system: "跟随系统"
+        case .light: "白天模式"
+        case .dark: "暗黑模式"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .system: "circle.lefthalf.filled"
+        case .light: "sun.max.fill"
+        case .dark: "moon.fill"
+        }
+    }
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
 @main
 struct CodexMeterApp: App {
     @State private var store = UsageStore()
     @NSApplicationDelegateAdaptor(MenuBarController.self) private var menuBar
 
     var body: some Scene {
-        WindowGroup("Codex Health", id: "dashboard") {
+        Window("Codex Health", id: "dashboard") {
             AnalyticsDashboardView(store: store)
                 .frame(minWidth: 1_180, minHeight: 760)
                 .task { menuBar.configure(with: store) }
@@ -56,6 +85,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.contentViewController = popoverController
         popover.contentSize = NSSize(width: 392, height: 292)
+        configure(with: fallbackStore)
     }
 
     func configure(with store: UsageStore) {
@@ -63,6 +93,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         self.store = store
         popoverController.rootView = UsagePopoverView(store: store, compact: true)
         popover.contentViewController = popoverController
+        update(snapshot: store.snapshot)
         if let usageRefreshObserver { NotificationCenter.default.removeObserver(usageRefreshObserver) }
         usageRefreshObserver = NotificationCenter.default.addObserver(
             forName: .codexHealthUsageDidRefresh,

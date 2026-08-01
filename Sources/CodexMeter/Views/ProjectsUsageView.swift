@@ -133,7 +133,7 @@ private struct ProjectUsageRow: View {
                 .tint(.blue)
         }
         .padding(16)
-        .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

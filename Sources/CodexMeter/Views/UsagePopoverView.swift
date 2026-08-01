@@ -199,6 +199,7 @@ struct UsagePopoverView: View {
 private struct HealthMenuPopover: View {
     let store: UsageStore
     @Environment(\.openWindow) private var openWindow
+    @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
 
@@ -251,6 +252,7 @@ private struct HealthMenuPopover: View {
             Divider()
             MenuRow(icon: "arrow.up.forward.app", title: "打开 Codex Health", shortcut: "⌘O") {
                 openWindow(id: "dashboard")
+                NSApp.activate(ignoringOtherApps: true)
             }
             HStack(spacing: 10) {
                 Image(systemName: "bell.badge").foregroundStyle(.blue).frame(width: 18)
@@ -273,8 +275,8 @@ private struct HealthMenuPopover: View {
         }
         .padding(18)
         .frame(width: 360, alignment: .leading)
-        .background(Color(red: 0.025, green: 0.065, blue: 0.105))
-        .preferredColorScheme(.dark)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .preferredColorScheme((AppAppearance(rawValue: appearance) ?? .system).colorScheme)
     }
 }
 

@@ -6,11 +6,16 @@ struct AnalyticsDashboardView: View {
     @Environment(\.openSettings) private var openSettings
     @State private var selectedSection = "健康报告"
     @State private var projectPathStore = ProjectPathStore()
+    @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
+
+    private var appearanceMode: AppAppearance {
+        AppAppearance(rawValue: appearance) ?? .system
+    }
 
     var body: some View {
         HStack(spacing: 0) {
             DashboardSidebar(selection: $selectedSection, openSettings: { openSettings() })
-            Divider().overlay(Color.white.opacity(0.08))
+            Divider().overlay(Color.primary.opacity(0.08))
             ScrollView {
                 switch selectedSection {
                 case "健康报告":
@@ -34,7 +39,7 @@ struct AnalyticsDashboardView: View {
             }
         }
         .background(DashboardPalette.background)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(appearanceMode.colorScheme)
         .navigationTitle("Codex Health")
         .task { await store.refresh() }
     }
@@ -197,7 +202,7 @@ private struct HistoryRecordRow: View {
                 .font(.callout.weight(.semibold)).monospacedDigit()
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -371,7 +376,7 @@ private struct ForecastRiskView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             PageHeader(title: "预测与风险", subtitle: "预测按 1 / 6 / 24 小时额度变化加权；没有足够样本时使用本周期平均速度。", store: store)
-            if let rate, let resetHours {
+            if let rate {
                 HStack(spacing: 16) {
                     DashboardCard {
                         VStack(alignment: .leading, spacing: 12) {
@@ -438,9 +443,9 @@ private struct PageHeader: View {
 }
 
 private enum DashboardPalette {
-    static let background = Color(red: 0.025, green: 0.055, blue: 0.09)
-    static let surface = Color(red: 0.045, green: 0.09, blue: 0.145)
-    static let card = Color(red: 0.055, green: 0.115, blue: 0.18)
+    static let background = Color(nsColor: .windowBackgroundColor)
+    static let surface = Color(nsColor: .underPageBackgroundColor)
+    static let card = Color(nsColor: .controlBackgroundColor)
     static let blue = Color(red: 0.17, green: 0.48, blue: 1.0)
     static let green = Color(red: 0.24, green: 0.84, blue: 0.46)
     static let orange = Color(red: 1.0, green: 0.58, blue: 0.16)
@@ -449,6 +454,7 @@ private enum DashboardPalette {
 private struct DashboardSidebar: View {
     @Binding var selection: String
     let openSettings: () -> Void
+    @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
     private let items: [(String, String)] = [
         ("健康报告", "house.fill"),
         ("使用趋势", "chart.xyaxis.line"),
@@ -494,10 +500,26 @@ private struct DashboardSidebar: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             .padding(14)
-            .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 13))
+            .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 13))
             HStack {
                 Text("v1.0.0")
                 Spacer()
+                Menu {
+                    ForEach(AppAppearance.allCases) { mode in
+                        Button {
+                            appearance = mode.rawValue
+                        } label: {
+                            Label(mode.title, systemImage: appearance == mode.rawValue ? "checkmark" : mode.icon)
+                        }
+                    }
+                } label: {
+                    Image(systemName: (AppAppearance(rawValue: appearance) ?? .system).icon)
+                        .font(.title3)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("切换显示模式")
                 Button(action: openSettings) {
                     Image(systemName: "gearshape").font(.title3)
                 }
@@ -517,12 +539,18 @@ private struct DashboardContent: View {
     let store: UsageStore
 
     private var rate: RateWindow? { store.snapshot.sevenDayRate }
-    private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
+    private var remaining: Int? { rate.map { max(0, 100 - Int($0.usedPercent.rounded())) } }
     private var sparkRemaining: Int? {
         store.snapshot.sparkRate.map { max(0, 100 - Int($0.usedPercent.rounded())) }
     }
-    private var quotaColor: Color { remaining < 20 ? .red : remaining < 50 ? DashboardPalette.orange : DashboardPalette.green }
-    private var status: String { remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy" }
+    private var quotaColor: Color {
+        guard let remaining else { return DashboardPalette.blue }
+        return remaining < 20 ? .red : remaining < 50 ? DashboardPalette.orange : DashboardPalette.green
+    }
+    private var status: String {
+        guard let remaining else { return store.isRefreshing ? "读取中" : "暂无额度" }
+        return remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -531,6 +559,11 @@ private struct DashboardContent: View {
                     Text("健康报告").font(.system(size: 30, weight: .bold))
                     Text(store.snapshot.lastUpdated.map { "最后更新：\($0.formatted(.relative(presentation: .named)))" } ?? "正在读取本机 Codex 记录")
                         .font(.subheadline).foregroundStyle(.secondary)
+                    if store.snapshot.mainRateIsCached || store.snapshot.sparkRateIsCached {
+                        Label("部分额度来自本地有效缓存，获取到新采样后会自动替换", systemImage: "clock.arrow.circlepath")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 Button { Task { await store.refresh() } } label: {
@@ -544,6 +577,7 @@ private struct DashboardContent: View {
                 HealthHero(
                     remaining: remaining,
                     sparkRemaining: sparkRemaining,
+                    sparkIsCached: store.snapshot.sparkRateIsCached,
                     status: status,
                     color: quotaColor,
                     rate: rate
@@ -580,13 +614,14 @@ private struct DashboardCard<Content: View>: View {
     var body: some View {
         content.padding(22)
             .background(DashboardPalette.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.07)))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(.primary.opacity(0.07)))
     }
 }
 
 private struct HealthHero: View {
-    let remaining: Int
+    let remaining: Int?
     let sparkRemaining: Int?
+    let sparkIsCached: Bool
     let status: String
     let color: Color
     let rate: RateWindow?
@@ -594,7 +629,7 @@ private struct HealthHero: View {
         DashboardCard {
             HStack(spacing: 26) {
                 ZStack(alignment: .bottomTrailing) {
-                    Text("\(remaining)%")
+                    Text(remaining.map { "\($0)%" } ?? "—")
                         .font(.system(size: 78, weight: .bold, design: .rounded))
                         .foregroundStyle(LinearGradient(colors: [.blue, color], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .monospacedDigit()
@@ -611,13 +646,14 @@ private struct HealthHero: View {
                             .background(DashboardPalette.orange, in: Capsule())
                             .overlay(Capsule().stroke(.white.opacity(0.16)))
                             .offset(x: -4, y: 7)
+                            .help(sparkIsCached ? "Spark 额度来自本地有效缓存" : "Spark 最新额度")
                     }
                 }
-                Divider().overlay(.white.opacity(0.14)).frame(height: 110)
+                Divider().overlay(.primary.opacity(0.14)).frame(height: 110)
                 VStack(alignment: .leading, spacing: 10) {
                     Label(status, systemImage: "circle.fill")
                         .font(.title2.weight(.bold)).foregroundStyle(color)
-                    Text("状态良好，当前使用速度可持续")
+                    Text(rate == nil ? "等待本机额度采样" : "状态良好，当前使用速度可持续")
                         .font(.subheadline).foregroundStyle(.secondary)
                     if let rate {
                         VStack(alignment: .leading, spacing: 4) {
@@ -625,11 +661,15 @@ private struct HealthHero: View {
                                 .font(.caption).foregroundStyle(.secondary)
                             Text("约 \(UsageFormatters.countdown(to: rate.resetsAt))")
                                 .font(.callout.weight(.semibold))
-                            ProgressView(value: Double(remaining), total: 100)
+                            ProgressView(value: Double(remaining ?? 0), total: 100)
                                 .tint(color)
                                 .frame(width: 150)
                         }
-                    } else { Text("等待额度数据").foregroundStyle(.secondary) }
+                    } else {
+                        Text("正在读取本机额度记录，不会用 100% 代替未知数据")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -646,9 +686,9 @@ private struct TodayOverview: View {
             VStack(alignment: .leading, spacing: 13) {
                 Text("今日使用概览").font(.headline)
                 OverviewRow("今日消耗", snapshot.today.total, "waveform.path.ecg", .blue)
-                Divider().overlay(.white.opacity(0.08))
+                Divider().overlay(.primary.opacity(0.08))
                 OverviewRow("近 7 天消耗", snapshot.lastSevenDays.total, "chart.bar.fill", .purple)
-                Divider().overlay(.white.opacity(0.08))
+                Divider().overlay(.primary.opacity(0.08))
                 OverviewRow("本月消耗", snapshot.thisMonth.total, "calendar", DashboardPalette.green)
             }
         }
@@ -669,7 +709,7 @@ private struct OverviewRow: View {
 }
 
 private struct UsageTrendCard: View {
-    let snapshot: UsageSnapshot; let remaining: Int
+    let snapshot: UsageSnapshot; let remaining: Int?
     private var points: [Double] {
         let sorted = snapshot.dailyUsage.sorted { $0.date < $1.date }.suffix(7)
         let maxValue = max(1, sorted.map(\.tokens).max() ?? 1)
@@ -706,7 +746,11 @@ private struct UsageTrendCard: View {
                     }
                 }
                 .frame(height: 100)
-                HStack { Text("Token 用量按日汇总"); Spacer(); Text("剩余 \(remaining)%") }
+                HStack {
+                    Text("Token 用量按日汇总")
+                    Spacer()
+                    Text(remaining.map { "剩余 \($0)%" } ?? "额度读取中")
+                }
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -715,14 +759,14 @@ private struct UsageTrendCard: View {
 }
 
 private struct RiskCard: View {
-    let rate: RateWindow?; let remaining: Int; let color: Color
+    let rate: RateWindow?; let remaining: Int?; let color: Color
 
     private var resetHours: Double? {
         rate.map { max(0, $0.resetsAt.timeIntervalSinceNow / 3_600) }
     }
 
     private var estimatedRemainingHours: Double? {
-        guard let rate, let resetHours else { return nil }
+        guard let rate, let resetHours, let remaining else { return nil }
         let elapsedHours = max(0.1, Double(rate.windowMinutes) / 60 - resetHours)
         let percentPerHour = RateHistory.weightedVelocity()?.percentPerHour
             ?? rate.usedPercent / elapsedHours
@@ -738,8 +782,13 @@ private struct RiskCard: View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 15) {
                 Text("预测与风险").font(.headline)
-                HStack { Spacer(); Image(systemName: remaining < 20 ? "exclamationmark.shield.fill" : "checkmark.shield.fill").font(.system(size: 42)).foregroundStyle(color); Spacer() }
-                Text(remaining < 20 ? "RISK" : "SAFE")
+                HStack {
+                    Spacer()
+                    Image(systemName: remaining.map { $0 < 20 ? "exclamationmark.shield.fill" : "checkmark.shield.fill" } ?? "hourglass")
+                        .font(.system(size: 42)).foregroundStyle(color)
+                    Spacer()
+                }
+                Text(remaining.map { $0 < 20 ? "RISK" : "SAFE" } ?? "WAITING")
                     .font(.system(size: 28, weight: .bold)).foregroundStyle(color).frame(maxWidth: .infinity)
                 if let estimatedRemainingHours, let resetHours, let remainingTimeText {
                     VStack(spacing: 4) {

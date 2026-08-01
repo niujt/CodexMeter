@@ -84,6 +84,8 @@ struct UsageSnapshot: Sendable, Equatable {
     var secondaryRate: RateWindow?
     var mainMenuRate: RateWindow?
     var sparkRate: RateWindow?
+    var mainRateIsCached = false
+    var sparkRateIsCached = false
     var selectedRateLimitID: String?
     var currentContextUsed = 0
     var contextWindow = 0

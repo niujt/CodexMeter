@@ -30,6 +30,7 @@ actor CodexUsageReader {
         let startOfToday = calendar.startOfDay(for: now)
         let sevenDaysAgo = calendar.date(byAdding: .day, value: -6, to: startOfToday) ?? startOfToday
         let thirtyDaysAgo = calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday
+        let recentQuotaCutoff = calendar.date(byAdding: .day, value: -2, to: now) ?? now
         let monthInterval = calendar.dateInterval(of: .month, for: now)
 
         for file in files {
@@ -37,14 +38,15 @@ actor CodexUsageReader {
             // each rollout contains the cumulative usage for that session, so
             // reading a small tail is enough for the dashboard and avoids
             // blocking the menu-bar UI on a full archive scan.
-            guard let event = try? latestTokenEvent(in: file) else { continue }
-            let model = modelName(in: file)
+            guard let standardText = tailText(in: file),
+                  let event = latestTokenEvent(in: standardText) else { continue }
+            let model = modelName(in: standardText)
             snapshot.sessionCount += 1
             snapshot.allTime = snapshot.allTime + event.total
             let projectPath = projectPath(in: file)
             if event.timestamp >= sevenDaysAgo {
                 projects[projectPath, default: .empty].add(tokens: event.total.total, date: event.timestamp)
-                let timing = responseTiming(in: file)
+                let timing = responseTiming(in: standardText)
                 models[model, default: (0, 0, 0, 0)].tokens += event.total.total
                 models[model, default: (0, 0, 0, 0)].requests += max(1, timing.count)
                 models[model, default: (0, 0, 0, 0)].turnSeconds += timing.seconds
@@ -87,7 +89,15 @@ actor CodexUsageReader {
             // One rollout can switch between Codex and Codex-Spark. Inspect
             // quota samples with the model active at that point instead of
             // assigning the file's final model to every quota event.
-            for sample in quotaSamples(in: file) where sample.event.timestamp >= thirtyDaysAgo {
+            let quotaText: String
+            if standardText.localizedCaseInsensitiveContains("codex-spark") {
+                quotaText = standardText
+            } else if event.timestamp >= recentQuotaCutoff {
+                quotaText = tailText(in: file, maxBytes: 1024 * 1024) ?? standardText
+            } else {
+                quotaText = standardText
+            }
+            for sample in quotaSamples(in: quotaText) where sample.event.timestamp >= thirtyDaysAgo {
                 guard let window = [sample.event.primaryRate, sample.event.secondaryRate]
                     .compactMap({ $0 })
                     .first(where: { $0.windowMinutes == 10_080 }) else { continue }
@@ -188,14 +198,7 @@ actor CodexUsageReader {
         }
     }
 
-    private func latestTokenEvent(in file: URL) throws -> TokenEvent? {
-        let handle = try FileHandle(forReadingFrom: file)
-        defer { try? handle.close() }
-        let size = try handle.seekToEnd()
-        let tailSize = min(size, 512 * 1024)
-        try handle.seek(toOffset: size - tailSize)
-        let data = try handle.readToEnd() ?? Data()
-        guard let text = String(data: data, encoding: .utf8) else { return nil }
+    private func latestTokenEvent(in text: String) -> TokenEvent? {
         for line in text.split(separator: "\n").reversed() {
             guard line.contains("\"token_count\""),
                   let lineData = line.data(using: .utf8),
@@ -216,13 +219,7 @@ actor CodexUsageReader {
         let cwd = String(text[keyRange.upperBound..<end])
         return cwd.replacingOccurrences(of: "\\/", with: "/")
     }
-    private func modelName(in file: URL) -> String {
-        guard let handle = try? FileHandle(forReadingFrom: file) else { return "其他" }
-        defer { try? handle.close() }
-        guard let size = try? handle.seekToEnd() else { return "其他" }
-        try? handle.seek(toOffset: size > 512 * 1024 ? size - 512 * 1024 : 0)
-        guard let data = try? handle.readToEnd(), let text = String(data: data, encoding: .utf8) else { return "其他" }
-
+    private func modelName(in text: String) -> String {
         var seenTokenCount = false
         for line in text.split(separator: "\n").reversed() {
             guard let lineData = String(line).data(using: .utf8),
@@ -250,14 +247,7 @@ actor CodexUsageReader {
         return String(text[fallbackRange.upperBound..<end])
     }
 
-    private func quotaSamples(in file: URL) -> [(event: TokenEvent, model: String)] {
-        guard let scannedText = tailText(in: file, maxBytes: 1024 * 1024) else { return [] }
-        // Most rollouts never use Spark. Only parse the wider tail when it
-        // actually contains a Spark marker; keep the normal 512 KB fast path
-        // for the rest of the local archive.
-        let text = scannedText.localizedCaseInsensitiveContains("codex-spark")
-            ? scannedText
-            : String(scannedText.suffix(512 * 1024))
+    private func quotaSamples(in text: String) -> [(event: TokenEvent, model: String)] {
         var activeModel = "其他"
         var samples: [(TokenEvent, String)] = []
         for line in text.split(separator: "\n") {
@@ -290,8 +280,7 @@ actor CodexUsageReader {
     /// Codex does not record server-side latency. This derives a useful,
     /// clearly-labelled end-to-end time from a user message to the following
     /// final assistant message, using only the bounded session tail.
-    private func responseTiming(in file: URL) -> (seconds: Double, count: Int) {
-        guard let text = tailText(in: file) else { return (0, 0) }
+    private func responseTiming(in text: String) -> (seconds: Double, count: Int) {
         var latestUser: Date?
         var seconds = 0.0
         var count = 0
@@ -324,8 +313,14 @@ actor CodexUsageReader {
         guard let size = try? handle.seekToEnd() else { return nil }
         let tailSize = min(size, maxBytes)
         try? handle.seek(toOffset: size - tailSize)
-        guard let data = try? handle.readToEnd() else { return nil }
-        return String(data: data, encoding: .utf8)
+        guard var data = try? handle.readToEnd() else { return nil }
+        // A bounded tail can start in the middle of a UTF-8 scalar or JSONL
+        // record. Drop that partial first line so one non-ASCII byte does not
+        // invalidate the whole scan.
+        if tailSize < size, let newline = data.firstIndex(of: 0x0A) {
+            data = data[data.index(after: newline)...]
+        }
+        return String(decoding: data, as: UTF8.self)
     }
 }
 

@@ -6,6 +6,11 @@ struct SettingsView: View {
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
     @AppStorage("codexMeter.refreshInterval") private var refreshInterval = 60.0
+    @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
+
+    private var appearanceMode: AppAppearance {
+        AppAppearance(rawValue: appearance) ?? .system
+    }
 
     var body: some View {
         TabView {
@@ -32,6 +37,15 @@ struct SettingsView: View {
                     }
                     Text("修改后会立即应用到菜单栏与小组件的数据刷新。")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+
+                Section("外观") {
+                    Picker("显示模式", selection: $appearance) {
+                        ForEach(AppAppearance.allCases) { mode in
+                            Label(mode.title, systemImage: mode.icon).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                 }
             }
             .formStyle(.grouped)
@@ -65,5 +79,6 @@ struct SettingsView: View {
         }
         .frame(width: 520, height: 360)
         .scenePadding()
+        .preferredColorScheme(appearanceMode.colorScheme)
     }
 }
