@@ -74,15 +74,21 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     private var refreshTimer: Timer?
     private var usageRefreshObserver: NSObjectProtocol?
     private var defaultsObserver: NSObjectProtocol?
+    private var appearanceObservation: NSKeyValueObservation?
+    private var displayedTitle = "  —"
+    private var displayedTintColor = NSColor.systemBlue
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard let button = statusItem.button else { return }
         button.image = Self.menuBarMark()
         button.imagePosition = .imageLeading
-        button.title = "  —"
         button.target = self
         button.action = #selector(togglePopover(_:))
         button.toolTip = "Codex Health"
+        appearanceObservation = button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor [weak self] in self?.applyStatusAppearance() }
+        }
+        applyStatusAppearance()
         popover.behavior = .transient
         popover.contentViewController = popoverController
         popover.contentSize = NSSize(width: 392, height: 292)
@@ -155,15 +161,27 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     }
 
     private func update(snapshot: UsageSnapshot) {
-        guard let button = statusItem.button else { return }
+        guard statusItem.button != nil else { return }
         guard let rate = snapshot.mainMenuRate ?? snapshot.sevenDayRate else {
-            button.title = "  —"
-            button.contentTintColor = .systemBlue
+            displayedTitle = "  —"
+            displayedTintColor = .systemBlue
+            applyStatusAppearance()
             return
         }
         let remaining = snapshot.remainingPercent(for: rate)
-        button.title = "  \(remaining)%"
-        button.contentTintColor = remaining < 20 ? .systemRed : remaining < 50 ? .systemOrange : .systemGreen
+        displayedTitle = "  \(remaining)%"
+        displayedTintColor = remaining < 20 ? .systemRed : remaining < 50 ? .systemOrange : .systemGreen
+        applyStatusAppearance()
+    }
+
+    private func applyStatusAppearance() {
+        guard let button = statusItem.button else { return }
+        let isDark = button.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        button.attributedTitle = NSAttributedString(
+            string: displayedTitle,
+            attributes: [.foregroundColor: isDark ? NSColor.white : displayedTintColor]
+        )
+        button.contentTintColor = displayedTintColor
     }
 
     private static func menuBarMark() -> NSImage {
