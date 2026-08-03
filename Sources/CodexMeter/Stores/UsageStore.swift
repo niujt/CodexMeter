@@ -23,31 +23,31 @@ final class UsageStore {
         folderAccess.selectedURL?.path ?? snapshot.dataPath
     }
 
-    func refresh() async {
+    func refresh(force: Bool = false) async {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
 
         do {
-            var loaded = try await reader.load(codexHome: folderAccess.selectedURL)
+            var loaded = try await reader.load(codexHome: folderAccess.selectedURL, force: force)
             QuotaRateCache.restoreMissing(into: &loaded)
             snapshot = loaded
             QuotaRateCache.save(snapshot)
             NotificationCenter.default.post(name: .codexHealthUsageDidRefresh, object: self)
             if let rate = snapshot.sevenDayRate { RateHistory.append(rate.usedPercent); UsageNotifier.evaluate(rate) }
-            WidgetUsageCache.save(
-                WidgetUsageData(
-                    todayTokens: snapshot.today.total,
-                    weekTokens: snapshot.lastSevenDays.total,
-                    monthTokens: snapshot.thisMonth.total,
-                    contextTokens: snapshot.currentContextUsed,
-                    contextLimit: snapshot.contextWindow,
-                    ratePercent: snapshot.sevenDayRate?.usedPercent,
-                    rateWindowMinutes: snapshot.sevenDayRate?.windowMinutes,
-                    updatedAt: .now
-                )
+            let widgetUsage = WidgetUsageData(
+                todayTokens: snapshot.today.total,
+                weekTokens: snapshot.lastSevenDays.total,
+                monthTokens: snapshot.thisMonth.total,
+                contextTokens: snapshot.currentContextUsed,
+                contextLimit: snapshot.contextWindow,
+                ratePercent: snapshot.sevenDayRate?.usedPercent,
+                rateWindowMinutes: snapshot.sevenDayRate?.windowMinutes,
+                updatedAt: .now
             )
-            WidgetCenter.shared.reloadAllTimelines()
+            if WidgetUsageCache.saveIfChanged(widgetUsage) {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -57,7 +57,7 @@ final class UsageStore {
     func chooseCodexFolder() {
         do {
             guard try folderAccess.chooseFolder() != nil else { return }
-            Task { await refresh() }
+            Task { await refresh(force: true) }
         } catch {
             errorMessage = "无法保存目录授权：\(error.localizedDescription)"
         }

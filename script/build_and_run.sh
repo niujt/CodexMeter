@@ -30,18 +30,35 @@ open_app() {
   /usr/bin/open -n "$APP_BUNDLE"
 }
 
+stop_existing_instances() {
+  local pids
+  pids="$(pgrep -f '/Codex Health\.app/Contents/MacOS/CodexMeter' || true)"
+  if [[ -z "$pids" ]]; then
+    return
+  fi
+
+  while IFS= read -r pid; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    kill "$pid" 2>/dev/null || true
+  done <<< "$pids"
+  sleep 1
+}
+
 case "$MODE" in
-  run) open_app ;;
+  run) stop_existing_instances; open_app ;;
   --debug|debug) lldb -- "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME" ;;
   --logs|logs)
+    stop_existing_instances
     open_app
     /usr/bin/log stream --info --style compact --predicate "process == \"$EXECUTABLE_NAME\""
     ;;
   --telemetry|telemetry)
+    stop_existing_instances
     open_app
     /usr/bin/log stream --info --style compact --predicate "subsystem CONTAINS \"CodexMeter\""
     ;;
   --verify|verify)
+    stop_existing_instances
     open_app
     sleep 1
     pgrep -x "$EXECUTABLE_NAME" >/dev/null

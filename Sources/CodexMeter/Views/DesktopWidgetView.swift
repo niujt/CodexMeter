@@ -54,10 +54,10 @@ struct DesktopWidgetView: View {
 
             Spacer(minLength: 0)
             HStack {
-                Text("每分钟自动刷新")
+                Text("低功耗自动刷新")
                 Spacer()
                 Button {
-                    Task { await store.refresh() }
+                    Task { await store.refresh(force: true) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }

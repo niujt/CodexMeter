@@ -1,20 +1,37 @@
 import Foundation
 
 actor CodexUsageReader {
+    private struct FileFingerprint: Equatable {
+        let path: String
+        let modifiedAt: Date
+        let size: Int
+    }
+
     private let fileManager: FileManager
     private let calendar: Calendar
+    private var cachedSnapshot: UsageSnapshot?
+    private var cachedFiles: [FileFingerprint] = []
+    private var cachedDayStart: Date?
 
     init(fileManager: FileManager = .default, calendar: Calendar = .current) {
         self.fileManager = fileManager
         self.calendar = calendar
     }
 
-    func load(now: Date = .now, codexHome: URL? = nil) throws -> UsageSnapshot {
+    func load(now: Date = .now, codexHome: URL? = nil, force: Bool = false) throws -> UsageSnapshot {
         let root = codexHome ?? resolvedCodexHome()
         // When the user selects .codex via the native folder picker, macOS
         // grants scope to that selected root. Enumerating from the root is
         // more reliable than starting a new traversal at a child directory.
         let files = jsonlFiles(in: [root])
+        let startOfToday = calendar.startOfDay(for: now)
+        let fingerprints = fileFingerprints(for: files)
+        if !force, let cachedSnapshot,
+           cachedDayStart == startOfToday,
+           cachedFiles == fingerprints {
+            return cachedSnapshot
+        }
+
         var snapshot = UsageSnapshot.empty
         snapshot.dataPath = root.path
         snapshot.dataDirectoryExists = fileManager.fileExists(atPath: root.path)
@@ -27,7 +44,6 @@ actor CodexUsageReader {
         var monthProjects: [String: ProjectAccumulator] = [:]
         var models: [String: (tokens: Int, requests: Int, turnSeconds: Double, timedTurns: Int)] = [:]
         var daily: [Date: Int] = [:]
-        let startOfToday = calendar.startOfDay(for: now)
         let sevenDaysAgo = calendar.date(byAdding: .day, value: -6, to: startOfToday) ?? startOfToday
         let thirtyDaysAgo = calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday
         let recentQuotaCutoff = calendar.date(byAdding: .day, value: -2, to: now) ?? now
@@ -161,6 +177,9 @@ actor CodexUsageReader {
             .prefix(4)
             .map { $0 }
         snapshot.dailyUsage = daily.map { DailyUsage(date: $0.key, tokens: $0.value) }.sorted { $0.date < $1.date }
+        cachedSnapshot = snapshot
+        cachedFiles = fingerprints
+        cachedDayStart = startOfToday
         return snapshot
     }
 
@@ -196,6 +215,16 @@ actor CodexUsageReader {
                 return url
             }
         }
+    }
+
+    private func fileFingerprints(for files: [URL]) -> [FileFingerprint] {
+        files.compactMap { file in
+            guard let values = try? file.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
+                  let modifiedAt = values.contentModificationDate,
+                  let size = values.fileSize else { return nil }
+            return FileFingerprint(path: file.path, modifiedAt: modifiedAt, size: size)
+        }
+        .sorted { $0.path < $1.path }
     }
 
     private func latestTokenEvent(in text: String) -> TokenEvent? {

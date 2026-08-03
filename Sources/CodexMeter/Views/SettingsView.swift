@@ -5,7 +5,7 @@ struct SettingsView: View {
     let store: UsageStore
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
-    @AppStorage("codexMeter.refreshInterval") private var refreshInterval = 60.0
+    @AppStorage(RefreshPolicy.intervalKey) private var refreshInterval = RefreshPolicy.lowPowerDefault
     @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
 
     private var appearanceMode: AppAppearance {
@@ -31,11 +31,11 @@ struct SettingsView: View {
 
                 Section("刷新") {
                     Picker("自动刷新", selection: $refreshInterval) {
-                        Text("每 30 秒").tag(30.0)
-                        Text("每 1 分钟").tag(60.0)
                         Text("每 5 分钟").tag(300.0)
+                        Text("每 15 分钟").tag(900.0)
+                        Text("每 30 分钟").tag(1_800.0)
                     }
-                    Text("修改后会立即应用到菜单栏与小组件的数据刷新。")
+                    Text("低功耗模式只在这一个后台计时器中读取本机记录；仍可随时手动刷新。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 

@@ -34,7 +34,7 @@ struct ProjectsUsageView: View {
                 Spacer()
                 Button("添加项目目录", systemImage: "folder.badge.plus") { pathStore.addFolder() }
                     .buttonStyle(.borderedProminent)
-                Button { Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
+                Button { Task { await store.refresh(force: true) } } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.bordered)
                     .disabled(store.isRefreshing)
             }

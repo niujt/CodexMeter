@@ -40,7 +40,7 @@ final class DesktopWidgetController {
         )
         self.panel = panel
         panel.makeKeyAndOrderFront(nil)
-        Task { await store.refresh() }
+        Task { await store.refresh(force: true) }
     }
 
     func hide() {

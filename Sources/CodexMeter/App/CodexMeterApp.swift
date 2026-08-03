@@ -1,6 +1,28 @@
 import AppKit
 import SwiftUI
 
+enum RefreshPolicy {
+    static let intervalKey = "codexMeter.refreshInterval"
+    static let lowPowerDefault: TimeInterval = 300
+    private static let migrationKey = "codexMeter.lowPowerRefreshMigration.v1"
+
+    static func configure(defaults: UserDefaults = .standard) {
+        defaults.register(defaults: [intervalKey: lowPowerDefault])
+        guard !defaults.bool(forKey: migrationKey) else { return }
+
+        if let interval = defaults.object(forKey: intervalKey) as? Double,
+           interval < lowPowerDefault {
+            defaults.set(lowPowerDefault, forKey: intervalKey)
+        }
+        defaults.set(true, forKey: migrationKey)
+    }
+
+    static func interval(defaults: UserDefaults = .standard) -> TimeInterval {
+        let configured = defaults.object(forKey: intervalKey) as? Double ?? lowPowerDefault
+        return max(lowPowerDefault, configured)
+    }
+}
+
 enum AppAppearance: String, CaseIterable, Identifiable {
     case system
     case light
@@ -34,6 +56,10 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 struct CodexMeterApp: App {
     @State private var store = UsageStore()
     @NSApplicationDelegateAdaptor(MenuBarController.self) private var menuBar
+
+    init() {
+        RefreshPolicy.configure()
+    }
 
     var body: some Scene {
         WindowGroup("Codex Health", id: "dashboard") {
@@ -127,9 +153,8 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
 
     private func scheduleRefreshTimer() {
         refreshTimer?.invalidate()
-        let configured = UserDefaults.standard.object(forKey: "codexMeter.refreshInterval") as? Double ?? 60
         refreshTimer = Timer.scheduledTimer(
-            timeInterval: max(30, configured),
+            timeInterval: RefreshPolicy.interval(),
             target: self,
             selector: #selector(refreshTimerFired(_:)),
             userInfo: nil,

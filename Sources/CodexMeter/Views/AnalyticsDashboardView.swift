@@ -436,7 +436,7 @@ private struct PageHeader: View {
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
-            Button { Task { await store.refresh() } } label: { Label("立即刷新", systemImage: "arrow.clockwise") }
+            Button { Task { await store.refresh(force: true) } } label: { Label("立即刷新", systemImage: "arrow.clockwise") }
                 .buttonStyle(.bordered).disabled(store.isRefreshing)
         }
     }
@@ -566,7 +566,7 @@ private struct DashboardContent: View {
                     }
                 }
                 Spacer()
-                Button { Task { await store.refresh() } } label: {
+                Button { Task { await store.refresh(force: true) } } label: {
                     Label("立即刷新", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.bordered)

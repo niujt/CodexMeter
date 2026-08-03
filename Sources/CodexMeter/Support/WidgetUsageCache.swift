@@ -1,6 +1,6 @@
 import Foundation
 
-struct WidgetUsageData: Codable, Sendable {
+struct WidgetUsageData: Codable, Sendable, Equatable {
     let todayTokens: Int
     let weekTokens: Int
     let monthTokens: Int
@@ -19,6 +19,15 @@ enum WidgetUsageCache {
         try? data.write(to: url, options: .atomic)
     }
 
+    @discardableResult
+    static func saveIfChanged(_ usage: WidgetUsageData) -> Bool {
+        if let existing = load(), sameDisplayedContent(existing, usage) {
+            return false
+        }
+        save(usage)
+        return true
+    }
+
     static func load() -> WidgetUsageData? {
         guard let url = cacheURL(),
               let data = try? Data(contentsOf: url) else { return nil }
@@ -31,5 +40,15 @@ enum WidgetUsageCache {
             return nil
         }
         return directory.appendingPathComponent("codex-usage.json")
+    }
+
+    private static func sameDisplayedContent(_ lhs: WidgetUsageData, _ rhs: WidgetUsageData) -> Bool {
+        lhs.todayTokens == rhs.todayTokens
+            && lhs.weekTokens == rhs.weekTokens
+            && lhs.monthTokens == rhs.monthTokens
+            && lhs.contextTokens == rhs.contextTokens
+            && lhs.contextLimit == rhs.contextLimit
+            && lhs.ratePercent == rhs.ratePercent
+            && lhs.rateWindowMinutes == rhs.rateWindowMinutes
     }
 }

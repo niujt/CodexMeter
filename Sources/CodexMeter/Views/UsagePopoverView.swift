@@ -17,11 +17,8 @@ struct UsagePopoverView: View {
             }
         }
         .task {
+            guard store.snapshot.lastUpdated == nil else { return }
             await store.refresh()
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
-                await store.refresh()
-            }
         }
     }
 
@@ -50,7 +47,7 @@ struct UsagePopoverView: View {
                 }
                 Spacer()
                 Button {
-                    Task { await store.refresh() }
+                    Task { await store.refresh(force: true) }
                 } label: {
                     TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !store.isRefreshing)) { context in
                         Image(systemName: "arrow.clockwise")
@@ -213,7 +210,7 @@ private struct HealthMenuPopover: View {
             HStack {
                 Text("Codex Health").font(.headline.weight(.semibold))
                 Spacer()
-                Button { Task { await store.refresh() } } label: {
+                Button { Task { await store.refresh(force: true) } } label: {
                     TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !store.isRefreshing)) { context in
                         Image(systemName: "arrow.clockwise")
                             .font(.title3)
