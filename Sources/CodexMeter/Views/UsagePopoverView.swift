@@ -133,7 +133,7 @@ struct UsagePopoverView: View {
             Divider()
             if compact {
                 HStack {
-                    Button("打开详情") { openWindow(id: "dashboard") }
+                    Button("打开详情") { openDashboard() }
                         .buttonStyle(.borderedProminent)
                     Button("退出") { NSApplication.shared.terminate(nil) }
                         .buttonStyle(.bordered)
@@ -189,6 +189,11 @@ struct UsagePopoverView: View {
 
     private var projects: [ProjectUsage] {
         switch projectRange { case 0: return store.snapshot.todayProjects; case 2: return store.snapshot.monthProjects; default: return store.snapshot.topProjects }
+    }
+
+    private func openDashboard() {
+        NotificationCenter.default.post(name: .codexHealthDashboardWillOpen, object: nil)
+        openWindow(id: "dashboard")
     }
 
 }
@@ -248,8 +253,7 @@ private struct HealthMenuPopover: View {
 
             Divider()
             MenuRow(icon: "arrow.up.forward.app", title: "打开 Codex Health", shortcut: "⌘O") {
-                openWindow(id: "dashboard")
-                NSApp.activate(ignoringOtherApps: true)
+                openDashboard()
             }
             HStack(spacing: 10) {
                 Image(systemName: "bell.badge").foregroundStyle(.blue).frame(width: 18)
@@ -274,6 +278,11 @@ private struct HealthMenuPopover: View {
         .frame(width: 360, alignment: .leading)
         .background(Color(nsColor: .windowBackgroundColor))
         .preferredColorScheme((AppAppearance(rawValue: appearance) ?? .system).colorScheme)
+    }
+
+    private func openDashboard() {
+        NotificationCenter.default.post(name: .codexHealthDashboardWillOpen, object: nil)
+        openWindow(id: "dashboard")
     }
 }
 

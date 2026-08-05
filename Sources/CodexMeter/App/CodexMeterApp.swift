@@ -52,6 +52,10 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     }
 }
 
+extension Notification.Name {
+    static let codexHealthDashboardWillOpen = Notification.Name("CodexHealth.dashboardWillOpen")
+}
+
 @main
 struct CodexMeterApp: App {
     @State private var store = UsageStore()
@@ -66,6 +70,7 @@ struct CodexMeterApp: App {
             AnalyticsDashboardView(store: store)
                 .frame(minWidth: 1_180, minHeight: 760)
                 .task { menuBar.configure(with: store) }
+                .onAppear { menuBar.dashboardDidAppear() }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1_300, height: 860)
@@ -100,11 +105,15 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     private var refreshTimer: Timer?
     private var usageRefreshObserver: NSObjectProtocol?
     private var defaultsObserver: NSObjectProtocol?
+    private var dashboardWillOpenObserver: NSObjectProtocol?
     private var appearanceObservation: NSKeyValueObservation?
     private var displayedTitle = "  —"
     private var displayedTintColor = NSColor.systemBlue
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Start as a menu-bar accessory. The dashboard promotes the app to a
+        // regular Dock application when it is explicitly opened.
+        _ = NSApp.setActivationPolicy(.accessory)
         guard let button = statusItem.button else { return }
         button.image = Self.menuBarMark()
         button.imagePosition = .imageLeading
@@ -118,7 +127,19 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.contentViewController = popoverController
         popover.contentSize = NSSize(width: 392, height: 292)
+        dashboardWillOpenObserver = NotificationCenter.default.addObserver(
+            forName: .codexHealthDashboardWillOpen,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.dashboardDidAppear() }
+        }
         configure(with: fallbackStore)
+    }
+
+    func dashboardDidAppear() {
+        _ = NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func configure(with store: UsageStore) {
