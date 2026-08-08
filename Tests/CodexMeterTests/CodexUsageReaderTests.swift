@@ -69,6 +69,61 @@ struct CodexUsageReaderTests {
         #expect(snapshot.rateTimeline.first?.usedPercent == 13)
     }
 
+    @Test
+    func ignoresExpiredSevenDayQuotaAsCurrentRate() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let sessions = root.appendingPathComponent("sessions/2026/08/04")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try session(model: "gpt-5-codex", timestamp: "2026-08-03T01:00:00.000Z", usedPercent: 100)
+            .write(
+                to: sessions.appendingPathComponent("expired.jsonl"),
+                atomically: true,
+                encoding: .utf8
+            )
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let snapshot = try await CodexUsageReader(calendar: calendar).load(
+            now: ISO8601DateFormatter().date(from: "2026-08-04T12:00:00Z")!,
+            codexHome: root
+        )
+
+        #expect(snapshot.mainMenuRate == nil)
+        #expect(snapshot.sevenDayRate == nil)
+        #expect(snapshot.rateTimeline.count == 1)
+    }
+
+    @Test
+    func invalidatesCachedQuotaWhenWindowExpires() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let sessions = root.appendingPathComponent("sessions/2026/08/03")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try session(model: "gpt-5-codex", timestamp: "2026-08-03T01:00:00.000Z", usedPercent: 100)
+            .write(
+                to: sessions.appendingPathComponent("expiring.jsonl"),
+                atomically: true,
+                encoding: .utf8
+            )
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let reader = CodexUsageReader(calendar: calendar)
+        let beforeReset = ISO8601DateFormatter().date(from: "2026-08-03T02:00:00Z")!
+        let afterReset = ISO8601DateFormatter().date(from: "2026-08-03T04:00:00Z")!
+        let fresh = try await reader.load(now: beforeReset, codexHome: root)
+        let expired = try await reader.load(now: afterReset, codexHome: root)
+
+        #expect(fresh.mainMenuRate?.usedPercent == 100)
+        #expect(expired.mainMenuRate == nil)
+        #expect(expired.sevenDayRate == nil)
+    }
+
     private func session(model: String, timestamp: String, usedPercent: Int) -> String {
         """
         {"timestamp":"\(timestamp)","type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"model":"\(model)"}}}
@@ -78,7 +133,7 @@ struct CodexUsageReaderTests {
 
     private func event(timestamp: String, input: Int, output: Int, total: Int) -> String {
         """
-        {"timestamp":"\(timestamp)","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":\(input),"cached_input_tokens":0,"output_tokens":\(output),"reasoning_output_tokens":0,"total_tokens":\(total)},"last_token_usage":{"total_tokens":50},"model_context_window":258400},"rate_limits":{"primary":{"used_percent":25,"window_minutes":300,"resets_at":1785121200}}}}
+        {"timestamp":"\(timestamp)","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":\(input),"cached_input_tokens":0,"output_tokens":\(output),"reasoning_output_tokens":0,"total_tokens":\(total)},"last_token_usage":{"total_tokens":50},"model_context_window":258400},"rate_limits":{"primary":{"used_percent":25,"window_minutes":300,"resets_at":1785236400}}}}
         """
     }
 }

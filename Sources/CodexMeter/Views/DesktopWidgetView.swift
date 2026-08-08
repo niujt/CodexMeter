@@ -50,6 +50,10 @@ struct DesktopWidgetView: View {
                 .font(.caption.weight(.medium))
                 ProgressView(value: min(window.usedPercent, 100), total: 100)
                     .tint(window.usedPercent >= 90 ? .red : .accentColor)
+            } else {
+                Text("等待新周期数据")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer(minLength: 0)

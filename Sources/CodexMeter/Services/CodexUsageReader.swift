@@ -28,7 +28,11 @@ actor CodexUsageReader {
         let fingerprints = fileFingerprints(for: files)
         if !force, let cachedSnapshot,
            cachedDayStart == startOfToday,
-           cachedFiles == fingerprints {
+           cachedFiles == fingerprints,
+           cachedSnapshot.primaryRate.map({ $0.resetsAt > now }) ?? true,
+           cachedSnapshot.secondaryRate.map({ $0.resetsAt > now }) ?? true,
+           cachedSnapshot.mainMenuRate.map({ $0.resetsAt > now }) ?? true,
+           cachedSnapshot.sparkRate.map({ $0.resetsAt > now }) ?? true {
             return cachedSnapshot
         }
 
@@ -94,8 +98,11 @@ actor CodexUsageReader {
             // an older hard-coded ID leaves the app stuck on a stale percentage.
             if event.timestamp > latestRateTimestamp {
                 latestRateTimestamp = event.timestamp
-                snapshot.primaryRate = event.primaryRate
-                snapshot.secondaryRate = event.secondaryRate
+                // A token_count event can still contain the previous cycle's
+                // window for a short period after its reset time. Do not let
+                // that expired sample become the app's current quota.
+                snapshot.primaryRate = activeRate(event.primaryRate, at: now)
+                snapshot.secondaryRate = activeRate(event.secondaryRate, at: now)
                 snapshot.selectedRateLimitID = event.rateLimitID
                 snapshot.currentContextUsed = event.currentContextUsed
                 snapshot.contextWindow = event.contextWindow
@@ -118,6 +125,7 @@ actor CodexUsageReader {
                     .compactMap({ $0 })
                     .first(where: { $0.windowMinutes == 10_080 }) else { continue }
                 if isSparkModel(sample.model) {
+                    guard window.resetsAt > now else { continue }
                     if sample.event.timestamp >= latestSparkRateTimestamp {
                         snapshot.sparkRate = window
                         latestSparkRateTimestamp = sample.event.timestamp
@@ -131,6 +139,7 @@ actor CodexUsageReader {
                             limitID: sample.event.rateLimitID
                         )
                     )
+                    guard window.resetsAt > now else { continue }
                     if sample.event.timestamp >= latestMainMenuRateTimestamp {
                         snapshot.mainMenuRate = window
                         snapshot.selectedRateLimitID = sample.event.rateLimitID
@@ -350,6 +359,11 @@ actor CodexUsageReader {
             data = data[data.index(after: newline)...]
         }
         return String(decoding: data, as: UTF8.self)
+    }
+
+    private func activeRate(_ rate: RateWindow?, at now: Date) -> RateWindow? {
+        guard let rate, rate.resetsAt > now else { return nil }
+        return rate
     }
 }
 

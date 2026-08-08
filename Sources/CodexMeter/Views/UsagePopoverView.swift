@@ -80,14 +80,18 @@ struct UsagePopoverView: View {
                 }
             }
 
+            Divider()
             if let weekRate = store.snapshot.sevenDayRate {
-                Divider()
                 RateLimitView(title: "7 天额度", window: weekRate)
                 PredictionView(
                     window: weekRate,
                     weeklyTokens: store.snapshot.lastSevenDays.total,
                     observedTurns: store.snapshot.panelModels.reduce(0) { $0 + $1.requests }
                 )
+            } else {
+                Text("等待新周期数据")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             Divider()
@@ -206,9 +210,15 @@ private struct HealthMenuPopover: View {
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
 
     private var rate: RateWindow? { store.snapshot.sevenDayRate }
-    private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
-    private var color: Color { remaining < 20 ? .red : remaining < 50 ? .orange : .green }
-    private var status: String { remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy" }
+    private var remaining: Int? { rate.map { max(0, 100 - Int($0.usedPercent.rounded())) } }
+    private var color: Color {
+        guard let remaining else { return .secondary }
+        return remaining < 20 ? .red : remaining < 50 ? .orange : .green
+    }
+    private var status: String {
+        guard let remaining else { return "等待新周期数据" }
+        return remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -228,7 +238,7 @@ private struct HealthMenuPopover: View {
             }
 
             HStack(spacing: 18) {
-                Text("\(remaining)%")
+                Text(remaining.map { "\($0)%" } ?? "—")
                     .font(.system(size: 48, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.primary)
@@ -241,15 +251,21 @@ private struct HealthMenuPopover: View {
                         Text(rate.resetsAt.formatted(.dateTime.month().day().hour().minute()) + " 重置")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Text("等待额度数据").font(.callout).foregroundStyle(.secondary)
+                        Text("等待新周期数据").font(.callout).foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 0)
             }
 
-            ProgressView(value: Double(remaining), total: 100)
-                .tint(color)
-                .controlSize(.regular)
+            if let remaining {
+                ProgressView(value: Double(remaining), total: 100)
+                    .tint(color)
+                    .controlSize(.regular)
+            } else {
+                Text("等待新周期数据")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             Divider()
             MenuRow(icon: "arrow.up.forward.app", title: "打开 Codex Health", shortcut: "⌘O") {

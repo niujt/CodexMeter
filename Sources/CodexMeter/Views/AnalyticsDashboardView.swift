@@ -406,7 +406,7 @@ private struct ForecastRiskView: View {
                     }
                 }
             } else {
-                ContentUnavailableView("尚未读取到 7 天额度", systemImage: "scope", description: Text("完成一次含额度信息的 Codex 会话后即可开始预测。"))
+                ContentUnavailableView("等待新周期数据", systemImage: "scope", description: Text("完成一次含额度信息的 Codex 会话后即可开始预测。"))
                     .frame(maxWidth: .infinity, minHeight: 420)
             }
         }
@@ -502,7 +502,7 @@ private struct DashboardSidebar: View {
             .padding(14)
             .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 13))
             HStack {
-                Text("v1.0.1")
+                Text("v1.0.3")
                 Spacer()
                 Menu {
                     ForEach(AppAppearance.allCases) { mode in
@@ -548,7 +548,7 @@ private struct DashboardContent: View {
         return remaining < 20 ? .red : remaining < 50 ? DashboardPalette.orange : DashboardPalette.green
     }
     private var status: String {
-        guard let remaining else { return store.isRefreshing ? "读取中" : "暂无额度" }
+        guard let remaining else { return store.isRefreshing ? "读取中" : "等待新周期数据" }
         return remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy"
     }
 
@@ -629,12 +629,12 @@ private struct HealthHero: View {
         DashboardCard {
             HStack(spacing: 26) {
                 ZStack(alignment: .bottomTrailing) {
-                    Text(remaining.map { "\($0)%" } ?? "—")
-                        .font(.system(size: 78, weight: .bold, design: .rounded))
+                    Text(remaining.map { "\($0)%" } ?? "等待新周期数据")
+                        .font(.system(size: remaining == nil ? 25 : 78, weight: .bold, design: .rounded))
                         .foregroundStyle(LinearGradient(colors: [.blue, color], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .lineLimit(remaining == nil ? 2 : 1)
+                        .minimumScaleFactor(remaining == nil ? 0.6 : 0.7)
                         .frame(width: 210, alignment: .leading)
                     if let sparkRemaining {
                         Text("Spark \(sparkRemaining)%")
@@ -653,7 +653,7 @@ private struct HealthHero: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Label(status, systemImage: "circle.fill")
                         .font(.title2.weight(.bold)).foregroundStyle(color)
-                    Text(rate == nil ? "等待本机额度采样" : "状态良好，当前使用速度可持续")
+                    Text(rate == nil ? "等待新周期数据" : "状态良好，当前使用速度可持续")
                         .font(.subheadline).foregroundStyle(.secondary)
                     if let rate {
                         VStack(alignment: .leading, spacing: 4) {
@@ -666,7 +666,7 @@ private struct HealthHero: View {
                                 .frame(width: 150)
                         }
                     } else {
-                        Text("正在读取本机额度记录，不会用 100% 代替未知数据")
+                        Text("等待新周期数据")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -749,7 +749,7 @@ private struct UsageTrendCard: View {
                 HStack {
                     Text("Token 用量按日汇总")
                     Spacer()
-                    Text(remaining.map { "剩余 \($0)%" } ?? "额度读取中")
+                    Text(remaining.map { "剩余 \($0)%" } ?? "等待新周期数据")
                 }
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -801,10 +801,10 @@ private struct RiskCard: View {
                     }
                     .frame(maxWidth: .infinity)
                 } else {
-                    Text("样本不足，暂不能预测耗尽时间")
+                    Text("等待新周期数据")
                         .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
                 }
-                Text(rate.map { "预计额度将于 \($0.resetsAt.formatted(.dateTime.month().day().hour().minute())) 重置" } ?? "尚未读取到官方额度信息")
+                Text(rate.map { "预计额度将于 \($0.resetsAt.formatted(.dateTime.month().day().hour().minute())) 重置" } ?? "等待新周期数据")
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: .infinity)
             }
         }
