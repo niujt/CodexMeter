@@ -107,16 +107,14 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     private var defaultsObserver: NSObjectProtocol?
     private var dashboardWillOpenObserver: NSObjectProtocol?
     private var appearanceObservation: NSKeyValueObservation?
-    private var displayedTitle = "  —"
-    private var displayedTintColor = NSColor.systemBlue
+    private var displayedTitle = "—"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Start as a menu-bar accessory. The dashboard promotes the app to a
         // regular Dock application when it is explicitly opened.
         _ = NSApp.setActivationPolicy(.accessory)
         guard let button = statusItem.button else { return }
-        button.image = Self.menuBarMark()
-        button.imagePosition = .imageLeading
+        button.imagePosition = .imageOnly
         button.target = self
         button.action = #selector(togglePopover(_:))
         button.toolTip = "Codex Health"
@@ -209,34 +207,38 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     private func update(snapshot: UsageSnapshot) {
         guard statusItem.button != nil else { return }
         guard let rate = snapshot.mainMenuRate ?? snapshot.sevenDayRate else {
-            displayedTitle = "  —"
-            displayedTintColor = .systemBlue
+            displayedTitle = "—"
             applyStatusAppearance()
             return
         }
         let remaining = snapshot.remainingPercent(for: rate)
-        displayedTitle = "  \(remaining)%"
-        displayedTintColor = remaining < 20 ? .systemRed : remaining < 50 ? .systemOrange : .systemGreen
+        displayedTitle = "\(remaining)%"
         applyStatusAppearance()
     }
 
     private func applyStatusAppearance() {
         guard let button = statusItem.button else { return }
-        let isDark = button.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        button.attributedTitle = NSAttributedString(
-            string: displayedTitle,
-            attributes: [.foregroundColor: isDark ? NSColor.white : displayedTintColor]
-        )
-        button.contentTintColor = displayedTintColor
+        // Draw the percentage into the same non-template image as the mark.
+        // NSStatusBarButton can otherwise re-tint attributed titles according
+        // to the menu bar appearance even when a white foreground is supplied.
+        button.image = Self.menuBarMark(title: displayedTitle)
+        button.title = ""
+        button.contentTintColor = NSColor.white
     }
 
-    private static func menuBarMark() -> NSImage {
-        let size = NSSize(width: 19, height: 19)
+    private static func menuBarMark(title: String) -> NSImage {
+        let font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        let titleAttributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.white
+        ]
+        let titleSize = (title as NSString).size(withAttributes: titleAttributes)
+        let size = NSSize(width: 19 + 7 + titleSize.width, height: 19)
         let image = NSImage(size: size, flipped: false) { _ in
             let ring = NSBezierPath()
             ring.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1, startAngle: 42, endAngle: 318, clockwise: false)
             ring.lineWidth = 3.1
-            NSColor.systemBlue.setStroke()
+            NSColor.white.setStroke()
             ring.stroke()
 
             let h = NSBezierPath()
@@ -246,8 +248,16 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
             h.lineWidth = 1.45
             NSColor.white.setStroke()
             h.stroke()
+
+            let titleY = (size.height - titleSize.height) / 2
+            (title as NSString).draw(
+                at: NSPoint(x: 26, y: titleY),
+                withAttributes: titleAttributes
+            )
             return true
         }
+        // Keep the mark as a regular image so AppKit does not replace the
+        // white strokes with the menu bar's automatic template tint.
         image.isTemplate = false
         return image
     }

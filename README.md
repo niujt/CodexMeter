@@ -26,6 +26,8 @@
 
 在 macOS 桌面编辑模式中添加“Codex Health”小组件。小号展示额度概览，中号同时展示三段 Token 用量、7 天额度与当前上下文。
 
+![Codex Health 桌面小组件（匿名演示数据）](docs/screenshots/desktop-widget.png)
+
 ## 使用趋势
 
 ![Codex Health 使用趋势（匿名演示数据）](docs/screenshots/usage-trends.png)
@@ -48,7 +50,7 @@
 
 ## 功能
 
-- 菜单栏显示 7 天额度剩余百分比，并按剩余量变色：≥ 50% 为绿色、20%–49% 为黄色、< 20% 为红色
+- 菜单栏以白色图标和文字显示 7 天额度剩余百分比
 - 今日、近 7 天、本月 Token 用量，以及输入、输出、缓存和推理 Token 分类
 - 当前会话上下文进度与 7 天额度重置倒计时
 - 用量预测：按近 1 / 6 / 24 小时额度变化加权估算
@@ -69,18 +71,15 @@
 
 ## 构建
 
-环境要求：macOS 14+、Xcode 16+、一个可用于本机调试的 Apple Development 签名身份。
+环境要求：macOS 14+、Xcode 16+。本地发布包使用临时签名，并会同时签名应用与 WidgetKit 扩展。
 
 ```bash
 git clone https://github.com/niujt/CodexMeter.git
 cd CodexMeter
-ruby tools/generate_xcode_project.rb
-xcodebuild -project CodexMeter.xcodeproj -scheme CodexMeter -configuration Debug -derivedDataPath build build
-ditto "build/Build/Products/Debug/Codex Health.app" "dist/Codex Health.app"
-open "dist/Codex Health.app"
+./script/build_distribution.sh
 ```
 
-开发时也可以执行：
+开发调试时可以执行：
 
 ```bash
 ./script/build_and_run.sh

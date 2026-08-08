@@ -502,7 +502,7 @@ private struct DashboardSidebar: View {
             .padding(14)
             .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 13))
             HStack {
-                Text("v1.0.3")
+                Text("v1.0.4")
                 Spacer()
                 Menu {
                     ForEach(AppAppearance.allCases) { mode in
