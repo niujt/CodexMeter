@@ -11,9 +11,9 @@
     <key>CFBundleName</key>
     <string>CodexMeterWidget</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.4</string>
+        <string>1.0.5</string>
 	<key>CFBundleVersion</key>
-	<string>12</string>
+        <string>13</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>

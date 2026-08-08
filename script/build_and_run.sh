@@ -12,6 +12,9 @@ APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
 SIGNING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/codexmeter-signing.XXXXXX")"
 trap 'rm -rf "$SIGNING_DIR"' EXIT
 
+source "$ROOT_DIR/script/signing.sh"
+codexmeter_select_signing
+
 # When launching from Xcode, the debugger owns the process. Avoid terminating it
 # here; quitting the existing menu-bar instance before running is sufficient.
 xcodebuild \
@@ -19,22 +22,21 @@ xcodebuild \
   -scheme "$TARGET_NAME" \
   -configuration Debug \
   -derivedDataPath "$DERIVED_DATA" \
-  build CODE_SIGNING_ALLOWED=NO
+  build "${CODEX_XCODE_SIGNING_ARGS[@]}"
 
-sed 's/\$(TeamIdentifierPrefix)//g' \
-  "$ROOT_DIR/Resources/CodexMeter.entitlements" > "$SIGNING_DIR/app.entitlements"
-sed 's/\$(TeamIdentifierPrefix)//g' \
-  "$ROOT_DIR/Resources/CodexMeterWidget.entitlements" > "$SIGNING_DIR/widget.entitlements"
-
-# The local build intentionally skips Xcode signing. Re-sign the app and its
-# WidgetKit extension with the same ad-hoc application-group entitlements so
-# the extension remains discoverable and can read the shared cache.
 WIDGET_BUNDLE="$BUILT_APP/Contents/PlugIns/CodexMeterWidget.appex"
-codesign --force --deep --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$BUILT_APP"
-if [[ -d "$WIDGET_BUNDLE" ]]; then
-  codesign --force --deep --sign - --entitlements "$SIGNING_DIR/widget.entitlements" "$WIDGET_BUNDLE"
+if [[ "$CODEX_SIGNING_MODE" == "adhoc" ]]; then
+  sed 's/\$(TeamIdentifierPrefix)//g' \
+    "$ROOT_DIR/Resources/CodexMeter.entitlements" > "$SIGNING_DIR/app.entitlements"
+  sed 's/\$(TeamIdentifierPrefix)//g' \
+    "$ROOT_DIR/Resources/CodexMeterWidget.entitlements" > "$SIGNING_DIR/widget.entitlements"
+
+  codesign --force --deep --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$BUILT_APP"
+  if [[ -d "$WIDGET_BUNDLE" ]]; then
+    codesign --force --deep --sign - --entitlements "$SIGNING_DIR/widget.entitlements" "$WIDGET_BUNDLE"
+  fi
+  codesign --force --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$BUILT_APP"
 fi
-codesign --force --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$BUILT_APP"
 codesign --verify --deep --strict "$BUILT_APP"
 
 rm -rf "$APP_BUNDLE"

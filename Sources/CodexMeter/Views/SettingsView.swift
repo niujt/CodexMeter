@@ -71,7 +71,7 @@ struct SettingsView: View {
             VStack(spacing: 10) {
                 Image("CodexHealthMark").resizable().scaledToFit().frame(width: 64, height: 64)
                 Text("Codex Health").font(.title2.weight(.bold))
-                Text("v1.0.4 · 本地优先的 Codex 用量健康中心")
+                Text("v1.0.5 · 本地优先的 Codex 用量健康中心")
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

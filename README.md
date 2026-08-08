@@ -8,7 +8,7 @@
 
 从 [GitHub Releases](https://github.com/niujt/CodexMeter/releases/latest) 下载最新版 DMG，打开后将 `Codex Health.app` 拖入 Applications。
 
-当前发布包使用不带个人身份信息的本地签名，macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
+当前发布包使用本机开发签名以确保 WidgetKit 扩展能被 macOS 识别；macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
 
 以下截图均为脱敏的演示数据，不包含真实项目、会话或 Token 用量。
 
@@ -27,6 +27,8 @@
 在 macOS 桌面编辑模式中添加“Codex Health”小组件。小号展示额度概览，中号同时展示三段 Token 用量、7 天额度与当前上下文。
 
 ![Codex Health 桌面小组件（匿名演示数据）](docs/screenshots/desktop-widget.png)
+
+如果之前安装过旧版临时签名包，请先退出并移除 `/Applications/Codex Health.app`，再安装最新版并启动一次，然后重新打开桌面小组件编辑器搜索“Codex Health”。
 
 ## 使用趋势
 
@@ -71,13 +73,15 @@
 
 ## 构建
 
-环境要求：macOS 14+、Xcode 16+。本地发布包使用临时签名，并会同时签名应用与 WidgetKit 扩展。
+环境要求：macOS 14+、Xcode 16+。发布脚本会自动使用本机 Apple Development 证书为应用和 WidgetKit 扩展签名；没有开发证书时才回退到临时签名（此模式下小组件可能不会出现在 macOS 选择器中）。
 
 ```bash
 git clone https://github.com/niujt/CodexMeter.git
 cd CodexMeter
 ./script/build_distribution.sh
 ```
+
+如需强制使用临时签名进行本地测试，可执行 `SIGNING_MODE=adhoc ./script/build_distribution.sh`。
 
 开发调试时可以执行：
 

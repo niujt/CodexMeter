@@ -13,28 +13,33 @@ SIGNING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/codexmeter-distribution.XXXXXX")"
 IMAGE_ROOT="$SIGNING_DIR/image"
 trap 'rm -rf "$SIGNING_DIR"' EXIT
 
+source "$ROOT_DIR/script/signing.sh"
+codexmeter_select_signing
+
 xcodebuild \
   -project "$ROOT_DIR/CodexMeter.xcodeproj" \
   -scheme CodexMeter \
   -configuration Release \
   -derivedDataPath "$BUILD_DIR" \
-  build CODE_SIGNING_ALLOWED=NO
+  build "${CODEX_XCODE_SIGNING_ARGS[@]}"
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$DIST_DIR"
 ditto "$BUILT_APP" "$APP_BUNDLE"
 
-# Resolve the group identifier for an ad-hoc local build. A signed build with a
-# development team should use Xcode's expanded entitlements instead.
-sed 's/\$(TeamIdentifierPrefix)//g' \
-  "$ROOT_DIR/Resources/CodexMeter.entitlements" > "$SIGNING_DIR/app.entitlements"
-sed 's/\$(TeamIdentifierPrefix)//g' \
-  "$ROOT_DIR/Resources/CodexMeterWidget.entitlements" > "$SIGNING_DIR/widget.entitlements"
-
 WIDGET_BUNDLE="$APP_BUNDLE/Contents/PlugIns/CodexMeterWidget.appex"
-codesign --force --deep --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$APP_BUNDLE"
-codesign --force --deep --sign - --entitlements "$SIGNING_DIR/widget.entitlements" "$WIDGET_BUNDLE"
-codesign --force --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$APP_BUNDLE"
+if [[ "$CODEX_SIGNING_MODE" == "adhoc" ]]; then
+  # Resolve the group identifier for an ad-hoc local build. A signed build with
+  # a development team uses Xcode's expanded entitlements instead.
+  sed 's/\$(TeamIdentifierPrefix)//g' \
+    "$ROOT_DIR/Resources/CodexMeter.entitlements" > "$SIGNING_DIR/app.entitlements"
+  sed 's/\$(TeamIdentifierPrefix)//g' \
+    "$ROOT_DIR/Resources/CodexMeterWidget.entitlements" > "$SIGNING_DIR/widget.entitlements"
+
+  codesign --force --deep --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$APP_BUNDLE"
+  codesign --force --deep --sign - --entitlements "$SIGNING_DIR/widget.entitlements" "$WIDGET_BUNDLE"
+  codesign --force --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$APP_BUNDLE"
+fi
 codesign --verify --deep --strict "$APP_BUNDLE"
 
 mkdir -p "$IMAGE_ROOT"
