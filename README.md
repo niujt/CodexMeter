@@ -18,9 +18,13 @@
 
 菜单栏会显示当前 7 天额度剩余比例；点击后可快速查看额度、预测、提醒阈值并打开完整详情。
 
+![Codex Health 菜单栏弹窗（匿名演示数据）](docs/screenshots/menu-popover.png)
+
 ## 桌面小组件
 
 在 macOS 桌面编辑模式中添加“Codex Health”小组件。小号展示额度概览，中号同时展示三段 Token 用量、7 天额度与当前上下文。
+
+![Codex Health 桌面小组件（匿名演示数据）](docs/screenshots/desktop-widget.png)
 
 ## 功能
 
@@ -33,6 +37,8 @@
 - 按日 / 按小时趋势，可按模型或项目筛选
 - 低额度、预计提前耗尽、即将重置提醒；阈值和同日去重均可配置
 - WidgetKit 桌面小组件：小号展示额度概览，中号展示三段用量、额度与上下文
+
+![Codex Health 分析详情（匿名演示数据）](docs/screenshots/analytics.png)
 
 ## 使用
 
