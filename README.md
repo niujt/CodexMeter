@@ -12,6 +12,8 @@
 
 以下截图均为脱敏的演示数据，不包含真实项目、会话或 Token 用量。
 
+## 健康报告
+
 ![Codex Health 当前界面（匿名演示数据）](docs/screenshots/dashboard.png)
 
 ## 菜单栏摘要
@@ -24,7 +26,25 @@
 
 在 macOS 桌面编辑模式中添加“Codex Health”小组件。小号展示额度概览，中号同时展示三段 Token 用量、7 天额度与当前上下文。
 
-![Codex Health 桌面小组件（匿名演示数据）](docs/screenshots/desktop-widget.png)
+## 使用趋势
+
+![Codex Health 使用趋势（匿名演示数据）](docs/screenshots/usage-trends.png)
+
+## 模型与效率
+
+![Codex Health 模型与效率（匿名演示数据）](docs/screenshots/model-efficiency.png)
+
+## 项目与用量
+
+![Codex Health 项目与用量（已脱敏）](docs/screenshots/projects-usage.png)
+
+## 预测与风险
+
+![Codex Health 预测与风险（匿名演示数据）](docs/screenshots/forecast-risk.png)
+
+## 历史记录
+
+![Codex Health 历史记录（已脱敏）](docs/screenshots/history.png)
 
 ## 功能
 
@@ -37,8 +57,6 @@
 - 按日 / 按小时趋势，可按模型或项目筛选
 - 低额度、预计提前耗尽、即将重置提醒；阈值和同日去重均可配置
 - WidgetKit 桌面小组件：小号展示额度概览，中号展示三段用量、额度与上下文
-
-![Codex Health 分析详情（匿名演示数据）](docs/screenshots/analytics.png)
 
 ## 使用
 

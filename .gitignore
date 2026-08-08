@@ -1,7 +1,10 @@
 .build/
 dist/
 build/
+build-release/
 .DS_Store
 CodexMeter.xcodeproj/xcuserdata/
 .idea/
 .private/
+# Local planning/report notes are not release artifacts.
+工作报告.md
