@@ -93,7 +93,9 @@ struct QuotaRateCachePayload: Codable, Equatable {
 }
 
 enum QuotaRateCache {
-    static let key = "codexMeter.quotaRateCache.v1"
+    // v1 could persist a different model bucket as the main quota after a
+    // reset. Start a clean cache so that bad pre-fix values cannot reappear.
+    static let key = "codexMeter.quotaRateCache.v2"
 
     static func save(_ snapshot: UsageSnapshot, defaults: UserDefaults = .standard, now: Date = .now) {
         var payload = load(defaults: defaults)

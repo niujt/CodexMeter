@@ -40,8 +40,10 @@ actor CodexUsageReader {
         snapshot.dataPath = root.path
         snapshot.dataDirectoryExists = fileManager.fileExists(atPath: root.path)
         snapshot.fileCount = files.count
-        var latestRateTimestamp = Date.distantPast
-        var latestMainMenuRateTimestamp = Date.distantPast
+        var latestRateEvent: (event: TokenEvent, isPreferred: Bool)?
+        var latestPreferredMainMenuRate: (window: RateWindow, timestamp: Date, limitID: String?)?
+        var latestFallbackMainMenuRate: (window: RateWindow, timestamp: Date, limitID: String?)?
+        var hasCanonicalQuotaObservation = false
         var latestSparkRateTimestamp = Date.distantPast
         var projects: [String: ProjectAccumulator] = [:]
         var todayProjects: [String: ProjectAccumulator] = [:]
@@ -93,11 +95,15 @@ actor CodexUsageReader {
                 snapshot.thisMonth = snapshot.thisMonth + event.total
             }
 
-            // The official Codex status panel follows the newest quota event.
-            // A quota can receive a new limit ID after it resets, so preferring
-            // an older hard-coded ID leaves the app stuck on a stale percentage.
-            if event.timestamp > latestRateTimestamp {
-                latestRateTimestamp = event.timestamp
+            // The official Codex status panel follows the newest event from the
+            // canonical Codex quota. Other model buckets (for example
+            // codex_bengalfox) can emit a newer event with a different reset
+            // time; letting those events win makes the main percentage jump
+            // back to 100% immediately after a weekly reset.
+            let eventIsPreferred = isCanonicalQuota(event.rateLimitID)
+            if eventIsPreferred { hasCanonicalQuotaObservation = true }
+            if shouldReplaceRateEvent(current: latestRateEvent, candidate: event, candidateIsPreferred: eventIsPreferred) {
+                latestRateEvent = (event, eventIsPreferred)
                 // A token_count event can still contain the previous cycle's
                 // window for a short period after its reset time. Do not let
                 // that expired sample become the app's current quota.
@@ -140,14 +146,26 @@ actor CodexUsageReader {
                         )
                     )
                     guard window.resetsAt > now else { continue }
-                    if sample.event.timestamp >= latestMainMenuRateTimestamp {
-                        snapshot.mainMenuRate = window
-                        snapshot.selectedRateLimitID = sample.event.rateLimitID
-                        latestMainMenuRateTimestamp = sample.event.timestamp
+                    let candidate = (window: window, timestamp: sample.event.timestamp, limitID: sample.event.rateLimitID)
+                    if isCanonicalQuota(sample.event.rateLimitID) {
+                        if latestPreferredMainMenuRate == nil || sample.event.timestamp > latestPreferredMainMenuRate!.timestamp {
+                            latestPreferredMainMenuRate = candidate
+                        }
+                    } else if latestFallbackMainMenuRate == nil || sample.event.timestamp > latestFallbackMainMenuRate!.timestamp {
+                        latestFallbackMainMenuRate = candidate
                     }
                 }
             }
         }
+
+        // Once the canonical bucket has been observed, an alternate bucket is
+        // never a valid substitute for it. Right after a reset the canonical
+        // bucket may not have produced a fresh event yet; showing no value is
+        // safer than reporting another model's 0% usage as the main quota.
+        let selectedMainMenuRate = latestPreferredMainMenuRate
+            ?? (hasCanonicalQuotaObservation ? nil : latestFallbackMainMenuRate)
+        snapshot.mainMenuRate = selectedMainMenuRate?.window
+        snapshot.selectedRateLimitID = selectedMainMenuRate?.limitID
 
         // A session can emit many quota samples during the same seven-day
         // period.  They are observations, not resets.  Keep the newest sample
@@ -365,6 +383,18 @@ actor CodexUsageReader {
         guard let rate, rate.resetsAt > now else { return nil }
         return rate
     }
+
+    private func shouldReplaceRateEvent(
+        current: (event: TokenEvent, isPreferred: Bool)?,
+        candidate: TokenEvent,
+        candidateIsPreferred: Bool
+    ) -> Bool {
+        guard let current else { return true }
+        if current.isPreferred != candidateIsPreferred {
+            return candidateIsPreferred
+        }
+        return candidate.timestamp > current.event.timestamp
+    }
 }
 
 private struct TokenEvent {
@@ -433,6 +463,10 @@ private extension Dictionary where Key == String, Value == Any {
 
 private func isSparkModel(_ name: String) -> Bool {
     name.localizedCaseInsensitiveContains("spark")
+}
+
+private func isCanonicalQuota(_ limitID: String?) -> Bool {
+    limitID?.localizedCaseInsensitiveCompare("codex") == .orderedSame
 }
 
 private extension RateWindow {
