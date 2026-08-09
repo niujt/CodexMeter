@@ -44,6 +44,7 @@ codesign --verify --deep --strict "$APP_BUNDLE"
 
 mkdir -p "$IMAGE_ROOT"
 ditto "$APP_BUNDLE" "$IMAGE_ROOT/$APP_NAME.app"
+ln -s /Applications "$IMAGE_ROOT/Applications"
 rm -f "$DMG_PATH"
 hdiutil create \
   -volname "$APP_NAME" \
