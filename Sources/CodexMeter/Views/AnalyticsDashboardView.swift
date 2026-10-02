@@ -38,6 +38,20 @@ struct AnalyticsDashboardView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if store.isRefreshing {
+                HStack(spacing: 12) {
+                    ProgressView().controlSize(.small)
+                    Text(store.loadingMessage)
+                    Text("数据将逐步显示；已有结果会保留至刷新完成。")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .font(.callout)
+                .padding(12)
+                .background(.bar)
+            }
+        }
         .background(DashboardPalette.background)
         .preferredColorScheme(appearanceMode.colorScheme)
         .navigationTitle("Codex Health")
@@ -86,7 +100,10 @@ private struct HistoryRecordsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            PageHeader(title: "历史记录", subtitle: "仅保留本地会话的时间、模型、工作目录和 Token 汇总，不读取或展示会话正文。", store: store)
+            PageHeader(title: "历史记录", subtitle: "按小时、模型和工作目录汇总 Token 增量，不保存或展示会话正文。", store: store)
+            DashboardCard {
+                ResetHistoryView(codexPath: store.selectedCodexPath)
+            }
             HStack(spacing: 12) {
                 Picker("范围", selection: $range) {
                     ForEach(HistoryRange.allCases) { Text($0.title).tag($0) }
@@ -122,7 +139,7 @@ private struct HistoryRecordsView: View {
                 ContentUnavailableView("没有符合条件的本地记录", systemImage: "clock.badge.questionmark", description: Text("当前可浏览最近 30 天内已写入 Token 计数的会话记录。"))
                     .frame(maxWidth: .infinity, minHeight: 380)
             } else {
-                VStack(alignment: .leading, spacing: 18) {
+                LazyVStack(alignment: .leading, spacing: 18) {
                     ForEach(grouped, id: \.0) { day, dayRecords in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -229,7 +246,7 @@ private struct UsageTrendsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            PageHeader(title: "使用趋势", subtitle: "按会话记录的最后一条 Token 计数汇总。", store: store)
+            PageHeader(title: "使用趋势", subtitle: "按 Token 计数增量归属实际发生的日期和小时。", store: store)
             HStack {
                 Picker("粒度", selection: $granularity) {
                     ForEach(TrendGranularity.allCases) { Text($0.title).tag($0) }
@@ -314,7 +331,7 @@ private struct ModelEfficiencyView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            PageHeader(title: "模型与效率", subtitle: "请求次数和平均响应时长来自本地会话，不等同于服务端网络延迟。", store: store)
+            PageHeader(title: "模型与效率", subtitle: "有效轮次仅统计可配对的用户消息与最终回答；耗时为端到端时长。", store: store)
             if store.snapshot.topModels.isEmpty {
                 ContentUnavailableView("暂无模型样本", systemImage: "cpu")
                     .frame(maxWidth: .infinity, minHeight: 420)
@@ -333,8 +350,10 @@ private struct ModelEfficiencyView: View {
                                 ProgressView(value: Double(model.tokens), total: Double(max(1, total))).tint(DashboardPalette.blue)
                                 HStack {
                                     ModelMetric(label: "Token", value: UsageFormatters.tokens(model.tokens))
-                                    ModelMetric(label: "请求次数", value: "\(model.requests) 次")
-                                    ModelMetric(label: "平均响应", value: model.averageTurnSeconds.map { UsageFormatters.turnDuration(seconds: $0) } ?? "样本不足")
+                                    ModelMetric(label: "有效轮次", value: "\(model.requests) 次")
+                                    ModelMetric(label: "平均轮次耗时", value: model.averageTurnSeconds.map { UsageFormatters.turnDuration(seconds: $0) } ?? "样本不足")
+                                    ModelMetric(label: "缓存命中率", value: model.cacheHitRate.map(UsageFormatters.percentage) ?? "样本不足")
+                                        .help("缓存命中率 = cached_input_tokens / input_tokens")
                                 }
                             }
                         }
@@ -362,16 +381,15 @@ private struct ForecastRiskView: View {
     private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
     private var resetHours: Double? { rate.map { max(0, $0.resetsAt.timeIntervalSinceNow / 3_600) } }
     private var hourlyRate: Double? {
-        guard let rate, let resetHours else { return nil }
-        return RateHistory.weightedVelocity()?.percentPerHour
-            ?? rate.usedPercent / max(0.1, Double(rate.windowMinutes) / 60 - resetHours)
+        QuotaHealth.velocity(rate: rate, measured: RateHistory.weightedVelocity()?.percentPerHour)
     }
     private var remainingHours: Double? {
         guard let hourlyRate, hourlyRate > 0 else { return nil }
         return Double(remaining) / hourlyRate
     }
     private var willExhaust: Bool { (remainingHours ?? .infinity) < (resetHours ?? 0) }
-    private var color: Color { remaining < 20 ? .red : remaining < 50 ? DashboardPalette.orange : DashboardPalette.green }
+    private var health: QuotaHealth { .evaluate(rate: rate, percentPerHour: hourlyRate) }
+    private var color: Color { health.color }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -400,7 +418,7 @@ private struct ForecastRiskView: View {
                 DashboardCard {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("风险说明").font(.headline)
-                        RiskLine(icon: willExhaust ? "exclamationmark.triangle.fill" : "checkmark.shield.fill", color: willExhaust ? .orange : DashboardPalette.green, title: willExhaust ? "提前耗尽风险" : "额度状态健康", detail: willExhaust ? "按当前消耗速度，建议降低并发或等待额度重置。" : "按当前速度不会在下一次重置前耗尽。")
+                        RiskLine(icon: health.icon, color: health.color, title: health.title, detail: health.detail)
                         RiskLine(icon: "clock.arrow.circlepath", color: DashboardPalette.blue, title: "下次重置", detail: rate.resetsAt.formatted(.dateTime.year().month().day().hour().minute()))
                         RiskLine(icon: "chart.line.uptrend.xyaxis", color: .purple, title: "估算依据", detail: RateHistory.weightedVelocity().map { "已使用近 \($0.description) 小时的额度变化样本。" } ?? "暂无连续变化样本，已使用本周期平均速度。")
                     }
@@ -434,6 +452,10 @@ private struct PageHeader: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 30, weight: .bold))
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+                if let error = store.errorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                }
             }
             Spacer()
             Button { Task { await store.refresh(force: true) } } label: { Label("立即刷新", systemImage: "arrow.clockwise") }
@@ -454,6 +476,7 @@ private enum DashboardPalette {
 private struct DashboardSidebar: View {
     @Binding var selection: String
     let openSettings: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
     private let items: [(String, String)] = [
         ("健康报告", "house.fill"),
@@ -467,7 +490,7 @@ private struct DashboardSidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(spacing: 12) {
-                Image("CodexHealthMark")
+                Image(colorScheme == .dark ? "DarkAppIcon" : "LightAppIcon")
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
@@ -543,14 +566,10 @@ private struct DashboardContent: View {
     private var sparkRemaining: Int? {
         store.snapshot.sparkRate.map { max(0, 100 - Int($0.usedPercent.rounded())) }
     }
-    private var quotaColor: Color {
-        guard let remaining else { return DashboardPalette.blue }
-        return remaining < 20 ? .red : remaining < 50 ? DashboardPalette.orange : DashboardPalette.green
+    private var health: QuotaHealth {
+        .evaluate(rate: rate, percentPerHour: QuotaHealth.velocity(rate: rate, measured: RateHistory.weightedVelocity()?.percentPerHour))
     }
-    private var status: String {
-        guard let remaining else { return store.isRefreshing ? "读取中" : "等待新周期数据" }
-        return remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy"
-    }
+    private var quotaColor: Color { health.color }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -578,7 +597,7 @@ private struct DashboardContent: View {
                     remaining: remaining,
                     sparkRemaining: sparkRemaining,
                     sparkIsCached: store.snapshot.sparkRateIsCached,
-                    status: status,
+                    health: health,
                     color: quotaColor,
                     rate: rate
                 )
@@ -622,7 +641,7 @@ private struct HealthHero: View {
     let remaining: Int?
     let sparkRemaining: Int?
     let sparkIsCached: Bool
-    let status: String
+    let health: QuotaHealth
     let color: Color
     let rate: RateWindow?
     var body: some View {
@@ -651,9 +670,9 @@ private struct HealthHero: View {
                 }
                 Divider().overlay(.primary.opacity(0.14)).frame(height: 110)
                 VStack(alignment: .leading, spacing: 10) {
-                    Label(status, systemImage: "circle.fill")
+                    Label(health.title, systemImage: health.icon)
                         .font(.title2.weight(.bold)).foregroundStyle(color)
-                    Text(rate == nil ? "等待新周期数据" : "状态良好，当前使用速度可持续")
+                    Text(health.detail)
                         .font(.subheadline).foregroundStyle(.secondary)
                     if let rate {
                         VStack(alignment: .leading, spacing: 4) {
@@ -766,12 +785,13 @@ private struct RiskCard: View {
     }
 
     private var estimatedRemainingHours: Double? {
-        guard let rate, let resetHours, let remaining else { return nil }
-        let elapsedHours = max(0.1, Double(rate.windowMinutes) / 60 - resetHours)
-        let percentPerHour = RateHistory.weightedVelocity()?.percentPerHour
-            ?? rate.usedPercent / elapsedHours
-        guard percentPerHour > 0 else { return nil }
+        guard let rate, let remaining else { return nil }
+        guard let percentPerHour = QuotaHealth.velocity(rate: rate, measured: RateHistory.weightedVelocity()?.percentPerHour) else { return nil }
         return Double(remaining) / percentPerHour
+    }
+
+    private var health: QuotaHealth {
+        .evaluate(rate: rate, percentPerHour: QuotaHealth.velocity(rate: rate, measured: RateHistory.weightedVelocity()?.percentPerHour))
     }
 
     private var remainingTimeText: String? {
@@ -784,11 +804,11 @@ private struct RiskCard: View {
                 Text("预测与风险").font(.headline)
                 HStack {
                     Spacer()
-                    Image(systemName: remaining.map { $0 < 20 ? "exclamationmark.shield.fill" : "checkmark.shield.fill" } ?? "hourglass")
+                    Image(systemName: health.icon)
                         .font(.system(size: 42)).foregroundStyle(color)
                     Spacer()
                 }
-                Text(remaining.map { $0 < 20 ? "RISK" : "SAFE" } ?? "WAITING")
+                Text(health.title)
                     .font(.system(size: 28, weight: .bold)).foregroundStyle(color).frame(maxWidth: .infinity)
                 if let estimatedRemainingHours, let resetHours, let remainingTimeText {
                     VStack(spacing: 4) {
@@ -821,7 +841,7 @@ private struct ModelCard: View {
                 if models.isEmpty { Text("等待模型统计数据").foregroundStyle(.secondary) }
                 ForEach(models.prefix(3), id: \.name) { model in
                     VStack(alignment: .leading, spacing: 5) {
-                        HStack { Text(model.name).lineLimit(1); Spacer(); Text("\(model.requests) 次").foregroundStyle(.secondary) }
+                        HStack { Text(model.name).lineLimit(1); Spacer(); Text("\(model.requests) 个有效轮次").foregroundStyle(.secondary) }
                         ProgressView(value: Double(model.tokens), total: Double(max(1, weeklyTotal))).tint(DashboardPalette.green)
                         Text("\(UsageFormatters.tokens(model.tokens)) · \(model.averageTurnSeconds.map { "平均 \(UsageFormatters.turnDuration(seconds: $0))" } ?? "等待耗时")")
                             .font(.caption).foregroundStyle(.secondary)
@@ -838,6 +858,7 @@ private struct MetricsCard: View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 13) {
                 Text("关键指标").font(.headline)
+                ReplySpeedView(samples: snapshot.replySpeedSamples)
                 MetricRow("当前会话上下文", snapshot.contextWindow > 0 ? "\(UsageFormatters.tokens(snapshot.currentContextUsed)) / \(UsageFormatters.tokens(snapshot.contextWindow))" : "暂无", color)
                 MetricRow("会话记录", "\(snapshot.sessionCount) 个", DashboardPalette.blue)
                 MetricRow("输入 / 输出", "\(UsageFormatters.tokens(snapshot.today.input)) / \(UsageFormatters.tokens(snapshot.today.output))", .purple)
@@ -859,7 +880,7 @@ private struct ProjectCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("活跃项目").font(.headline)
                 if projects.isEmpty { Text("等待项目统计数据").foregroundStyle(.secondary) }
-                ForEach(projects.prefix(4), id: \.name) { item in
+                ForEach(projects.prefix(4), id: \.path) { item in
                     HStack(spacing: 8) {
                         Image(systemName: "folder.fill").foregroundStyle(DashboardPalette.green)
                         Text(item.name).lineLimit(1)
@@ -870,5 +891,23 @@ private struct ProjectCard: View {
                 }
             }
         }.frame(maxWidth: .infinity)
+    }
+}
+
+private extension QuotaHealth {
+    var color: Color {
+        switch self {
+        case .waiting, .insufficient: DashboardPalette.blue
+        case .critical: .red
+        case .watch: DashboardPalette.orange
+        case .healthy: DashboardPalette.green
+        }
+    }
+    var icon: String {
+        switch self {
+        case .waiting, .insufficient: "hourglass"
+        case .critical, .watch: "exclamationmark.shield.fill"
+        case .healthy: "checkmark.shield.fill"
+        }
     }
 }

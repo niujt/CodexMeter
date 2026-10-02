@@ -36,7 +36,7 @@ private struct UsageProvider: TimelineProvider {
             contextLimit: 258_400,
             ratePercent: 16,
             rateWindowMinutes: 10_080,
-            updatedAt: .now
+            updatedAt: .now, rateResetsAt: .now.addingTimeInterval(86_400)
         ))
     }
 
@@ -46,8 +46,13 @@ private struct UsageProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<UsageEntry>) -> Void) {
         let entry = UsageEntry(date: .now, usage: WidgetUsageCache.load())
-        let refresh = Calendar.current.date(byAdding: .minute, value: 30, to: .now) ?? .now.addingTimeInterval(1_800)
-        completion(Timeline(entries: [entry], policy: .after(refresh)))
+        // Include expiry entries so cached quota disappears even with the main app closed.
+        let nextCheck = Date.now.addingTimeInterval(1_800)
+        let deadlines = [entry.usage?.rateResetsAt, entry.usage?.updatedAt.addingTimeInterval(1_801)]
+            .compactMap { $0 }.filter { $0 > entry.date }
+        let dates = Array(Set(deadlines + [nextCheck])).sorted()
+        let entries = [entry] + dates.map { UsageEntry(date: $0, usage: entry.usage) }
+        completion(Timeline(entries: entries, policy: .after(nextCheck)))
     }
 }
 
@@ -81,16 +86,20 @@ private struct CodexMeterWidgetView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                     .font(.caption.weight(.semibold))
+                if usage.isStale(at: entry.date) {
+                    Text("数据可能已过期").font(.caption2).foregroundStyle(.orange)
+                }
                 Spacer()
                 Text(remainingText(usage))
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .minimumScaleFactor(0.65)
-                Text("7 天额度剩余")
+                Text(usage.currentRatePercent(at: entry.date) == nil ? "等待新周期数据" : "额度剩余")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if let percent = usage.ratePercent {
+                if let percent = usage.currentRatePercent(at: entry.date),
+                   let resetsAt = usage.rateResetsAt {
                     ProgressView(value: max(0, 100 - percent), total: 100)
-                    Text("今日 \(compact(usage.todayTokens)) Token")
+                    Text("本周期到期 \(resetsAt, format: .dateTime.month().day().hour().minute())")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -105,16 +114,19 @@ private struct CodexMeterWidgetView: View {
                     Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                         .font(.headline)
                     Spacer()
-                    Text(remainingText(usage))
+                    Text(usage.currentRatePercent(at: entry.date) == nil ? "额度待更新" : "剩余 \(remainingText(usage))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                }
+                if usage.isStale(at: entry.date) {
+                    Text("数据可能已过期 · 请打开主应用更新").font(.caption2).foregroundStyle(.orange)
                 }
                 HStack(spacing: 10) {
                     metric("今天", usage.todayTokens)
                     metric("近 7 天", usage.weekTokens)
                     metric("本月", usage.monthTokens)
                 }
-                if let percent = usage.ratePercent {
+                if let percent = usage.currentRatePercent(at: entry.date) {
                     HStack {
                         Text(usage.rateWindowMinutes == 10_080 ? "7 天额度" : "额度")
                         Spacer()
@@ -122,6 +134,11 @@ private struct CodexMeterWidgetView: View {
                     }
                     .font(.caption)
                     ProgressView(value: max(0, 100 - percent), total: 100)
+                    if let resetsAt = usage.rateResetsAt {
+                        Text("本周期到期 \(resetsAt, format: .dateTime.month().day().hour().minute())")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer(minLength: 0)
                 if usage.contextLimit > 0 {
@@ -157,7 +174,7 @@ private struct CodexMeterWidgetView: View {
     }
 
     private func remainingText(_ usage: WidgetUsageData) -> String {
-        guard let percent = usage.ratePercent else { return "--" }
+        guard let percent = usage.currentRatePercent(at: entry.date) else { return "--" }
         return "\(max(0, 100 - Int(percent.rounded())))%"
     }
 }

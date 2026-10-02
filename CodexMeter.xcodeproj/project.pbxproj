@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		03CDAFA5A0D64A3BB44D0021 /* CodexPermissionEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */; };
+		03CDAFA5A0D64A3BB44D0022 /* PermissionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0012 /* PermissionStore.swift */; };
+		03CDAFA5A0D64A3BB44D0023 /* PermissionHookInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0013 /* PermissionHookInstaller.swift */; };
+		03CDAFA5A0D64A3BB44D0024 /* PermissionAttentionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0014 /* PermissionAttentionService.swift */; };
+		03CDAFA5A0D64A3BB44D0025 /* PermissionAttentionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0015 /* PermissionAttentionView.swift */; };
 		1A011CF9C3543D1AA3561AE0 /* RateLimitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D16BAAF299E859892B138A /* RateLimitView.swift */; };
 		2B32E4686F7EA743978AD390 /* CodexFolderAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E69407D7632A4091F79FD5 /* CodexFolderAccess.swift */; };
 		38D055E160C4163D14A30C4F /* WidgetUsageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */; };
@@ -25,11 +30,14 @@
 		A6D17D0CE64A7642254FB7EC /* WidgetUsageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */; };
 		AA4DCBEF6B1127316E94106A /* CodexMeterWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40494190ED16302FF8C9FE4 /* CodexMeterWidget.swift */; };
 		B8507C2D8C2B1DADBFC0A849 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F9D9FD6DAC4F96A86D1453D /* Assets.xcassets */; };
+		B8507C2D8C2B1DADBFC0A850 /* CodexHealth.icon in Resources */ = {isa = PBXBuildFile; fileRef = 6F9D9FD6DAC4F96A86D1453E /* CodexHealth.icon */; };
 		BA8B85969E48E3F6C6CB0D86 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B6BB423F7D3A2569A4F3256 /* Cocoa.framework */; };
 		CAEA2FCFB2E53DE2B5CE22C9 /* UsagePopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBA2DCB237A29B20A1D0088 /* UsagePopoverView.swift */; };
 		D632DE1472DD6235CCFA0A74 /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C084753CF7975D037DA942A /* Formatters.swift */; };
 		DEDDFB8DD0A18B8D1E247911 /* RateHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEF9EFECE2A6BFEDBC8EE9C6 /* RateHistory.swift */; };
 		FEBADF776B5F64FA07883229 /* ProjectPathStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */; };
+		9C0DE100000000000000000A /* ResetHistoryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DE000000000000000000A /* ResetHistoryClient.swift */; };
+		9C0DE100000000000000000B /* ResetHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DE000000000000000000B /* ResetHistoryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -47,6 +55,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexPermissionEvent.swift; path = Models/CodexPermissionEvent.swift; sourceTree = "<group>"; };
+		03CDAFA5A0D64A3BB44D0012 /* PermissionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PermissionStore.swift; path = Stores/PermissionStore.swift; sourceTree = "<group>"; };
+		03CDAFA5A0D64A3BB44D0013 /* PermissionHookInstaller.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PermissionHookInstaller.swift; path = Services/PermissionHookInstaller.swift; sourceTree = "<group>"; };
+		03CDAFA5A0D64A3BB44D0014 /* PermissionAttentionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PermissionAttentionService.swift; path = Services/PermissionAttentionService.swift; sourceTree = "<group>"; };
+		03CDAFA5A0D64A3BB44D0015 /* PermissionAttentionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PermissionAttentionView.swift; path = Views/PermissionAttentionView.swift; sourceTree = "<group>"; };
 		09764D2144F99D08963848D1 /* UsageNotifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageNotifier.swift; path = Support/UsageNotifier.swift; sourceTree = "<group>"; };
 		09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DesktopWidgetController.swift; path = Services/DesktopWidgetController.swift; sourceTree = "<group>"; };
 		09E69407D7632A4091F79FD5 /* CodexFolderAccess.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexFolderAccess.swift; path = Services/CodexFolderAccess.swift; sourceTree = "<group>"; };
@@ -57,6 +70,7 @@
 		571075B30C712B7BBC5BFDBA /* CodexMeter.entitlements */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.entitlements; path = CodexMeter.entitlements; sourceTree = "<group>"; };
 		5C96BC0E83BEADE3C8EB613F /* ProjectsUsageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProjectsUsageView.swift; path = Views/ProjectsUsageView.swift; sourceTree = "<group>"; };
 		6F9D9FD6DAC4F96A86D1453D /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6F9D9FD6DAC4F96A86D1453E /* CodexHealth.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = CodexHealth.icon; sourceTree = "<group>"; };
 		82670BF12FC78B0C163EDCA9 /* UsageSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageSnapshot.swift; path = Models/UsageSnapshot.swift; sourceTree = "<group>"; };
 		88F62FBA68EF45CBCDA030EF /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = Views/SettingsView.swift; sourceTree = "<group>"; };
 		952959A3BCF91451169A380A /* DesktopWidgetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DesktopWidgetView.swift; path = Views/DesktopWidgetView.swift; sourceTree = "<group>"; };
@@ -73,6 +87,8 @@
 		F5CFCBAD6DC3C71D1A3144DA /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AnalyticsDashboardView.swift; path = Views/AnalyticsDashboardView.swift; sourceTree = "<group>"; };
 		F8060034B7326B85098D331C /* WidgetInfo.plist */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text.plist.xml; path = WidgetInfo.plist; sourceTree = "<group>"; };
 		FEBA2DCB237A29B20A1D0088 /* UsagePopoverView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsagePopoverView.swift; path = Views/UsagePopoverView.swift; sourceTree = "<group>"; };
+		9C0DE000000000000000000A /* ResetHistoryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResetHistoryClient.swift; path = Services/ResetHistoryClient.swift; sourceTree = "<group>"; };
+		9C0DE000000000000000000B /* ResetHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResetHistoryView.swift; path = Views/ResetHistoryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,12 +160,18 @@
 			isa = PBXGroup;
 			children = (
 				A1B961FB9311FE5B13659888 /* CodexMeterApp.swift */,
+				03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */,
 				82670BF12FC78B0C163EDCA9 /* UsageSnapshot.swift */,
+				03CDAFA5A0D64A3BB44D0013 /* PermissionHookInstaller.swift */,
+				03CDAFA5A0D64A3BB44D0014 /* PermissionAttentionService.swift */,
 				09E69407D7632A4091F79FD5 /* CodexFolderAccess.swift */,
+				9C0DE000000000000000000A /* ResetHistoryClient.swift */,
+				9C0DE000000000000000000B /* ResetHistoryView.swift */,
 				0D08383147571548BA77F3B4 /* CodexUsageReader.swift */,
 				09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */,
 				CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */,
 				A31FA0DE0369933150A7BFC4 /* UsageStore.swift */,
+				03CDAFA5A0D64A3BB44D0012 /* PermissionStore.swift */,
 				9C084753CF7975D037DA942A /* Formatters.swift */,
 				DEF9EFECE2A6BFEDBC8EE9C6 /* RateHistory.swift */,
 				09764D2144F99D08963848D1 /* UsageNotifier.swift */,
@@ -160,6 +182,7 @@
 				F1D16BAAF299E859892B138A /* RateLimitView.swift */,
 				88F62FBA68EF45CBCDA030EF /* SettingsView.swift */,
 				FEBA2DCB237A29B20A1D0088 /* UsagePopoverView.swift */,
+				03CDAFA5A0D64A3BB44D0015 /* PermissionAttentionView.swift */,
 			);
 			name = CodexMeter;
 			path = CodexMeter;
@@ -173,6 +196,7 @@
 				571075B30C712B7BBC5BFDBA /* CodexMeter.entitlements */,
 				CCC70382AB23D6AA70634006 /* CodexMeterWidget.entitlements */,
 				6F9D9FD6DAC4F96A86D1453D /* Assets.xcassets */,
+				6F9D9FD6DAC4F96A86D1453E /* CodexHealth.icon */,
 			);
 			name = Resources;
 			path = Resources;
@@ -268,6 +292,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B8507C2D8C2B1DADBFC0A849 /* Assets.xcassets in Resources */,
+				B8507C2D8C2B1DADBFC0A850 /* CodexHealth.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -279,12 +304,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				67296E405A4D62D6131B9677 /* CodexMeterApp.swift in Sources */,
+				03CDAFA5A0D64A3BB44D0021 /* CodexPermissionEvent.swift in Sources */,
 				7B9213CCE8549C58FC736BF7 /* UsageSnapshot.swift in Sources */,
+				03CDAFA5A0D64A3BB44D0023 /* PermissionHookInstaller.swift in Sources */,
+				03CDAFA5A0D64A3BB44D0024 /* PermissionAttentionService.swift in Sources */,
 				2B32E4686F7EA743978AD390 /* CodexFolderAccess.swift in Sources */,
+				9C0DE100000000000000000A /* ResetHistoryClient.swift in Sources */,
+				9C0DE100000000000000000B /* ResetHistoryView.swift in Sources */,
 				72C8AE23FD2E354DF0747D89 /* CodexUsageReader.swift in Sources */,
 				A1AF8676F4ED910B3A596482 /* DesktopWidgetController.swift in Sources */,
 				FEBADF776B5F64FA07883229 /* ProjectPathStore.swift in Sources */,
 				9250A303AE0DDCDBCD82C40C /* UsageStore.swift in Sources */,
+				03CDAFA5A0D64A3BB44D0022 /* PermissionStore.swift in Sources */,
 				D632DE1472DD6235CCFA0A74 /* Formatters.swift in Sources */,
 				DEDDFB8DD0A18B8D1E247911 /* RateHistory.swift in Sources */,
 				718A3C8A6AD03AAD2962F124 /* UsageNotifier.swift in Sources */,
@@ -295,6 +326,7 @@
 				1A011CF9C3543D1AA3561AE0 /* RateLimitView.swift in Sources */,
 				4802D9AD7D21F45991157B54 /* SettingsView.swift in Sources */,
 				CAEA2FCFB2E53DE2B5CE22C9 /* UsagePopoverView.swift in Sources */,
+				03CDAFA5A0D64A3BB44D0025 /* PermissionAttentionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -327,7 +359,7 @@
 		6C642810257DE3AD819E0F14 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = CodexHealth;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = Resources/CodexMeter.entitlements;
@@ -464,7 +496,7 @@
 		BFCEC68B9C5C442DB5D3561D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = CodexHealth;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = Resources/CodexMeter.entitlements;

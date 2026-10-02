@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UserNotifications
 
 enum RefreshPolicy {
     static let intervalKey = "codexMeter.refreshInterval"
@@ -63,6 +64,7 @@ struct CodexMeterApp: App {
 
     init() {
         RefreshPolicy.configure()
+        PermissionPreferences.configure()
     }
 
     var body: some Scene {
@@ -96,18 +98,22 @@ extension UsageSnapshot {
 }
 
 @MainActor
-private final class MenuBarController: NSObject, NSApplicationDelegate {
+private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private let fallbackStore = UsageStore()
-    private lazy var popoverController = NSHostingController(rootView: UsagePopoverView(store: fallbackStore, compact: true))
+    private let permissionStore = PermissionStore.shared
+    private lazy var popoverController = NSHostingController(
+        rootView: UsagePopoverView(store: fallbackStore, permissionStore: permissionStore, compact: true)
+    )
     private weak var store: UsageStore?
     private var refreshTimer: Timer?
     private var usageRefreshObserver: NSObjectProtocol?
     private var defaultsObserver: NSObjectProtocol?
     private var dashboardWillOpenObserver: NSObjectProtocol?
+    private var permissionObserver: NSObjectProtocol?
     private var appearanceObservation: NSKeyValueObservation?
-    private var displayedTitle = "—"
+    private var usageTitle = "—"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Start as a menu-bar accessory. The dashboard promotes the app to a
@@ -124,7 +130,16 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         applyStatusAppearance()
         popover.behavior = .transient
         popover.contentViewController = popoverController
-        popover.contentSize = NSSize(width: 392, height: 292)
+        popover.contentSize = NSSize(width: 392, height: 540)
+        UNUserNotificationCenter.current().delegate = self
+        PermissionAttentionService.shared.start()
+        permissionObserver = NotificationCenter.default.addObserver(
+            forName: .codexPermissionStoreDidChange,
+            object: permissionStore,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.applyStatusAppearance() }
+        }
         dashboardWillOpenObserver = NotificationCenter.default.addObserver(
             forName: .codexHealthDashboardWillOpen,
             object: nil,
@@ -143,7 +158,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     func configure(with store: UsageStore) {
         guard self.store !== store else { return }
         self.store = store
-        popoverController.rootView = UsagePopoverView(store: store, compact: true)
+        popoverController.rootView = UsagePopoverView(store: store, permissionStore: permissionStore, compact: true)
         popover.contentViewController = popoverController
         update(snapshot: store.snapshot)
         if let usageRefreshObserver { NotificationCenter.default.removeObserver(usageRefreshObserver) }
@@ -165,7 +180,10 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
                 object: UserDefaults.standard,
                 queue: .main
             ) { [weak self] _ in
-                Task { @MainActor [weak self] in self?.scheduleRefreshTimer() }
+                Task { @MainActor [weak self] in
+                    self?.scheduleRefreshTimer()
+                    self?.applyStatusAppearance()
+                }
             }
         }
     }
@@ -207,12 +225,12 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
     private func update(snapshot: UsageSnapshot) {
         guard statusItem.button != nil else { return }
         guard let rate = snapshot.mainMenuRate ?? snapshot.sevenDayRate else {
-            displayedTitle = "—"
+            usageTitle = "—"
             applyStatusAppearance()
             return
         }
         let remaining = snapshot.remainingPercent(for: rate)
-        displayedTitle = "\(remaining)%"
+        usageTitle = "\(remaining)%"
         applyStatusAppearance()
     }
 
@@ -221,19 +239,24 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         // Draw the percentage into the same non-template image as the mark.
         // NSStatusBarButton can otherwise re-tint attributed titles according
         // to the menu bar appearance even when a white foreground is supplied.
-        button.image = Self.menuBarMark(title: displayedTitle)
+        let showBadge = UserDefaults.standard.bool(forKey: PermissionPreferences.badgeEnabledKey)
+        let count = showBadge ? permissionStore.newCount : 0
+        let title = count > 0 ? "\(usageTitle) · ⚠ \(count)" : usageTitle
+        button.image = Self.menuBarMark(title: title)
         button.title = ""
         button.contentTintColor = NSColor.white
     }
 
     private static func menuBarMark(title: String) -> NSImage {
+        let markWidth: CGFloat = 19
+        let markTitleSpacing: CGFloat = 4
         let font = NSFont.systemFont(ofSize: 13, weight: .regular)
         let titleAttributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: NSColor.white
         ]
         let titleSize = (title as NSString).size(withAttributes: titleAttributes)
-        let size = NSSize(width: 19 + 7 + titleSize.width, height: 19)
+        let size = NSSize(width: markWidth + markTitleSpacing + titleSize.width, height: 19)
         let image = NSImage(size: size, flipped: false) { _ in
             let ring = NSBezierPath()
             ring.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1, startAngle: 42, endAngle: 318, clockwise: false)
@@ -251,7 +274,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
 
             let titleY = (size.height - titleSize.height) / 2
             (title as NSString).draw(
-                at: NSPoint(x: 26, y: titleY),
+                at: NSPoint(x: markWidth + markTitleSpacing, y: titleY),
                 withAttributes: titleAttributes
             )
             return true
@@ -260,5 +283,23 @@ private final class MenuBarController: NSObject, NSApplicationDelegate {
         // white strokes with the menu bar's automatic template tint.
         image.isTemplate = false
         return image
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard response.notification.request.content.userInfo["kind"] as? String == "codex.permission.request" else { return }
+        let eventID = response.notification.request.content.userInfo["eventId"] as? String
+        await MainActor.run {
+            PermissionAttentionService.shared.openCodex(eventID: eventID)
+        }
     }
 }

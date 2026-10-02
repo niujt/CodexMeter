@@ -8,28 +8,43 @@ struct WidgetUsageData: Codable, Sendable, Equatable {
     let contextLimit: Int
     let ratePercent: Double?
     let rateWindowMinutes: Int?
+    /// Last successful source check, distinct from the latest source event timestamp.
     let updatedAt: Date
+    var sampledAt: Date? = nil
+    var rateResetsAt: Date? = nil
+    var sourceIncomplete: Bool? = nil
 
+    func isStale(at now: Date) -> Bool {
+        now.timeIntervalSince(updatedAt) > 30 * 60
+    }
+
+    func currentRatePercent(at now: Date) -> Double? {
+        guard let rateResetsAt, rateResetsAt > now else { return nil }
+        return ratePercent
+    }
 }
 
 enum WidgetUsageCache {
-    static func save(_ usage: WidgetUsageData) {
-        guard let url = cacheURL(),
-              let data = try? JSONEncoder().encode(usage) else { return }
-        try? data.write(to: url, options: .atomic)
-    }
-
     @discardableResult
-    static func saveIfChanged(_ usage: WidgetUsageData) -> Bool {
-        if let existing = load(), sameDisplayedContent(existing, usage) {
-            return false
+    static func save(_ usage: WidgetUsageData, to destination: URL? = nil) throws -> Bool {
+        guard let url = destination ?? cacheURL() else {
+            throw CocoaError(.fileNoSuchFile)
         }
-        save(usage)
+        try JSONEncoder().encode(usage).write(to: url, options: .atomic)
         return true
     }
 
-    static func load() -> WidgetUsageData? {
-        guard let url = cacheURL(),
+    @discardableResult
+    static func saveIfChanged(_ usage: WidgetUsageData, to destination: URL? = nil) throws -> Bool {
+        if let existing = load(from: destination), sameDisplayedContent(existing, usage),
+           usage.updatedAt.timeIntervalSince(existing.updatedAt) < 15 * 60 {
+            return false
+        }
+        return try save(usage, to: destination)
+    }
+
+    static func load(from source: URL? = nil) -> WidgetUsageData? {
+        guard let url = source ?? cacheURL(),
               let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(WidgetUsageData.self, from: data)
     }
@@ -50,5 +65,8 @@ enum WidgetUsageCache {
             && lhs.contextLimit == rhs.contextLimit
             && lhs.ratePercent == rhs.ratePercent
             && lhs.rateWindowMinutes == rhs.rateWindowMinutes
+            && lhs.sampledAt == rhs.sampledAt
+            && lhs.rateResetsAt == rhs.rateResetsAt
+            && lhs.sourceIncomplete == rhs.sourceIncomplete
     }
 }

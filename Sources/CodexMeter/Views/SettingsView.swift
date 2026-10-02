@@ -64,6 +64,7 @@ struct SettingsView: View {
                     Text("同时会在预测到额度可能于重置前耗尽时提示。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                PermissionSettingsSection()
             }
             .formStyle(.grouped)
             .tabItem { Label("提醒", systemImage: "bell.badge") }
@@ -71,7 +72,7 @@ struct SettingsView: View {
             VStack(spacing: 10) {
                 Image("CodexHealthMark").resizable().scaledToFit().frame(width: 64, height: 64)
                 Text("Codex Health").font(.title2.weight(.bold))
-                Text("v1.0.5 · 本地优先的 Codex 用量健康中心")
+                Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · 本地优先的 Codex 用量健康中心")
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

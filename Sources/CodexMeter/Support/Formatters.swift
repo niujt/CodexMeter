@@ -19,6 +19,11 @@ enum UsageFormatters {
         }
     }
 
+    static func percentage(_ ratio: Double) -> String {
+        let percent = min(1, max(0, ratio)) * 100
+        return "\(compactTokens.string(from: NSNumber(value: percent)) ?? "0")%"
+    }
+
     static func countdown(to date: Date, now: Date = .now) -> String {
         let seconds = max(0, Int(date.timeIntervalSince(now)))
         let hours = seconds / 3_600
@@ -42,5 +47,9 @@ enum UsageFormatters {
             return "\(Int((seconds / 60).rounded()))分"
         }
         return "\(max(1, Int(seconds.rounded())))秒"
+    }
+
+    static func replySpeed(_ value: Double) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(1)))) tokens/s"
     }
 }

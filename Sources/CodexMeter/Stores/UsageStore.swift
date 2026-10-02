@@ -12,6 +12,13 @@ final class UsageStore {
     private(set) var snapshot = UsageSnapshot.empty
     private(set) var isRefreshing = false
     private(set) var errorMessage: String?
+    private(set) var processedFiles = 0
+    private(set) var totalFiles = 0
+    private var hasCompleteSnapshot = false
+
+    var loadingMessage: String {
+        totalFiles == 0 ? "正在查找用量文件…" : "正在读取用量：\(processedFiles) / \(totalFiles) 个文件"
+    }
     private let reader = CodexUsageReader()
     @ObservationIgnored private let folderAccess = CodexFolderAccess()
 
@@ -26,12 +33,20 @@ final class UsageStore {
     func refresh(force: Bool = false) async {
         guard !isRefreshing else { return }
         isRefreshing = true
+        processedFiles = 0
+        totalFiles = 0
+        let previous = snapshot
+        let showsPartialResults = !hasCompleteSnapshot
         defer { isRefreshing = false }
 
         do {
-            var loaded = try await reader.load(codexHome: folderAccess.selectedURL, force: force)
+            var loaded = try await reader.load(codexHome: folderAccess.selectedURL, force: force) { [weak self] partial, completed, total in
+                await self?.receiveProgress(partial, completed: completed, total: total, showPartial: showsPartialResults)
+            }
+            hasCompleteSnapshot = true
+            processedFiles = loaded.fileCount
             QuotaRateCache.restoreMissing(into: &loaded)
-            snapshot = loaded
+            if snapshot != loaded { snapshot = loaded }
             QuotaRateCache.save(snapshot)
             NotificationCenter.default.post(name: .codexHealthUsageDidRefresh, object: self)
             if let rate = snapshot.sevenDayRate { RateHistory.append(rate.usedPercent); UsageNotifier.evaluate(rate) }
@@ -43,14 +58,32 @@ final class UsageStore {
                 contextLimit: snapshot.contextWindow,
                 ratePercent: snapshot.sevenDayRate?.usedPercent,
                 rateWindowMinutes: snapshot.sevenDayRate?.windowMinutes,
-                updatedAt: .now
+                updatedAt: .now,
+                sampledAt: snapshot.lastUpdated,
+                rateResetsAt: snapshot.sevenDayRate?.resetsAt,
+                sourceIncomplete: snapshot.readWarning != nil
             )
-            if WidgetUsageCache.saveIfChanged(widgetUsage) {
-                WidgetCenter.shared.reloadAllTimelines()
+            do {
+                if try WidgetUsageCache.saveIfChanged(widgetUsage) {
+                    WidgetCenter.shared.reloadTimelines(ofKind: "CodexMeterWidgetV4")
+                }
+                errorMessage = snapshot.readWarning
+            } catch {
+                errorMessage = [snapshot.readWarning, "小组件缓存写入失败：\(error.localizedDescription)"].compactMap { $0 }.joined(separator: "\n")
             }
-            errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            snapshot = previous
+            errorMessage = "读取失败，已保留上次成功结果：\(error.localizedDescription)"
+        }
+    }
+
+    private func receiveProgress(_ partial: UsageSnapshot, completed: Int, total: Int, showPartial: Bool) {
+        processedFiles = completed
+        totalFiles = total
+        if showPartial, completed > 0 {
+            var partial = partial
+            QuotaRateCache.restoreMissing(into: &partial)
+            snapshot = partial
         }
     }
 
@@ -106,7 +139,7 @@ enum QuotaRateCache {
             payload.spark = CachedQuotaRate(rate, sampledAt: snapshot.lastUpdated ?? now)
         }
         guard let data = try? JSONEncoder().encode(payload) else { return }
-        defaults.set(data, forKey: key)
+        if defaults.data(forKey: key) != data { defaults.set(data, forKey: key) }
     }
 
     static func restore(into snapshot: inout UsageSnapshot, defaults: UserDefaults = .standard, now: Date = .now) {

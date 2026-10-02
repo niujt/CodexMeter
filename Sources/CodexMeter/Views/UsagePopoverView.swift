@@ -2,6 +2,7 @@ import SwiftUI
 
 struct UsagePopoverView: View {
     let store: UsageStore
+    let permissionStore: PermissionStore
     let compact: Bool
     @Environment(\.openWindow) private var openWindow
     @State private var projectRange = 1
@@ -11,9 +12,16 @@ struct UsagePopoverView: View {
     var body: some View {
         Group {
             if compact {
-                HealthMenuPopover(store: store)
+                HealthMenuPopover(store: store, permissionStore: permissionStore)
             } else {
                 detailedContent
+            }
+        }
+        .safeAreaInset(edge: .top) {
+            if store.isRefreshing {
+                ProgressView(store.loadingMessage)
+                    .controlSize(.small)
+                    .padding(10)
             }
         }
         .task {
@@ -62,6 +70,8 @@ struct UsagePopoverView: View {
                 UsageCard(title: "近 7 天", value: store.snapshot.lastSevenDays.total)
                 UsageCard(title: "本月", value: store.snapshot.thisMonth.total)
             }}
+
+            ReplySpeedView(samples: store.snapshot.replySpeedSamples)
 
             if !compact, store.snapshot.contextWindow > 0 {
                 Divider()
@@ -204,6 +214,7 @@ struct UsagePopoverView: View {
 
 private struct HealthMenuPopover: View {
     let store: UsageStore
+    let permissionStore: PermissionStore
     @Environment(\.openWindow) private var openWindow
     @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
@@ -268,6 +279,10 @@ private struct HealthMenuPopover: View {
             }
 
             Divider()
+            ReplySpeedView(samples: store.snapshot.replySpeedSamples)
+            Divider()
+            PermissionCenterView(store: permissionStore, maximumItems: 3)
+            Divider()
             MenuRow(icon: "arrow.up.forward.app", title: "打开 Codex Health", shortcut: "⌘O") {
                 openDashboard()
             }
@@ -299,6 +314,31 @@ private struct HealthMenuPopover: View {
     private func openDashboard() {
         NotificationCenter.default.post(name: .codexHealthDashboardWillOpen, object: nil)
         openWindow(id: "dashboard")
+    }
+}
+
+struct ReplySpeedView: View {
+    let samples: [ReplySpeedSample]
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let speed = RecentReplySpeed.summarize(samples, now: context.date)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("近 15 分钟平均回复速度").font(.caption).foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(speed.map { UsageFormatters.replySpeed($0.tokensPerSecond) } ?? "暂无样本")
+                        .font(.callout.weight(.semibold)).monospacedDigit()
+                    Spacer(minLength: 4)
+                    if let speed {
+                        Text("\(speed.sampleCount) 个有效轮次")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                Text("含思考、工具执行与等待")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            .help("按近 15 分钟内完成的有效轮次计算：输出 token 总数 ÷ 轮次总耗时。空闲间隔不计入；缺少用量或完成标记的轮次不计入。")
+        }
     }
 }
 
