@@ -1,7 +1,8 @@
 import Foundation
+import CryptoKit
 
 actor CodexUsageReader {
-    private struct FileFingerprint: Equatable {
+    private struct FileFingerprint: Equatable, Codable {
         let path: String
         let modifiedAt: Date
         let size: Int
@@ -9,13 +10,25 @@ actor CodexUsageReader {
 
     private let fileManager: FileManager
     private let calendar: Calendar
-    private struct CachedFile {
+    private struct CachedFile: Codable {
         let fingerprint: FileFingerprint
         let summary: SessionSummary
     }
     private var fileCache: [String: CachedFile] = [:]
     private var cacheRoot: String?
+    private var cacheNeedsPersistence = false
+    private(set) var cacheWarning: String?
+    private let cacheDirectory: URL?
+    private struct DiskCache: Codable {
+        let version: Int
+        let root: String
+        let calendarID: String
+        let timeZoneID: String
+        let files: [String: CachedFile]
+    }
     private(set) var parsedFileCount = 0
+    private(set) var reusedFileCount = 0
+    private(set) var enumeratedEntryCount = 0
     private let timestampFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -23,25 +36,75 @@ actor CodexUsageReader {
     }()
     private let wholeSecondFormatter = ISO8601DateFormatter()
 
-    init(fileManager: FileManager = .default, calendar: Calendar = .current) {
+    init(fileManager: FileManager = .default, calendar: Calendar = .current, cacheDirectory: URL? = nil) {
         self.fileManager = fileManager
         self.calendar = calendar
+        self.cacheDirectory = cacheDirectory
+    }
+
+    static func defaultCacheDirectory() -> URL? {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("CodexHealth/usage-summaries-v1", isDirectory: true)
+    }
+
+    private func cacheURL(for root: String) -> URL? {
+        let key = SHA256.hash(data: Data(root.utf8)).map { String(format: "%02x", $0) }.joined()
+        return cacheDirectory?.appendingPathComponent(key + ".plist")
+    }
+
+    private func restoreCache(for root: String) -> [String: CachedFile] {
+        guard let url = cacheURL(for: root),
+              let data = try? Data(contentsOf: url),
+              let cache = try? PropertyListDecoder().decode(DiskCache.self, from: data),
+              cache.version == 1, cache.root == root,
+              cache.calendarID == String(describing: calendar.identifier),
+              cache.timeZoneID == calendar.timeZone.identifier else { return [:] }
+        return cache.files
+    }
+
+    private func persistCache(for root: String) {
+        guard let url = cacheURL(for: root) else { return }
+        // Cache failures must never prevent fresh usage from being displayed.
+        do {
+            try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let encoder = PropertyListEncoder()
+            encoder.outputFormat = .binary
+            let payload = DiskCache(version: 1, root: root,
+                                    calendarID: String(describing: calendar.identifier),
+                                    timeZoneID: calendar.timeZone.identifier, files: fileCache)
+            try encoder.encode(payload).write(to: url, options: .atomic)
+            cacheNeedsPersistence = false
+            cacheWarning = nil
+        } catch {
+            cacheNeedsPersistence = true
+            cacheWarning = "统计缓存保存失败，下次启动可能需要重新读取：\(error.localizedDescription)"
+        }
     }
 
     func load(now: Date = .now, codexHome: URL? = nil, force: Bool = false,
               onProgress: (@Sendable (UsageSnapshot, Int, Int) async -> Void)? = nil) async throws -> UsageSnapshot {
+        try await loadWithActivity(now: now, codexHome: codexHome, force: force, onActivity: nil, onProgress: onProgress)
+    }
+
+    func loadWithActivity(now: Date = .now, codexHome: URL? = nil, force: Bool = false,
+                          onActivity: (@Sendable (Int, Int) async -> Void)?,
+                          onProgress: (@Sendable (UsageSnapshot, Int, Int) async -> Void)? = nil) async throws -> UsageSnapshot {
         let root = codexHome ?? resolvedCodexHome()
         // When the user selects .codex via the native folder picker, macOS
         // grants scope to that selected root. Enumerating from the root is
         // more reliable than starting a new traversal at a child directory.
         let files = try jsonlFiles(in: root)
         if cacheRoot != root.path {
-            fileCache = [:]
+            fileCache = restoreCache(for: root.path)
             cacheRoot = root.path
+            cacheNeedsPersistence = false
+            cacheWarning = nil
         }
         let paths = Set(files.map(\.path))
+        var cacheChanged = fileCache.keys.contains { !paths.contains($0) }
         fileCache = fileCache.filter { paths.contains($0.key) }
         parsedFileCount = 0
+        reusedFileCount = 0
         let startOfToday = calendar.startOfDay(for: now)
 
         var snapshot = UsageSnapshot.empty
@@ -121,6 +184,7 @@ actor CodexUsageReader {
         for (index, file) in files.enumerated() {
             try Task.checkCancellation()
             if let onProgress, index <= 1 || Date.now.timeIntervalSince(lastPublished) >= 0.3 {
+                await onActivity?(parsedFileCount, reusedFileCount)
                 await onProgress(finalizedSnapshot(), index, files.count)
                 lastPublished = .now
             }
@@ -129,9 +193,12 @@ actor CodexUsageReader {
                 let fingerprint = try fileFingerprint(for: file)
                 if !force, let cached = fileCache[file.path], cached.fingerprint == fingerprint {
                     summary = cached.summary
+                    reusedFileCount += 1
                 } else {
-                    let parsed = try parseSession(file, speedWindowStart: now.addingTimeInterval(-RecentReplySpeed.windowSeconds))
                     parsedFileCount += 1
+                    await onActivity?(parsedFileCount, reusedFileCount)
+                    let parsed = try parseSession(file, speedWindowStart: now.addingTimeInterval(-RecentReplySpeed.windowSeconds))
+                    cacheChanged = true
                     // Do not cache a moving target; retry it on the next refresh.
                     if try fileFingerprint(for: file) == fingerprint {
                         fileCache[file.path] = CachedFile(fingerprint: fingerprint, summary: parsed)
@@ -144,6 +211,7 @@ actor CodexUsageReader {
                 failedFiles += 1
                 guard let cached = fileCache[file.path] else { continue }
                 summary = cached.summary
+                reusedFileCount += 1
             }
             malformedLines += summary.malformedLines
             guard let event = summary.latestEvent else { continue }
@@ -247,6 +315,9 @@ actor CodexUsageReader {
             snapshot.readWarning = "部分数据不完整：\(failedFiles) 个文件读取失败，\(malformedLines) 条记录无法解析；读取失败的文件优先沿用缓存。"
         }
 
+        await onActivity?(parsedFileCount, reusedFileCount)
+        await onProgress?(finalizedSnapshot(), files.count, files.count)
+        if cacheChanged || cacheNeedsPersistence { persistCache(for: root.path) }
         return finalizedSnapshot()
     }
 
@@ -271,6 +342,7 @@ actor CodexUsageReader {
     }
 
     private func jsonlFiles(in directory: URL) throws -> [URL] {
+        enumeratedEntryCount = 0
         let values = try directory.resourceValues(forKeys: [.isDirectoryKey])
         guard values.isDirectory == true else {
             throw UsageReadError.unavailable("所选路径不是目录。")
@@ -278,13 +350,28 @@ actor CodexUsageReader {
         var traversalError: Error?
         guard let enumerator = fileManager.enumerator(
             at: directory,
-            includingPropertiesForKeys: [.isRegularFileKey, .contentModificationDateKey, .fileSizeKey],
+            includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .contentModificationDateKey, .fileSizeKey],
             options: [.skipsHiddenFiles],
             errorHandler: { _, error in traversalError = error; return false }
         ) else { throw UsageReadError.unavailable("无法访问数据目录，请重新授权。") }
+        let sessionDirectories = Set(["sessions", "archived_sessions"])
+        let isCodexRoot = directory.lastPathComponent == ".codex" || sessionDirectories.contains {
+            fileManager.fileExists(atPath: directory.appendingPathComponent($0).path)
+        }
+        let rootPrefix = directory.standardizedFileURL.path + "/"
         var files: [URL] = []
-        for case let url as URL in enumerator where url.pathExtension == "jsonl" {
-            if try url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true { files.append(url) }
+        for case let url as URL in enumerator {
+            enumeratedEntryCount += 1
+            let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey])
+            if isCodexRoot {
+                let relative = String(url.standardizedFileURL.path.dropFirst(rootPrefix.count))
+                let firstComponent = relative.split(separator: "/").first.map(String.init) ?? ""
+                if !sessionDirectories.contains(firstComponent) {
+                    if values.isDirectory == true { enumerator.skipDescendants() }
+                    continue
+                }
+            }
+            if url.pathExtension == "jsonl", values.isRegularFile == true { files.append(url) }
         }
         if let traversalError { throw traversalError }
         return files.sorted {
@@ -398,13 +485,13 @@ actor CodexUsageReader {
             if let window = [event.primaryRate, event.secondaryRate].compactMap({ $0 }).first(where: { $0.windowMinutes == 10_080 }) {
                 let quotaKey = QuotaSampleKey(model: summary.model, limitID: event.rateLimitID, resetsAt: window.resetsAt)
                 if summary.quotaSamples[quotaKey].map({ $0.event.timestamp <= date }) ?? true {
-                    summary.quotaSamples[quotaKey] = (event, summary.model)
+                    summary.quotaSamples[quotaKey] = QuotaSample(event: event, model: summary.model)
                 }
             }
         }
         if type == "response_item", payloadType == "message" {
             if payload["role"] as? String == "user" {
-                summary.pendingTurn = (date, summary.model)
+                summary.pendingTurn = PendingTurn(date: date, model: summary.model)
                 if summary.pendingReply?.startedByTaskEvent != true || summary.pendingReply?.completedAt != nil {
                     startReply(at: date, taskEvent: false, summary: &summary)
                 }
@@ -468,7 +555,7 @@ actor CodexUsageReader {
     }
 }
 
-private struct TokenEvent {
+private struct TokenEvent: Codable {
     let timestamp: Date
     let total: TokenUsage
     let currentContextUsed: Int
@@ -552,12 +639,12 @@ private struct ModelAccumulator {
     }
 }
 
-private struct UsageBucketKey: Hashable {
+private struct UsageBucketKey: Hashable, Codable {
     let hour: Date
     let model: String
 }
 
-private struct UsageBucket {
+private struct UsageBucket: Codable {
     var usage = TokenUsage()
     var cacheInput = 0
     var cachedInput = 0
@@ -566,13 +653,23 @@ private struct UsageBucket {
     var lastActive = Date.distantPast
 }
 
-private struct QuotaSampleKey: Hashable {
+private struct QuotaSampleKey: Hashable, Codable {
     let model: String
     let limitID: String?
     let resetsAt: Date
 }
 
-private struct SessionSummary {
+private struct QuotaSample: Codable {
+    let event: TokenEvent
+    let model: String
+}
+
+private struct PendingTurn: Codable {
+    let date: Date
+    let model: String
+}
+
+private struct SessionSummary: Codable {
     var project = ""
     var model = "其他"
     var previousUsage: TokenUsage?
@@ -582,8 +679,8 @@ private struct SessionSummary {
     var preferredRateEvent: TokenEvent?
     var total = TokenUsage()
     var buckets: [UsageBucketKey: UsageBucket] = [:]
-    var quotaSamples: [QuotaSampleKey: (event: TokenEvent, model: String)] = [:]
-    var pendingTurn: (date: Date, model: String)?
+    var quotaSamples: [QuotaSampleKey: QuotaSample] = [:]
+    var pendingTurn: PendingTurn?
     var pendingReply: PendingReply?
     var replySpeedSamples: [ReplySpeedSample] = []
     var replySpeedStart: Date
@@ -591,7 +688,7 @@ private struct SessionSummary {
     var malformedLines = 0
 }
 
-private struct PendingReply {
+private struct PendingReply: Codable {
     let startedAt: Date
     let startedByTaskEvent: Bool
     var completedAt: Date?

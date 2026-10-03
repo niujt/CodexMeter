@@ -22,6 +22,20 @@ enum RefreshPolicy {
         let configured = defaults.object(forKey: intervalKey) as? Double ?? lowPowerDefault
         return max(lowPowerDefault, configured)
     }
+
+    static func energyInterval(configured: TimeInterval, foreground: Bool, lowPower: Bool,
+                               thermalState: ProcessInfo.ThermalState) -> TimeInterval {
+        var result = max(lowPowerDefault, configured)
+        if !foreground { result = max(result, 900) }
+        if lowPower { result = max(result, 1_800) }
+        switch thermalState {
+        case .nominal: break
+        case .fair: result = max(result, 900)
+        case .serious, .critical: result = max(result, 3_600)
+        @unknown default: result = max(result, 1_800)
+        }
+        return result
+    }
 }
 
 enum AppAppearance: String, CaseIterable, Identifiable {
@@ -59,7 +73,7 @@ extension Notification.Name {
 
 @main
 struct CodexMeterApp: App {
-    @State private var store = UsageStore()
+    @State private var store = UsageStore.shared
     @NSApplicationDelegateAdaptor(MenuBarController.self) private var menuBar
 
     init() {
@@ -70,12 +84,12 @@ struct CodexMeterApp: App {
     var body: some Scene {
         WindowGroup("Codex Health", id: "dashboard") {
             AnalyticsDashboardView(store: store)
-                .frame(minWidth: 1_180, minHeight: 760)
+                .frame(minWidth: 980, minHeight: 640)
                 .task { menuBar.configure(with: store) }
                 .onAppear { menuBar.dashboardDidAppear() }
         }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1_300, height: 860)
+        .windowToolbarStyle(.unified)
+        .defaultSize(width: 1_080, height: 740)
         .defaultLaunchBehavior(.suppressed)
 
         Settings {
@@ -98,22 +112,30 @@ extension UsageSnapshot {
 }
 
 @MainActor
-private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNUserNotificationCenterDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
-    private let fallbackStore = UsageStore()
+    private let sharedStore = UsageStore.shared
     private let permissionStore = PermissionStore.shared
     private lazy var popoverController = NSHostingController(
-        rootView: UsagePopoverView(store: fallbackStore, permissionStore: permissionStore, compact: true)
+        rootView: UsagePopoverView(store: sharedStore, permissionStore: permissionStore, compact: true, isVisible: false)
     )
     private weak var store: UsageStore?
     private var refreshTimer: Timer?
+    private var backgroundRefresh: NSBackgroundActivityScheduler?
+    private var scheduledRefreshInterval: TimeInterval?
+    private var scheduledInBackground: Bool?
+    private var refreshGeneration = UUID()
+    private var energyObservers: [NSObjectProtocol] = []
+    private var workspaceObservers: [NSObjectProtocol] = []
+    private var isSleeping = false
     private var usageRefreshObserver: NSObjectProtocol?
     private var defaultsObserver: NSObjectProtocol?
     private var dashboardWillOpenObserver: NSObjectProtocol?
     private var permissionObserver: NSObjectProtocol?
     private var appearanceObservation: NSKeyValueObservation?
     private var usageTitle = "—"
+    private var renderedStatusTitle: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Start as a menu-bar accessory. The dashboard promotes the app to a
@@ -129,8 +151,10 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNo
         }
         applyStatusAppearance()
         popover.behavior = .transient
+        popover.delegate = self
         popover.contentViewController = popoverController
-        popover.contentSize = NSSize(width: 392, height: 540)
+        popoverController.sizingOptions = [.preferredContentSize]
+        popover.contentSize = NSSize(width: 320, height: 340)
         UNUserNotificationCenter.current().delegate = self
         PermissionAttentionService.shared.start()
         permissionObserver = NotificationCenter.default.addObserver(
@@ -147,7 +171,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNo
         ) { [weak self] _ in
             Task { @MainActor [weak self] in self?.dashboardDidAppear() }
         }
-        configure(with: fallbackStore)
+        configure(with: sharedStore)
     }
 
     func dashboardDidAppear() {
@@ -158,7 +182,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNo
     func configure(with store: UsageStore) {
         guard self.store !== store else { return }
         self.store = store
-        popoverController.rootView = UsagePopoverView(store: store, permissionStore: permissionStore, compact: true)
+        popoverController.rootView = UsagePopoverView(store: store, permissionStore: permissionStore, compact: true, isVisible: popover.isShown)
         popover.contentViewController = popoverController
         update(snapshot: store.snapshot)
         if let usageRefreshObserver { NotificationCenter.default.removeObserver(usageRefreshObserver) }
@@ -174,6 +198,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNo
         }
         refreshStatus()
         scheduleRefreshTimer()
+        observeEnergyState()
         if defaultsObserver == nil {
             defaultsObserver = NotificationCenter.default.addObserver(
                 forName: UserDefaults.didChangeNotification,
@@ -189,14 +214,91 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNo
     }
 
     private func scheduleRefreshTimer() {
+        let background = !hasVisibleInterface
+        let interval = RefreshPolicy.energyInterval(configured: RefreshPolicy.interval(), foreground: !background,
+                                                   lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled,
+                                                   thermalState: ProcessInfo.processInfo.thermalState)
+        guard isSleeping || scheduledRefreshInterval != interval || scheduledInBackground != background else { return }
         refreshTimer?.invalidate()
-        refreshTimer = Timer.scheduledTimer(
-            timeInterval: RefreshPolicy.interval(),
-            target: self,
-            selector: #selector(refreshTimerFired(_:)),
-            userInfo: nil,
-            repeats: true
-        )
+        refreshTimer = nil
+        backgroundRefresh?.invalidate()
+        backgroundRefresh = nil
+        refreshGeneration = UUID()
+        scheduledRefreshInterval = nil
+        scheduledInBackground = nil
+        guard !isSleeping else { return }
+        scheduledRefreshInterval = interval
+        scheduledInBackground = background
+        if background {
+            let activity = NSBackgroundActivityScheduler(identifier: "com.codexmeter.usage-refresh")
+            activity.interval = interval
+            activity.tolerance = min(300, interval * 0.2)
+            activity.repeats = true
+            activity.qualityOfService = .background
+            backgroundRefresh = activity
+            let generation = refreshGeneration
+            activity.schedule { [weak self] completion in
+                Task(priority: .background) { @MainActor [weak self] in
+                    guard let self, !self.isSleeping, self.refreshGeneration == generation else {
+                        completion(.finished)
+                        return
+                    }
+                    guard self.backgroundRefresh?.shouldDefer == false else {
+                        completion(.deferred)
+                        return
+                    }
+                    await self.store?.refresh()
+                    completion(.finished)
+                }
+            }
+        } else {
+            let timer = Timer.scheduledTimer(timeInterval: interval, target: self,
+                                            selector: #selector(refreshTimerFired(_:)), userInfo: nil, repeats: true)
+            timer.tolerance = interval * 0.2
+            refreshTimer = timer
+        }
+    }
+
+    private var hasVisibleInterface: Bool {
+        NSApp.isActive && (popover.isShown || NSApp.windows.contains {
+            $0.isVisible && !$0.isMiniaturized && ($0.canBecomeMain || ($0.styleMask.contains(.titled) && $0.canBecomeKey))
+        })
+    }
+
+    private func observeEnergyState() {
+        guard energyObservers.isEmpty else { return }
+        let names: [Notification.Name] = [ProcessInfo.thermalStateDidChangeNotification,
+                                         .NSProcessInfoPowerStateDidChange, NSWindow.didChangeOcclusionStateNotification]
+        for name in names {
+            energyObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.scheduleRefreshTimer() }
+            })
+        }
+        let center = NSWorkspace.shared.notificationCenter
+        workspaceObservers.append(center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.isSleeping = true
+                self?.scheduleRefreshTimer()
+            }
+        })
+        workspaceObservers.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isSleeping = false
+                self.scheduleRefreshTimer()
+                if self.hasVisibleInterface { self.refreshStatus() }
+            }
+        })
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) { scheduleRefreshTimer() }
+    func applicationDidResignActive(_ notification: Notification) { scheduleRefreshTimer() }
+
+    func popoverDidClose(_ notification: Notification) {
+        if let store {
+            popoverController.rootView = UsagePopoverView(store: store, permissionStore: permissionStore, compact: true, isVisible: false)
+        }
+        scheduleRefreshTimer()
     }
 
     @objc private func togglePopover(_ sender: Any?) {
@@ -205,7 +307,12 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNo
             popover.performClose(sender)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            if let store {
+                popoverController.rootView = UsagePopoverView(store: store, permissionStore: permissionStore, compact: true, isVisible: true)
+                Task { await store.refreshIfNeeded() }
+            }
             NSApp.activate(ignoringOtherApps: true)
+            scheduleRefreshTimer()
         }
     }
 
@@ -217,6 +324,8 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNo
         guard let store else { return }
         Task { [weak self, weak store] in
             guard let self, let store else { return }
+            // The scheduler owns the cadence. Applying the window-open throttle
+            // here would skip a tick when the previous parse finished after it began.
             await store.refresh()
             update(snapshot: store.snapshot)
         }
@@ -242,6 +351,8 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, UNUserNo
         let showBadge = UserDefaults.standard.bool(forKey: PermissionPreferences.badgeEnabledKey)
         let count = showBadge ? permissionStore.newCount : 0
         let title = count > 0 ? "\(usageTitle) · ⚠ \(count)" : usageTitle
+        guard title != renderedStatusTitle || button.image == nil else { return }
+        renderedStatusTitle = title
         button.image = Self.menuBarMark(title: title)
         button.title = ""
         button.contentTintColor = NSColor.white

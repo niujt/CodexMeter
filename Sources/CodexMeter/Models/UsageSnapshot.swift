@@ -1,6 +1,6 @@
 import Foundation
 
-struct TokenUsage: Sendable, Equatable {
+struct TokenUsage: Sendable, Equatable, Codable {
     var input = 0
     var cachedInput = 0
     var output = 0
@@ -28,7 +28,7 @@ struct TokenUsage: Sendable, Equatable {
     }
 }
 
-struct RateWindow: Sendable, Equatable {
+struct RateWindow: Sendable, Equatable, Codable {
     let usedPercent: Double
     let windowMinutes: Int
     let resetsAt: Date
@@ -61,7 +61,7 @@ struct ModelUsage: Sendable, Equatable {
 struct DailyUsage: Sendable, Equatable { let date: Date; let tokens: Int }
 struct UsageRecord: Sendable, Equatable { let date: Date; let project: String; let model: String; let tokens: Int }
 /// Output throughput over a completed local turn, including thinking/tools/waiting.
-struct ReplySpeedSample: Sendable, Equatable {
+struct ReplySpeedSample: Sendable, Equatable, Codable {
     let completedAt: Date
     let outputTokens: Int
     let turnSeconds: Double
@@ -75,16 +75,30 @@ struct RecentReplySpeed: Equatable {
 
     var tokensPerSecond: Double { Double(outputTokens) / turnSeconds }
 
+    /// Schedule only upcoming sample expirations, coalesced to minute boundaries.
+    /// Empty or fully expired data has no repeating redraw timer.
+    static func refreshDates(_ samples: [ReplySpeedSample], now: Date = .now) -> [Date] {
+        let future = validSamples(samples, now: now).map {
+            let expiry = $0.completedAt.addingTimeInterval(windowSeconds)
+            return Date(timeIntervalSinceReferenceDate: ceil(expiry.timeIntervalSinceReferenceDate / 60) * 60)
+        }.filter { $0 > now && $0 <= now.addingTimeInterval(windowSeconds + 60) }
+        return [now] + Set(future).sorted()
+    }
+
     static func summarize(_ samples: [ReplySpeedSample], now: Date = .now) -> Self? {
+        let valid = validSamples(samples, now: now)
+        guard !valid.isEmpty else { return nil }
+        return Self(outputTokens: valid.reduce(0) { $0 + $1.outputTokens },
+                    turnSeconds: valid.reduce(0) { $0 + $1.turnSeconds }, sampleCount: valid.count)
+    }
+
+    private static func validSamples(_ samples: [ReplySpeedSample], now: Date) -> [ReplySpeedSample] {
         let start = now.addingTimeInterval(-windowSeconds)
-        let valid = samples.filter {
+        return samples.filter {
             $0.completedAt > start && $0.completedAt <= now
                 && $0.outputTokens > 0 && $0.turnSeconds.isFinite
                 && $0.turnSeconds > 0 && $0.turnSeconds <= 3_600
         }
-        guard !valid.isEmpty else { return nil }
-        return Self(outputTokens: valid.reduce(0) { $0 + $1.outputTokens },
-                    turnSeconds: valid.reduce(0) { $0 + $1.turnSeconds }, sampleCount: valid.count)
     }
 }
 /// A locally observed seven-day quota window. It contains no conversation content.

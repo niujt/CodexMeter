@@ -9,17 +9,21 @@ extension Notification.Name {
 @MainActor
 @Observable
 final class UsageStore {
+    static let shared = UsageStore()
     private(set) var snapshot = UsageSnapshot.empty
     private(set) var isRefreshing = false
     private(set) var errorMessage: String?
     private(set) var processedFiles = 0
     private(set) var totalFiles = 0
+    private(set) var readFiles = 0
+    private(set) var reusedFiles = 0
     private var hasCompleteSnapshot = false
+    private var lastSuccessfulRefresh: Date?
 
     var loadingMessage: String {
-        totalFiles == 0 ? "正在查找用量文件…" : "正在读取用量：\(processedFiles) / \(totalFiles) 个文件"
+        totalFiles == 0 ? "正在查找用量文件…" : "检查文件：\(processedFiles) / \(totalFiles) · 实际读取 \(readFiles) 个 · 复用缓存 \(reusedFiles) 个"
     }
-    private let reader = CodexUsageReader()
+    private let reader = CodexUsageReader(cacheDirectory: CodexUsageReader.defaultCacheDirectory())
     @ObservationIgnored private let folderAccess = CodexFolderAccess()
 
     init() {
@@ -30,25 +34,41 @@ final class UsageStore {
         folderAccess.selectedURL?.path ?? snapshot.dataPath
     }
 
+    func refreshIfNeeded() async {
+        if let lastSuccessfulRefresh, Date.now.timeIntervalSince(lastSuccessfulRefresh) >= 0,
+           Date.now.timeIntervalSince(lastSuccessfulRefresh) < RefreshPolicy.interval() {
+            return
+        }
+        await refresh()
+    }
+
     func refresh(force: Bool = false) async {
         guard !isRefreshing else { return }
         isRefreshing = true
         processedFiles = 0
         totalFiles = 0
+        readFiles = 0
+        reusedFiles = 0
         let previous = snapshot
         let showsPartialResults = !hasCompleteSnapshot
         defer { isRefreshing = false }
 
         do {
-            var loaded = try await reader.load(codexHome: folderAccess.selectedURL, force: force) { [weak self] partial, completed, total in
+            var loaded = try await reader.loadWithActivity(codexHome: folderAccess.selectedURL, force: force, onActivity: { [weak self] read, reused in
+                await self?.receiveActivity(read: read, reused: reused)
+            }) { [weak self] partial, completed, total in
                 await self?.receiveProgress(partial, completed: completed, total: total, showPartial: showsPartialResults)
             }
             hasCompleteSnapshot = true
+            lastSuccessfulRefresh = .now
             processedFiles = loaded.fileCount
             QuotaRateCache.restoreMissing(into: &loaded)
             if snapshot != loaded { snapshot = loaded }
+            let cacheWarning = await reader.cacheWarning
             QuotaRateCache.save(snapshot)
-            NotificationCenter.default.post(name: .codexHealthUsageDidRefresh, object: self)
+            if snapshot != previous {
+                NotificationCenter.default.post(name: .codexHealthUsageDidRefresh, object: self)
+            }
             if let rate = snapshot.sevenDayRate { RateHistory.append(rate.usedPercent); UsageNotifier.evaluate(rate) }
             let widgetUsage = WidgetUsageData(
                 todayTokens: snapshot.today.total,
@@ -67,14 +87,20 @@ final class UsageStore {
                 if try WidgetUsageCache.saveIfChanged(widgetUsage) {
                     WidgetCenter.shared.reloadTimelines(ofKind: "CodexMeterWidgetV4")
                 }
-                errorMessage = snapshot.readWarning
+                errorMessage = [snapshot.readWarning, cacheWarning].compactMap { $0 }.joined(separator: "\n")
+                if errorMessage?.isEmpty == true { errorMessage = nil }
             } catch {
-                errorMessage = [snapshot.readWarning, "小组件缓存写入失败：\(error.localizedDescription)"].compactMap { $0 }.joined(separator: "\n")
+                errorMessage = [snapshot.readWarning, cacheWarning, "小组件缓存写入失败：\(error.localizedDescription)"].compactMap { $0 }.joined(separator: "\n")
             }
         } catch {
             snapshot = previous
             errorMessage = "读取失败，已保留上次成功结果：\(error.localizedDescription)"
         }
+    }
+
+    private func receiveActivity(read: Int, reused: Int) {
+        readFiles = read
+        reusedFiles = reused
     }
 
     private func receiveProgress(_ partial: UsageSnapshot, completed: Int, total: Int, showPartial: Bool) {
@@ -131,14 +157,15 @@ enum QuotaRateCache {
     static let key = "codexMeter.quotaRateCache.v2"
 
     static func save(_ snapshot: UsageSnapshot, defaults: UserDefaults = .standard, now: Date = .now) {
-        var payload = load(defaults: defaults)
+        let existing = load(defaults: defaults)
+        var payload = existing
         if let rate = snapshot.mainMenuRate, rate.resetsAt > now {
             payload.main = CachedQuotaRate(rate, sampledAt: snapshot.lastUpdated ?? now)
         }
         if let rate = snapshot.sparkRate, rate.resetsAt > now {
             payload.spark = CachedQuotaRate(rate, sampledAt: snapshot.lastUpdated ?? now)
         }
-        guard let data = try? JSONEncoder().encode(payload) else { return }
+        guard payload != existing, let data = try? JSONEncoder().encode(payload) else { return }
         if defaults.data(forKey: key) != data { defaults.set(data, forKey: key) }
     }
 

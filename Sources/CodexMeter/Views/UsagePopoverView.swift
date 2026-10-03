@@ -4,6 +4,7 @@ struct UsagePopoverView: View {
     let store: UsageStore
     let permissionStore: PermissionStore
     let compact: Bool
+    var isVisible = true
     @Environment(\.openWindow) private var openWindow
     @State private var projectRange = 1
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
@@ -12,7 +13,7 @@ struct UsagePopoverView: View {
     var body: some View {
         Group {
             if compact {
-                HealthMenuPopover(store: store, permissionStore: permissionStore)
+                HealthMenuPopover(store: store, permissionStore: permissionStore, isVisible: isVisible)
             } else {
                 detailedContent
             }
@@ -55,12 +56,9 @@ struct UsagePopoverView: View {
                 }
                 Spacer()
                 Button {
-                    Task { await store.refresh(force: true) }
+                    Task { await store.refresh() }
                 } label: {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !store.isRefreshing)) { context in
-                        Image(systemName: "arrow.clockwise")
-                            .rotationEffect(.degrees(store.isRefreshing ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 0.8) * 450 : 0))
-                    }
+                    Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.plain).disabled(store.isRefreshing).help("刷新")
             }
@@ -215,10 +213,12 @@ struct UsagePopoverView: View {
 private struct HealthMenuPopover: View {
     let store: UsageStore
     let permissionStore: PermissionStore
+    var isVisible = true
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
-    @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
-    @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
+    @State private var showPermissionHistory = false
+    @State private var permissionsExpanded = false
 
     private var rate: RateWindow? { store.snapshot.sevenDayRate }
     private var remaining: Int? { rate.map { max(0, 100 - Int($0.usedPercent.rounded())) } }
@@ -226,89 +226,114 @@ private struct HealthMenuPopover: View {
         guard let remaining else { return .secondary }
         return remaining < 20 ? .red : remaining < 50 ? .orange : .green
     }
-    private var status: String {
-        guard let remaining else { return "等待新周期数据" }
-        return remaining < 20 ? "Critical" : remaining < 50 ? "Watch" : "Healthy"
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Codex Health").font(.headline.weight(.semibold))
+                Text("Codex Health").font(.callout.weight(.semibold))
                 Spacer()
-                Button { Task { await store.refresh(force: true) } } label: {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !store.isRefreshing)) { context in
-                        Image(systemName: "arrow.clockwise")
-                            .font(.title3)
-                            .rotationEffect(.degrees(store.isRefreshing ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 0.8) * 450 : 0))
-                    }
-                }
-                .buttonStyle(.plain)
-                .disabled(store.isRefreshing)
-                .help("刷新")
+                controls
             }
 
-            HStack(spacing: 18) {
-                Text(remaining.map { "\($0)%" } ?? "—")
-                    .font(.system(size: 48, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-                Divider().frame(height: 68)
+            HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(status).font(.title3.weight(.bold)).foregroundStyle(color)
-                    if let rate {
-                        Text("剩余 \(UsageFormatters.countdown(to: rate.resetsAt))")
-                            .font(.callout.weight(.medium))
-                        Text(rate.resetsAt.formatted(.dateTime.month().day().hour().minute()) + " 重置")
-                            .font(.caption).foregroundStyle(.secondary)
-                    } else {
-                        Text("等待新周期数据").font(.callout).foregroundStyle(.secondary)
+                    Text("7 天剩余额度").font(.caption).foregroundStyle(.secondary)
+                    Text(remaining.map { "\($0)%" } ?? "—")
+                        .font(.system(size: 32, weight: .medium, design: .rounded)).monospacedDigit()
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(rate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? "等待新周期数据")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if let spark = store.snapshot.sparkRate {
+                        Text("Spark 剩余 \(max(0, 100 - Int(spark.usedPercent.rounded())))%")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .help(store.snapshot.sparkRateIsCached ? "来自本地有效缓存" : "最新 Spark 额度")
                     }
                 }
-                Spacer(minLength: 0)
             }
-
-            if let remaining {
-                ProgressView(value: Double(remaining), total: 100)
-                    .tint(color)
-                    .controlSize(.regular)
-            } else {
-                Text("等待新周期数据")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if let remaining { ProgressView(value: Double(remaining), total: 100).tint(color) }
+            if store.snapshot.mainRateIsCached || store.snapshot.sparkRateIsCached {
+                Label("部分额度来自有效缓存", systemImage: "clock.arrow.circlepath")
+                    .font(.caption2).foregroundStyle(.secondary)
             }
 
             Divider()
-            ReplySpeedView(samples: store.snapshot.replySpeedSamples)
-            Divider()
-            PermissionCenterView(store: permissionStore, maximumItems: 3)
-            Divider()
-            MenuRow(icon: "arrow.up.forward.app", title: "打开 Codex Health", shortcut: "⌘O") {
-                openDashboard()
-            }
-            HStack(spacing: 10) {
-                Image(systemName: "bell.badge").foregroundStyle(.blue).frame(width: 18)
-                Text("低额度提醒")
+            ReplySpeedView(samples: store.snapshot.replySpeedSamples, layout: .row, isVisible: isVisible)
+            HStack {
+                Text("今日用量").foregroundStyle(.secondary)
                 Spacer()
-                Picker("低额度提醒", selection: $lowRateThreshold) {
-                    ForEach([5, 10, 20, 30, 50], id: \.self) { Text("剩余 \($0)% 以下").tag($0) }
+                Text(UsageFormatters.tokens(store.snapshot.today.total)).monospacedDigit()
+            }.font(.callout)
+
+            if permissionStore.newCount > 0 || showPermissionHistory {
+                Divider()
+                DisclosureGroup(isExpanded: $permissionsExpanded) {
+                    ScrollView {
+                        PermissionCenterView(store: permissionStore, maximumItems: 2)
+                            .padding(.top, 8)
+                    }
+                    .frame(maxHeight: 220)
+                } label: {
+                    Label(permissionStore.newCount > 0 ? "\(permissionStore.newCount) 条请求需要关注" : "权限请求记录",
+                          systemImage: "exclamationmark.shield")
+                        .font(.caption).foregroundStyle(permissionStore.newCount > 0 ? Color.orange : Color.secondary)
                 }
-                .labelsHidden()
-                .frame(width: 138)
             }
-            .font(.callout)
-            Toggle("同日提醒去重", isOn: $deduplicateAlerts)
-                .toggleStyle(.checkbox)
-                .font(.callout)
-                .padding(.leading, 30)
-            MenuRow(icon: "rectangle.portrait.and.arrow.right", title: "退出", shortcut: "⌘Q") {
-                NSApplication.shared.terminate(nil)
+            if let error = store.errorMessage {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(.caption2).foregroundStyle(.orange).lineLimit(2).help(error)
             }
+            Divider()
+            HStack {
+                Button("打开详情", systemImage: "arrow.up.forward.app") { openDashboard() }
+                    .buttonStyle(.plain).foregroundStyle(.tint)
+                Spacer()
+                Text(store.isRefreshing ? "刷新中…" : "本机统计")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }.font(.callout)
         }
-        .padding(18)
-        .frame(width: 360, alignment: .leading)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .padding(16)
+        .frame(width: 320, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
         .preferredColorScheme((AppAppearance(rawValue: appearance) ?? .system).colorScheme)
+        .onAppear { permissionsExpanded = permissionStore.newCount > 0 }
+        .onChange(of: permissionStore.newCount) { _, count in
+            if count > 0 { permissionsExpanded = true }
+        }
+    }
+
+    @ViewBuilder private var controls: some View {
+        if #available(macOS 26.0, *) {
+            controlButtons.padding(5).glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            controlButtons.padding(5).background(.thinMaterial, in: Capsule())
+        }
+    }
+
+    private var controlButtons: some View {
+        HStack(spacing: 8) {
+            Button { Task { await store.refresh() } } label: {
+                Image(systemName: "arrow.clockwise").frame(width: 20, height: 20)
+            }.disabled(store.isRefreshing).help("刷新")
+            Button { openSettings() } label: {
+                Image(systemName: "gearshape").frame(width: 20, height: 20)
+            }.help("偏好设置")
+            Menu {
+                Picker("外观", selection: $appearance) {
+                    ForEach(AppAppearance.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                Button("权限请求记录") {
+                    showPermissionHistory.toggle()
+                    permissionsExpanded = showPermissionHistory
+                }
+                Divider()
+                Button("退出") { NSApplication.shared.terminate(nil) }
+            } label: {
+                Image(systemName: "ellipsis").frame(width: 20, height: 20)
+            }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("更多")
+        }.buttonStyle(.plain)
     }
 
     private func openDashboard() {
@@ -318,27 +343,59 @@ private struct HealthMenuPopover: View {
 }
 
 struct ReplySpeedView: View {
+    enum Layout { case detail, row, metric }
     let samples: [ReplySpeedSample]
+    var layout: Layout = .detail
+    var isVisible = true
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 30)) { context in
-            let speed = RecentReplySpeed.summarize(samples, now: context.date)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("近 15 分钟平均回复速度").font(.caption).foregroundStyle(.secondary)
-                HStack(alignment: .firstTextBaseline) {
+        Group {
+            if isVisible {
+                TimelineView(.explicit(RecentReplySpeed.refreshDates(samples))) { context in
+                    content(at: context.date)
+                }
+            } else {
+                content(at: .now)
+            }
+        }
+    }
+
+    private func content(at date: Date) -> some View {
+        let speed = RecentReplySpeed.summarize(samples, now: date)
+        return Group {
+            switch layout {
+            case .metric:
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("平均回复速度").font(.caption).foregroundStyle(.secondary)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(speed.map { $0.tokensPerSecond.formatted(.number.precision(.fractionLength(1))) } ?? "—")
+                            .font(.system(size: 34, weight: .medium, design: .rounded)).monospacedDigit()
+                        Text("tokens/s").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text(speed.map { "近 15 分钟 · \($0.sampleCount) 个有效轮次" } ?? "近 15 分钟暂无样本")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            case .row:
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("平均回复速度").foregroundStyle(.secondary)
+                        Spacer()
+                        Text(speed.map { UsageFormatters.replySpeed($0.tokensPerSecond) } ?? "暂无样本")
+                            .monospacedDigit()
+                    }.font(.callout)
+                    Text(speed.map { "近 15 分钟 · \($0.sampleCount) 个有效轮次" } ?? "近 15 分钟无有效完成轮次")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            case .detail:
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("近 15 分钟平均回复速度").font(.caption).foregroundStyle(.secondary)
                     Text(speed.map { UsageFormatters.replySpeed($0.tokensPerSecond) } ?? "暂无样本")
                         .font(.callout.weight(.semibold)).monospacedDigit()
-                    Spacer(minLength: 4)
-                    if let speed {
-                        Text("\(speed.sampleCount) 个有效轮次")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
+                    Text("含思考、工具执行与等待").font(.caption2).foregroundStyle(.secondary)
                 }
-                Text("含思考、工具执行与等待")
-                    .font(.caption2).foregroundStyle(.secondary)
             }
-            .help("按近 15 分钟内完成的有效轮次计算：输出 token 总数 ÷ 轮次总耗时。空闲间隔不计入；缺少用量或完成标记的轮次不计入。")
         }
+        .help("近 15 分钟完成轮次的输出 token 总数 ÷ 轮次总耗时。含思考、工具执行与等待，空闲间隔不计入；缺少可靠用量或完成标记的轮次不计入。")
     }
 }
 

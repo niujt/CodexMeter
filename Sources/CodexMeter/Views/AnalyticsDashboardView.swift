@@ -4,7 +4,7 @@ import SwiftUI
 struct AnalyticsDashboardView: View {
     let store: UsageStore
     @Environment(\.openSettings) private var openSettings
-    @State private var selectedSection = "健康报告"
+    @State private var selectedSection: String? = "健康报告"
     @State private var projectPathStore = ProjectPathStore()
     @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
 
@@ -13,15 +13,16 @@ struct AnalyticsDashboardView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            DashboardSidebar(selection: $selectedSection, openSettings: { openSettings() })
-            Divider().overlay(Color.primary.opacity(0.08))
+        NavigationSplitView {
+            DashboardSidebar(selection: $selectedSection)
+                .navigationSplitViewColumnWidth(min: 180, ideal: 190, max: 220)
+        } detail: {
             ScrollView {
-                switch selectedSection {
+                switch selectedSection ?? "健康报告" {
                 case "健康报告":
                     DashboardContent(store: store)
-                        .padding(28)
-                        .frame(minWidth: 900, maxWidth: 1_420)
+                        .padding(24)
+                        .frame(maxWidth: 1_100)
                 case "项目与用量":
                     ProjectsUsageView(store: store, pathStore: projectPathStore)
                 case "使用趋势":
@@ -33,8 +34,8 @@ struct AnalyticsDashboardView: View {
                 case "历史记录":
                     HistoryRecordsView(store: store)
                 default:
-                    FeaturePlaceholderView(section: selectedSection)
-                        .frame(minWidth: 900, minHeight: 600)
+                    FeaturePlaceholderView(section: selectedSection ?? "健康报告")
+                        .frame(minHeight: 500)
                 }
             }
         }
@@ -43,19 +44,35 @@ struct AnalyticsDashboardView: View {
                 HStack(spacing: 12) {
                     ProgressView().controlSize(.small)
                     Text(store.loadingMessage)
-                    Text("数据将逐步显示；已有结果会保留至刷新完成。")
-                        .foregroundStyle(.secondary)
                     Spacer()
                 }
-                .font(.callout)
-                .padding(12)
+                .font(.caption)
+                .padding(.horizontal, 16).padding(.vertical, 8)
                 .background(.bar)
             }
         }
-        .background(DashboardPalette.background)
         .preferredColorScheme(appearanceMode.colorScheme)
         .navigationTitle("Codex Health")
-        .task { await store.refresh() }
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { Task { await store.refresh() } } label: {
+                    Label("刷新", systemImage: "arrow.clockwise")
+                }
+                .disabled(store.isRefreshing)
+                .help("刷新本机用量")
+                Menu {
+                    ForEach(AppAppearance.allCases) { mode in
+                        Button { appearance = mode.rawValue } label: {
+                            Label(mode.title, systemImage: appearance == mode.rawValue ? "checkmark" : mode.icon)
+                        }
+                    }
+                } label: {
+                    Label("外观", systemImage: appearanceMode.icon)
+                }
+                Button { openSettings() } label: { Label("设置", systemImage: "gearshape") }
+            }
+        }
+        .task { await store.refreshIfNeeded() }
     }
 }
 
@@ -155,7 +172,7 @@ private struct HistoryRecordsView: View {
                 }
             }
         }
-        .padding(28).frame(minWidth: 900, maxWidth: 1_420, alignment: .leading)
+        .padding(28).frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
     }
 }
 
@@ -278,7 +295,7 @@ private struct UsageTrendsView: View {
                 TrendMetric(title: "本月", value: UsageFormatters.tokens(store.snapshot.thisMonth.total), color: DashboardPalette.green)
             }
         }
-        .padding(28).frame(minWidth: 900, maxWidth: 1_420, alignment: .leading)
+        .padding(28).frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
     }
 }
 
@@ -361,7 +378,7 @@ private struct ModelEfficiencyView: View {
                 }
             }
         }
-        .padding(28).frame(minWidth: 900, maxWidth: 1_420, alignment: .leading)
+        .padding(28).frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
     }
 }
 
@@ -428,7 +445,7 @@ private struct ForecastRiskView: View {
                     .frame(maxWidth: .infinity, minHeight: 420)
             }
         }
-        .padding(28).frame(minWidth: 900, maxWidth: 1_420, alignment: .leading)
+        .padding(28).frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
     }
 }
 
@@ -450,7 +467,7 @@ private struct PageHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 30, weight: .bold))
+                Text(title).font(.title2.weight(.semibold))
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
                 if let error = store.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -458,28 +475,20 @@ private struct PageHeader: View {
                 }
             }
             Spacer()
-            Button { Task { await store.refresh(force: true) } } label: { Label("立即刷新", systemImage: "arrow.clockwise") }
-                .buttonStyle(.bordered).disabled(store.isRefreshing)
         }
     }
 }
 
 private enum DashboardPalette {
-    static let background = Color(nsColor: .windowBackgroundColor)
-    static let surface = Color(nsColor: .underPageBackgroundColor)
-    static let card = Color(nsColor: .controlBackgroundColor)
-    static let blue = Color(red: 0.17, green: 0.48, blue: 1.0)
-    static let green = Color(red: 0.24, green: 0.84, blue: 0.46)
-    static let orange = Color(red: 1.0, green: 0.58, blue: 0.16)
+    static let blue = Color.accentColor
+    static let green = Color.green
+    static let orange = Color.orange
 }
 
 private struct DashboardSidebar: View {
-    @Binding var selection: String
-    let openSettings: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
+    @Binding var selection: String?
     private let items: [(String, String)] = [
-        ("健康报告", "house.fill"),
+        ("健康报告", "house"),
         ("使用趋势", "chart.xyaxis.line"),
         ("模型与效率", "cpu"),
         ("项目与用量", "folder"),
@@ -488,73 +497,20 @@ private struct DashboardSidebar: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            VStack(spacing: 12) {
-                Image(colorScheme == .dark ? "DarkAppIcon" : "LightAppIcon")
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(width: 78, height: 78)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                Text("Codex Health").font(.title3.weight(.bold))
-                Text("Battery for Codex")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
-
-            ForEach(items, id: \.0) { item in
-                Button { selection = item.0 } label: {
-                    Label(item.0, systemImage: item.1)
-                        .font(.callout.weight(selection == item.0 ? .semibold : .regular))
-                        .foregroundStyle(selection == item.0 ? .white : .secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12).padding(.vertical, 10)
-                        .background(selection == item.0 ? DashboardPalette.blue.opacity(0.22) : .clear,
-                                    in: RoundedRectangle(cornerRadius: 10))
+        List(selection: $selection) {
+            Section("用量") {
+                ForEach(items, id: \.0) { item in
+                    Label(item.0, systemImage: item.1).tag(item.0)
                 }
-                .buttonStyle(.plain)
             }
-            Spacer()
-            VStack(alignment: .leading, spacing: 6) {
-                Label("本地优先", systemImage: "lock.shield")
-                    .font(.callout.weight(.semibold))
-                Text("不上传会话或用量数据")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            .padding(14)
-            .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 13))
-            HStack {
-                Text("v1.0.5")
-                Spacer()
-                Menu {
-                    ForEach(AppAppearance.allCases) { mode in
-                        Button {
-                            appearance = mode.rawValue
-                        } label: {
-                            Label(mode.title, systemImage: appearance == mode.rawValue ? "checkmark" : mode.icon)
-                        }
-                    }
-                } label: {
-                    Image(systemName: (AppAppearance(rawValue: appearance) ?? .system).icon)
-                        .font(.title3)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help("切换显示模式")
-                Button(action: openSettings) {
-                    Image(systemName: "gearshape").font(.title3)
-                }
-                .buttonStyle(.plain)
-                .help("偏好设置")
-            }
-            .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
         }
-        .padding(16)
-        .padding(.top, 18)
-        .frame(width: 220)
-        .background(DashboardPalette.surface)
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom) {
+            Label("本机统计", systemImage: "lock.shield")
+                .font(.caption).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+        }
     }
 }
 
@@ -563,65 +519,57 @@ private struct DashboardContent: View {
 
     private var rate: RateWindow? { store.snapshot.sevenDayRate }
     private var remaining: Int? { rate.map { max(0, 100 - Int($0.usedPercent.rounded())) } }
-    private var sparkRemaining: Int? {
-        store.snapshot.sparkRate.map { max(0, 100 - Int($0.usedPercent.rounded())) }
-    }
     private var health: QuotaHealth {
         .evaluate(rate: rate, percentPerHour: QuotaHealth.velocity(rate: rate, measured: RateHistory.weightedVelocity()?.percentPerHour))
     }
-    private var quotaColor: Color { health.color }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 24) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("健康报告").font(.system(size: 30, weight: .bold))
-                    Text(store.snapshot.lastUpdated.map { "最后更新：\($0.formatted(.relative(presentation: .named)))" } ?? "正在读取本机 Codex 记录")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    if store.snapshot.mainRateIsCached || store.snapshot.sparkRateIsCached {
-                        Label("部分额度来自本地有效缓存，获取到新采样后会自动替换", systemImage: "clock.arrow.circlepath")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("健康报告").font(.title2.weight(.semibold))
+                    Text(store.snapshot.lastUpdated.map { "更新于 \($0.formatted(.relative(presentation: .named)))" } ?? "等待本机用量")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button { Task { await store.refresh(force: true) } } label: {
-                    Label("立即刷新", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(.bordered)
-                .disabled(store.isRefreshing)
+                Label(health.title, systemImage: health.icon)
+                    .font(.caption).foregroundStyle(health.color)
+                    .help(health.detail)
             }
 
-            HStack(spacing: 16) {
-                HealthHero(
-                    remaining: remaining,
-                    sparkRemaining: sparkRemaining,
-                    sparkIsCached: store.snapshot.sparkRateIsCached,
-                    health: health,
-                    color: quotaColor,
-                    rate: rate
+            HStack(alignment: .top, spacing: 24) {
+                QuotaSummary(snapshot: store.snapshot, rate: rate, remaining: remaining, color: health.color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Divider().frame(height: 100)
+                ReplySpeedView(samples: store.snapshot.replySpeedSamples, layout: .metric)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Divider().frame(height: 100)
+                SummaryMetric(
+                    title: "今日用量", value: UsageFormatters.tokens(store.snapshot.today.total),
+                    detail: "输入 \(UsageFormatters.tokens(store.snapshot.today.input)) · 输出 \(UsageFormatters.tokens(store.snapshot.today.output))"
                 )
-                TodayOverview(snapshot: store.snapshot)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            HStack(alignment: .top, spacing: 16) {
-                UsageTrendCard(snapshot: store.snapshot, remaining: remaining)
-                RiskCard(rate: rate, remaining: remaining, color: quotaColor)
-            }
+            UsageTrendCard(snapshot: store.snapshot, remaining: remaining)
 
-            HStack(alignment: .top, spacing: 16) {
+            HStack(alignment: .top, spacing: 28) {
                 ModelCard(models: store.snapshot.topModels, weeklyTotal: store.snapshot.lastSevenDays.total)
-                MetricsCard(snapshot: store.snapshot, color: quotaColor)
+                Divider()
                 ProjectCard(projects: store.snapshot.topProjects, total: store.snapshot.lastSevenDays.total)
             }
+            .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+            MetricsCard(snapshot: store.snapshot)
 
             if let error = store.errorMessage {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
+                Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange)
             }
             if store.snapshot.fileCount == 0 && !store.isRefreshing {
                 Button("选择 Codex 数据目录…") { store.chooseCodexFolder() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
             }
         }
     }
@@ -631,98 +579,48 @@ private struct DashboardCard<Content: View>: View {
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
-        content.padding(22)
-            .background(DashboardPalette.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(.primary.opacity(0.07)))
+        content.padding(18)
+            .background(.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
-private struct HealthHero: View {
-    let remaining: Int?
-    let sparkRemaining: Int?
-    let sparkIsCached: Bool
-    let health: QuotaHealth
-    let color: Color
-    let rate: RateWindow?
-    var body: some View {
-        DashboardCard {
-            HStack(spacing: 26) {
-                ZStack(alignment: .bottomTrailing) {
-                    Text(remaining.map { "\($0)%" } ?? "等待新周期数据")
-                        .font(.system(size: remaining == nil ? 25 : 78, weight: .bold, design: .rounded))
-                        .foregroundStyle(LinearGradient(colors: [.blue, color], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .monospacedDigit()
-                        .lineLimit(remaining == nil ? 2 : 1)
-                        .minimumScaleFactor(remaining == nil ? 0.6 : 0.7)
-                        .frame(width: 210, alignment: .leading)
-                    if let sparkRemaining {
-                        Text("Spark \(sparkRemaining)%")
-                            .font(.caption2.weight(.bold))
-                            .monospacedDigit()
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(DashboardPalette.orange, in: Capsule())
-                            .overlay(Capsule().stroke(.white.opacity(0.16)))
-                            .offset(x: -4, y: 7)
-                            .help(sparkIsCached ? "Spark 额度来自本地有效缓存" : "Spark 最新额度")
-                    }
-                }
-                Divider().overlay(.primary.opacity(0.14)).frame(height: 110)
-                VStack(alignment: .leading, spacing: 10) {
-                    Label(health.title, systemImage: health.icon)
-                        .font(.title2.weight(.bold)).foregroundStyle(color)
-                    Text(health.detail)
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    if let rate {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Remaining")
-                                .font(.caption).foregroundStyle(.secondary)
-                            Text("约 \(UsageFormatters.countdown(to: rate.resetsAt))")
-                                .font(.callout.weight(.semibold))
-                            ProgressView(value: Double(remaining ?? 0), total: 100)
-                                .tint(color)
-                                .frame(width: 150)
-                        }
-                    } else {
-                        Text("等待新周期数据")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(minWidth: 550)
-        .frame(maxWidth: .infinity)
-    }
-}
-
-private struct TodayOverview: View {
+private struct QuotaSummary: View {
     let snapshot: UsageSnapshot
+    let rate: RateWindow?
+    let remaining: Int?
+    let color: Color
+
     var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 13) {
-                Text("今日使用概览").font(.headline)
-                OverviewRow("今日消耗", snapshot.today.total, "waveform.path.ecg", .blue)
-                Divider().overlay(.primary.opacity(0.08))
-                OverviewRow("近 7 天消耗", snapshot.lastSevenDays.total, "chart.bar.fill", .purple)
-                Divider().overlay(.primary.opacity(0.08))
-                OverviewRow("本月消耗", snapshot.thisMonth.total, "calendar", DashboardPalette.green)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("7 天剩余额度").font(.caption).foregroundStyle(.secondary)
+            Text(remaining.map { "\($0)%" } ?? "—")
+                .font(.system(size: 34, weight: .medium, design: .rounded)).monospacedDigit()
+            if let remaining { ProgressView(value: Double(remaining), total: 100).tint(color).frame(maxWidth: 180) }
+            Text(rate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? "等待新周期数据")
+                .font(.caption).foregroundStyle(.secondary)
+            if let spark = snapshot.sparkRate {
+                Text("Spark 剩余 \(max(0, 100 - Int(spark.usedPercent.rounded())))%")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .help(snapshot.sparkRateIsCached ? "Spark 额度来自本地有效缓存" : "Spark 最新额度")
+            }
+            if snapshot.mainRateIsCached || snapshot.sparkRateIsCached {
+                Label("缓存额度", systemImage: "clock.arrow.circlepath")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .help("部分额度来自本地有效缓存，获取到新采样后会自动替换")
             }
         }
-        .frame(width: 310)
     }
 }
 
-private struct OverviewRow: View {
-    let title: String; let value: Int; let icon: String; let color: Color
-    init(_ title: String, _ value: Int, _ icon: String, _ color: Color) { self.title = title; self.value = value; self.icon = icon; self.color = color }
+private struct SummaryMetric: View {
+    let title: String
+    let value: String
+    let detail: String
     var body: some View {
-        HStack {
-            Image(systemName: icon).foregroundStyle(color).frame(width: 22)
-            Text(title).foregroundStyle(.secondary)
-            Spacer(); Text(UsageFormatters.tokens(value)).font(.headline).monospacedDigit()
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.system(size: 34, weight: .medium, design: .rounded)).monospacedDigit()
+            Text(detail).font(.caption).foregroundStyle(.secondary)
         }
     }
 }
@@ -749,9 +647,9 @@ private struct UsageTrendCard: View {
                             index == 0 ? path.move(to: CGPoint(x: x, y: y)) : path.addLine(to: CGPoint(x: x, y: y))
                         }
                     }
-                    .stroke(DashboardPalette.blue, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                    .stroke(DashboardPalette.blue, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                     .overlay(alignment: .bottomLeading) {
-                        LinearGradient(colors: [DashboardPalette.blue.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom)
+                        LinearGradient(colors: [DashboardPalette.blue.opacity(0.10), .clear], startPoint: .top, endPoint: .bottom)
                             .mask(Path { path in
                                 guard points.count > 1 else { return }
                                 path.move(to: CGPoint(x: 0, y: height))
@@ -764,7 +662,7 @@ private struct UsageTrendCard: View {
                             })
                     }
                 }
-                .frame(height: 100)
+                .frame(height: 130)
                 HStack {
                     Text("Token 用量按日汇总")
                     Spacer()
@@ -777,127 +675,85 @@ private struct UsageTrendCard: View {
     }
 }
 
-private struct RiskCard: View {
-    let rate: RateWindow?; let remaining: Int?; let color: Color
-
-    private var resetHours: Double? {
-        rate.map { max(0, $0.resetsAt.timeIntervalSinceNow / 3_600) }
-    }
-
-    private var estimatedRemainingHours: Double? {
-        guard let rate, let remaining else { return nil }
-        guard let percentPerHour = QuotaHealth.velocity(rate: rate, measured: RateHistory.weightedVelocity()?.percentPerHour) else { return nil }
-        return Double(remaining) / percentPerHour
-    }
-
-    private var health: QuotaHealth {
-        .evaluate(rate: rate, percentPerHour: QuotaHealth.velocity(rate: rate, measured: RateHistory.weightedVelocity()?.percentPerHour))
-    }
-
-    private var remainingTimeText: String? {
-        estimatedRemainingHours.map { "按当前速度，约还能用 \(UsageFormatters.duration(hours: $0))" }
-    }
-
-    var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("预测与风险").font(.headline)
-                HStack {
-                    Spacer()
-                    Image(systemName: health.icon)
-                        .font(.system(size: 42)).foregroundStyle(color)
-                    Spacer()
-                }
-                Text(health.title)
-                    .font(.system(size: 28, weight: .bold)).foregroundStyle(color).frame(maxWidth: .infinity)
-                if let estimatedRemainingHours, let resetHours, let remainingTimeText {
-                    VStack(spacing: 4) {
-                        Text(remainingTimeText)
-                            .font(.callout.weight(.semibold))
-                            .multilineTextAlignment(.center)
-                        Text(estimatedRemainingHours < resetHours ? "可能在额度重置前耗尽" : "预计可支撑到额度重置")
-                            .font(.caption)
-                            .foregroundStyle(estimatedRemainingHours < resetHours ? .orange : DashboardPalette.green)
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    Text("等待新周期数据")
-                        .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
-                }
-                Text(rate.map { "预计额度将于 \($0.resetsAt.formatted(.dateTime.month().day().hour().minute())) 重置" } ?? "等待新周期数据")
-                    .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: .infinity)
-            }
-        }
-        .frame(width: 260)
-    }
-}
-
 private struct ModelCard: View {
-    let models: [ModelUsage]; let weeklyTotal: Int
+    let models: [ModelUsage]
+    let weeklyTotal: Int
     var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("模型与效率").font(.headline)
-                if models.isEmpty { Text("等待模型统计数据").foregroundStyle(.secondary) }
-                ForEach(models.prefix(3), id: \.name) { model in
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack { Text(model.name).lineLimit(1); Spacer(); Text("\(model.requests) 个有效轮次").foregroundStyle(.secondary) }
-                        ProgressView(value: Double(model.tokens), total: Double(max(1, weeklyTotal))).tint(DashboardPalette.green)
-                        Text("\(UsageFormatters.tokens(model.tokens)) · \(model.averageTurnSeconds.map { "平均 \(UsageFormatters.turnDuration(seconds: $0))" } ?? "等待耗时")")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("模型与效率").font(.callout.weight(.semibold))
+                Spacer()
+                Text("近 7 天").font(.caption).foregroundStyle(.secondary)
+            }
+            if models.isEmpty { Text("暂无模型记录").font(.caption).foregroundStyle(.secondary) }
+            ForEach(models.prefix(3), id: \.name) { model in
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text(model.name).lineLimit(1)
+                        Spacer()
+                        Text(UsageFormatters.tokens(model.tokens)).monospacedDigit()
+                    }.font(.callout)
+                    ProgressView(value: Double(model.tokens), total: Double(max(1, weeklyTotal))).tint(.secondary)
+                    Text("\(model.requests) 个有效轮次 · \(model.averageTurnSeconds.map { "平均 \(UsageFormatters.turnDuration(seconds: $0))" } ?? "暂无耗时样本")")
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
-        }.frame(maxWidth: .infinity)
+        }.frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
 private struct MetricsCard: View {
-    let snapshot: UsageSnapshot; let color: Color
+    let snapshot: UsageSnapshot
     var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 13) {
-                Text("关键指标").font(.headline)
-                ReplySpeedView(samples: snapshot.replySpeedSamples)
-                MetricRow("当前会话上下文", snapshot.contextWindow > 0 ? "\(UsageFormatters.tokens(snapshot.currentContextUsed)) / \(UsageFormatters.tokens(snapshot.contextWindow))" : "暂无", color)
-                MetricRow("会话记录", "\(snapshot.sessionCount) 个", DashboardPalette.blue)
-                MetricRow("输入 / 输出", "\(UsageFormatters.tokens(snapshot.today.input)) / \(UsageFormatters.tokens(snapshot.today.output))", .purple)
-            }
-        }.frame(maxWidth: .infinity)
+        HStack(alignment: .top, spacing: 24) {
+            MetricRow("近 7 天用量", UsageFormatters.tokens(snapshot.lastSevenDays.total))
+            MetricRow("本月用量", UsageFormatters.tokens(snapshot.thisMonth.total))
+            MetricRow("当前上下文", snapshot.contextWindow > 0 ? "\(UsageFormatters.tokens(snapshot.currentContextUsed)) / \(UsageFormatters.tokens(snapshot.contextWindow))" : "暂无")
+            MetricRow("会话", "\(snapshot.sessionCount) 个")
+        }
     }
 }
 
 private struct MetricRow: View {
-    let title: String; let value: String; let color: Color
-    init(_ title: String, _ value: String, _ color: Color) { self.title = title; self.value = value; self.color = color }
-    var body: some View { VStack(alignment: .leading, spacing: 3) { Text(title).font(.caption).foregroundStyle(.secondary); Text(value).font(.callout.weight(.semibold)).foregroundStyle(color).lineLimit(1) } }
+    let title: String
+    let value: String
+    init(_ title: String, _ value: String) { self.title = title; self.value = value }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.callout.weight(.medium)).monospacedDigit().lineLimit(1)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 private struct ProjectCard: View {
-    let projects: [ProjectUsage]; let total: Int
+    let projects: [ProjectUsage]
+    let total: Int
     var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("活跃项目").font(.headline)
-                if projects.isEmpty { Text("等待项目统计数据").foregroundStyle(.secondary) }
-                ForEach(projects.prefix(4), id: \.path) { item in
-                    HStack(spacing: 8) {
-                        Image(systemName: "folder.fill").foregroundStyle(DashboardPalette.green)
-                        Text(item.name).lineLimit(1)
-                        Spacer()
-                        Text("\(Int(Double(item.tokens) / Double(max(1, total)) * 100))%")
-                            .monospacedDigit().foregroundStyle(.secondary)
-                    }.font(.caption)
-                }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("活跃项目").font(.callout.weight(.semibold))
+                Spacer()
+                Text("近 7 天").font(.caption).foregroundStyle(.secondary)
             }
-        }.frame(maxWidth: .infinity)
+            if projects.isEmpty { Text("暂无项目记录").font(.caption).foregroundStyle(.secondary) }
+            ForEach(projects.prefix(4), id: \.path) { item in
+                HStack(spacing: 8) {
+                    Image(systemName: "folder").foregroundStyle(.secondary)
+                    Text(item.name).lineLimit(1)
+                    Spacer()
+                    Text("\(Int(Double(item.tokens) / Double(max(1, total)) * 100))%")
+                        .monospacedDigit().foregroundStyle(.secondary)
+                }.font(.callout)
+            }
+        }.frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
 private extension QuotaHealth {
     var color: Color {
         switch self {
-        case .waiting, .insufficient: DashboardPalette.blue
+        case .waiting, .insufficient: .secondary
         case .critical: .red
         case .watch: DashboardPalette.orange
         case .healthy: DashboardPalette.green

@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct SettingsView: View {
     let store: UsageStore
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
     @AppStorage(RefreshPolicy.intervalKey) private var refreshInterval = RefreshPolicy.lowPowerDefault
@@ -35,7 +36,7 @@ struct SettingsView: View {
                         Text("每 15 分钟").tag(900.0)
                         Text("每 30 分钟").tag(1_800.0)
                     }
-                    Text("低功耗模式只在这一个后台计时器中读取本机记录；仍可随时手动刷新。")
+                    Text("前台按所选间隔刷新；后台以 15 分钟起的间隔由系统调度。低电量模式以 30 分钟起的间隔刷新，温度较高时继续降频；打开摘要和手动刷新仍会按需检查。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 
@@ -70,7 +71,8 @@ struct SettingsView: View {
             .tabItem { Label("提醒", systemImage: "bell.badge") }
 
             VStack(spacing: 10) {
-                Image("CodexHealthMark").resizable().scaledToFit().frame(width: 64, height: 64)
+                Image(colorScheme == .dark ? "DarkAppIcon" : "LightAppIcon")
+                    .resizable().scaledToFit().frame(width: 48, height: 48)
                 Text("Codex Health").font(.title2.weight(.bold))
                 Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · 本地优先的 Codex 用量健康中心")
                     .foregroundStyle(.secondary)

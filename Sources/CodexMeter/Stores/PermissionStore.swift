@@ -105,11 +105,14 @@ final class PermissionStore {
     }
 
     func expireAndPrune(now: Date = .now, persist: Bool = true) {
+        var changed = false
         let expiry = now.addingTimeInterval(-300)
         for index in events.indices where events[index].status == .new && events[index].receivedAt <= expiry {
             events[index].status = .expired
+            changed = true
         }
 
+        let previousCount = events.count
         let retentionHours = defaults.object(forKey: PermissionPreferences.retentionHoursKey) as? Int ?? 24
         if retentionHours <= 0 {
             events.removeAll()
@@ -117,7 +120,18 @@ final class PermissionStore {
             let cutoff = now.addingTimeInterval(-Double(retentionHours) * 3_600)
             events.removeAll { $0.receivedAt < cutoff }
         }
-        if persist { persistAndNotify() }
+        changed = changed || events.count != previousCount
+        if persist && changed { persistAndNotify() }
+    }
+
+    func nextMaintenanceDate(now: Date = .now) -> Date? {
+        guard !events.isEmpty else { return nil }
+        let retentionHours = defaults.object(forKey: PermissionPreferences.retentionHoursKey) as? Int ?? 24
+        guard retentionHours > 0 else { return now }
+        return events.flatMap { event -> [Date] in
+            let retention = event.receivedAt.addingTimeInterval(Double(retentionHours) * 3_600 + 0.001)
+            return event.status == .new ? [event.receivedAt.addingTimeInterval(300), retention] : [retention]
+        }.min()
     }
 
     private func load() {

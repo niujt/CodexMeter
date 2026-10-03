@@ -61,7 +61,7 @@ struct DesktopWidgetView: View {
                 Text("低功耗自动刷新")
                 Spacer()
                 Button {
-                    Task { await store.refresh(force: true) }
+                    Task { await store.refresh() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }

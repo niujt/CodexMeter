@@ -42,6 +42,10 @@ final class PermissionAttentionService {
     @ObservationIgnored private var directorySource: DispatchSourceFileSystemObject?
     @ObservationIgnored private var directoryDescriptor: Int32 = -1
     @ObservationIgnored private var expiryTimer: Timer?
+    @ObservationIgnored private var expiryObserver: NSObjectProtocol?
+    @ObservationIgnored private var retentionObserver: NSObjectProtocol?
+    @ObservationIgnored private var scheduledRetentionHours: Int?
+    @ObservationIgnored private var scheduledExpiryDate: Date?
     @ObservationIgnored private var notificationDates: [Date] = []
     @ObservationIgnored private var sessionNotificationDates: [String: [Date]] = [:]
     @ObservationIgnored private var sessionSoundDates: [String: Date] = [:]
@@ -79,11 +83,47 @@ final class PermissionAttentionService {
         } catch {
             integrationMessage = "权限提醒队列无法启动：\(error.localizedDescription)"
         }
-        expiryTimer?.invalidate()
-        expiryTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.store.expireAndPrune() }
+        if expiryObserver == nil {
+            expiryObserver = NotificationCenter.default.addObserver(forName: .codexPermissionStoreDidChange, object: store, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.scheduleExpiry() }
+            }
         }
+        if retentionObserver == nil {
+            retentionObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: defaults, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    let hours = self.defaults.object(forKey: PermissionPreferences.retentionHoursKey) as? Int ?? 24
+                    guard hours != self.scheduledRetentionHours else { return }
+                    self.store.expireAndPrune()
+                    self.scheduleExpiry()
+                }
+            }
+        }
+        store.expireAndPrune()
+        scheduleExpiry()
         refreshNotificationStatus()
+    }
+
+    private func scheduleExpiry() {
+        let deadline = store.nextMaintenanceDate()
+        let hours = defaults.object(forKey: PermissionPreferences.retentionHoursKey) as? Int ?? 24
+        if deadline == scheduledExpiryDate, hours == scheduledRetentionHours,
+           deadline == nil || expiryTimer?.isValid == true { return }
+        expiryTimer?.invalidate()
+        expiryTimer = nil
+        scheduledRetentionHours = hours
+        scheduledExpiryDate = deadline
+        guard let deadline else { return }
+        let delay = max(1, deadline.timeIntervalSinceNow)
+        let timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.store.expireAndPrune()
+                self.scheduleExpiry()
+            }
+        }
+        timer.tolerance = min(30, delay * 0.1)
+        expiryTimer = timer
     }
 
     func setEnabled(_ enabled: Bool) {
