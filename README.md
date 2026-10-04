@@ -2,7 +2,9 @@
 
 一个原生 macOS 菜单栏应用和桌面小组件，用于从本机 Codex 会话记录中查看 Token 用量、上下文与 7 天额度。
 
-界面采用黑白灰的扁平布局，以细分隔线、留白和统一字号组织信息，支持浅色、深色和跟随系统外观。
+界面采用「外围 Liquid Glass + 内部极简 Flat Content」：侧栏和工具栏使用系统材质，数据、图表和列表保持黑白灰扁平布局。支持浅色、深色和跟随系统外观；macOS 26 及以上使用 Liquid Glass，较早版本使用系统材质。
+
+在「设置 → 通用 → 外观 → 应用 Logo」中可选择原版或玻璃黑白版。原版继续作为默认，切换 Dock 与应用内 Logo 无需重启；Finder 中的安装包图标保持原版。
 
 > 数据只在本机读取与计算，不上传会话内容或用量数据。
 
@@ -22,6 +24,15 @@
 <summary>查看深色模式</summary>
 
 ![Codex Health 黑白灰健康报告：深色模式（演示数据）](docs/screenshots/dashboard-dark.png)
+
+</details>
+
+<details>
+<summary>应用 Logo 切换</summary>
+
+默认仍使用原版 Logo；玻璃黑白版可在设置中按需选择。
+
+![Codex Health 可选 Logo 设置（演示数据）](docs/screenshots/logo-settings.png)
 
 </details>
 

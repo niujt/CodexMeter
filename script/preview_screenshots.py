@@ -20,6 +20,7 @@ APP = WORK / "Codex Health Preview.app"
 SOURCES = WORK / "Sources"
 SOURCES.mkdir()
 (APP / "Contents/MacOS").mkdir(parents=True)
+(APP / "Contents/Resources").mkdir()
 
 usage_store = """import Foundation
 import Observation
@@ -109,10 +110,14 @@ struct DocumentationWidgetPreview: View {
 (SOURCES / "CodexMeterWidget.swift").write_text(widget)
 (SOURCES / "ScreenshotApp.swift").write_text((ROOT / "script/ScreenshotApp.swift").read_text())
 
+with (ROOT / "Resources/Info.plist").open("rb") as handle:
+    app_info = plistlib.load(handle)
 info = {
     "CFBundleExecutable": "ScreenshotPreview",
     "CFBundleIdentifier": "local.codexhealth.screenshots." + uuid.uuid4().hex,
     "CFBundleName": "Codex Health Preview",
+    "CFBundleShortVersionString": app_info["CFBundleShortVersionString"],
+    "CFBundleVersion": app_info["CFBundleVersion"],
     "CFBundlePackageType": "APPL",
     "LSMinimumSystemVersion": "15.0",
     "NSPrincipalClass": "NSApplication",
@@ -123,10 +128,15 @@ with (APP / "Contents/Info.plist").open("wb") as handle:
 
 print(f"Preview workspace: {WORK}", flush=True)
 subprocess.run([
+    "xcrun", "actool", str(ROOT / "Resources/Assets.xcassets"),
+    "--compile", str(APP / "Contents/Resources"), "--platform", "macosx",
+    "--minimum-deployment-target", "15.0", "--target-device", "mac",
+], check=True)
+subprocess.run([
     "xcrun", "swiftc", "-swift-version", "6", "-parse-as-library",
     *map(str, sorted(SOURCES.glob("*.swift"))),
     "-o", str(APP / "Contents/MacOS/ScreenshotPreview"),
 ], check=True)
 subprocess.run(["/usr/bin/open", "-n", str(APP)], check=True)
-print("Preview ready. Use the sidebar for analysis pages and the 演示预览 menu for appearance, menu and widget previews.")
+print("Preview ready. Use the sidebar for analysis pages and the 演示预览 menu for appearance, menu, widget and settings previews.")
 print("Take screenshots of the window, then quit the preview app when finished.")

@@ -141,6 +141,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         // Start as a menu-bar accessory. The dashboard promotes the app to a
         // regular Dock application when it is explicitly opened.
         _ = NSApp.setActivationPolicy(.accessory)
+        AppIconStyle.applyDockIcon()
         guard let button = statusItem.button else { return }
         button.imagePosition = .imageOnly
         button.target = self

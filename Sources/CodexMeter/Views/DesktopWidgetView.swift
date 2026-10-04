@@ -49,7 +49,7 @@ struct DesktopWidgetView: View {
                 }
                 .font(.caption.weight(.medium))
                 ProgressView(value: min(window.usedPercent, 100), total: 100)
-                    .tint(window.usedPercent >= 90 ? .red : .accentColor)
+                    .tint(.primary)
             } else {
                 Text("等待新周期数据")
                     .font(.caption)
@@ -73,7 +73,9 @@ struct DesktopWidgetView: View {
         }
         .padding(16)
         .frame(width: 300, height: 245, alignment: .topLeading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .tint(.primary)
+        .progressViewStyle(FlatProgressStyle())
+        .modifier(PeripheralGlass(cornerRadius: 20))
     }
 
     private func rateTitle(_ window: RateWindow) -> String {
@@ -95,7 +97,6 @@ private struct Metric: View {
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(9)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
+        .padding(.vertical, 9)
     }
 }

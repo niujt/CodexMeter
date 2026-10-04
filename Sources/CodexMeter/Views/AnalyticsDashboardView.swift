@@ -44,6 +44,8 @@ struct AnalyticsDashboardView: View {
                         .frame(minHeight: 500)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(nsColor: .textBackgroundColor))
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if store.isRefreshing {
@@ -57,18 +59,22 @@ struct AnalyticsDashboardView: View {
                 .background(.bar)
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
         .tint(.primary)
         .progressViewStyle(FlatProgressStyle())
         .preferredColorScheme(appearanceMode.colorScheme)
         .navigationTitle("Codex Health")
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
+            ToolbarItem(placement: .primaryAction) {
                 Button { Task { await store.refresh() } } label: {
                     Label("刷新", systemImage: "arrow.clockwise")
                 }
                 .disabled(store.isRefreshing)
                 .help("刷新本机用量")
+            }
+            if #available(macOS 26.0, *) {
+                ToolbarSpacer(.fixed, placement: .primaryAction)
+            }
+            ToolbarItemGroup(placement: .primaryAction) {
                 Menu {
                     ForEach(AppAppearance.allCases) { mode in
                         Button { appearance = mode.rawValue } label: {
@@ -507,11 +513,8 @@ private struct DashboardSidebar: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("用量")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .padding(.horizontal, 10).padding(.bottom, 4)
+        List {
+            Section("用量") {
                 ForEach(Array(items.enumerated()), id: \.element.0) { index, item in
                     Button { selection = item.0 } label: {
                         Label(item.0, systemImage: item.1)
@@ -524,19 +527,38 @@ private struct DashboardSidebar: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .listItemTint(.monochrome)
                     .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
                     .help("\(item.0) · ⌘\(index + 1)")
                     .accessibilityAddTraits(selection == item.0 ? .isSelected : [])
                 }
             }
-            Spacer(minLength: 0)
+        }
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom) {
             Label("本机统计", systemImage: "lock.shield")
                 .font(.caption).foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+/// Glass is reserved for peripheral controls and floating surfaces.
+struct PeripheralGlass: ViewModifier {
+    var cornerRadius: CGFloat = 12
+    var interactive = false
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    @ViewBuilder func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if reduceTransparency {
+            content.background(Color(nsColor: .windowBackgroundColor), in: shape)
+        } else if #available(macOS 26.0, *) {
+            content.glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
+        } else {
+            content.background(.regularMaterial, in: shape)
+        }
     }
 }
 

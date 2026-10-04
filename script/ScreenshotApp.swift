@@ -96,6 +96,8 @@ struct ScreenshotApp: App {
                     UsagePopoverView(store: store, permissionStore: permissions, compact: true, isVisible: false)
                 case "widget":
                     DocumentationWidgetPreview()
+                case "settings":
+                    SettingsView(store: store)
                 default:
                     AnalyticsDashboardView(store: store, selectedSection: $state.section)
                 }
@@ -113,6 +115,8 @@ struct ScreenshotApp: App {
                     .keyboardShortcut("2", modifiers: [.command, .option])
                 Button("桌面小组件") { show("widget", width: 630, height: 230) }
                     .keyboardShortcut("3", modifiers: [.command, .option])
+                Button("偏好设置") { show("settings", width: 560, height: 490) }
+                    .keyboardShortcut("4", modifiers: [.command, .option])
                 Divider()
                 Button("浅色模式") {
                     UserDefaults.standard.set("light", forKey: "codexMeter.appearance")

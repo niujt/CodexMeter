@@ -1,5 +1,33 @@
 import SwiftUI
 
+enum AppIconStyle: String, CaseIterable, Identifiable {
+    case original, glass
+    static let preferenceKey = "codexMeter.appIconStyle"
+    var id: String { rawValue }
+    var title: String { self == .original ? "原版（默认）" : "玻璃 · 黑白" }
+
+    func assetName(for colorScheme: ColorScheme) -> String {
+        self == .glass ? "GlassAppIcon" : (colorScheme == .dark ? "DarkAppIcon" : "LightAppIcon")
+    }
+
+    @MainActor private static var originalDockIcon: NSImage?
+    @MainActor private static var appliedStyle = AppIconStyle.original
+
+    @MainActor static func applyDockIcon(defaults: UserDefaults = .standard) {
+        if originalDockIcon == nil { originalDockIcon = NSApp.applicationIconImage }
+        let style = AppIconStyle(rawValue: defaults.string(forKey: preferenceKey) ?? "") ?? .original
+        guard style != appliedStyle else { return }
+        switch style {
+        case .original:
+            NSApp.applicationIconImage = originalDockIcon
+        case .glass:
+            guard let image = NSImage(named: "GlassAppIcon") else { return }
+            NSApp.applicationIconImage = image
+        }
+        appliedStyle = style
+    }
+}
+
 @MainActor
 struct SettingsView: View {
     let store: UsageStore
@@ -8,9 +36,14 @@ struct SettingsView: View {
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
     @AppStorage(RefreshPolicy.intervalKey) private var refreshInterval = RefreshPolicy.lowPowerDefault
     @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
+    @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.original.rawValue
 
     private var appearanceMode: AppAppearance {
         AppAppearance(rawValue: appearance) ?? .system
+    }
+
+    private var selectedIcon: AppIconStyle {
+        AppIconStyle(rawValue: iconStyle) ?? .original
     }
 
     var body: some View {
@@ -47,6 +80,18 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    HStack(spacing: 12) {
+                        Image(selectedIcon.assetName(for: colorScheme))
+                            .resizable().scaledToFit().frame(width: 44, height: 44)
+                            .accessibilityLabel(selectedIcon.title)
+                        Picker("应用 Logo", selection: $iconStyle) {
+                            ForEach(AppIconStyle.allCases) { style in
+                                Text(style.title).tag(style.rawValue)
+                            }
+                        }
+                    }
+                    Text("原版为默认；可切换 Dock 与应用内 Logo，无需重启。")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .formStyle(.grouped)
@@ -71,7 +116,7 @@ struct SettingsView: View {
             .tabItem { Label("提醒", systemImage: "bell.badge") }
 
             VStack(spacing: 10) {
-                Image(colorScheme == .dark ? "DarkAppIcon" : "LightAppIcon")
+                Image(selectedIcon.assetName(for: colorScheme))
                     .resizable().scaledToFit().frame(width: 48, height: 48)
                 Text("Codex Health").font(.title2.weight(.bold))
                 Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · 本地优先的 Codex 用量健康中心")
@@ -80,8 +125,10 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 520, height: 360)
+        .frame(width: 520, height: 440)
         .scenePadding()
+        .tint(.primary)
         .preferredColorScheme(appearanceMode.colorScheme)
+        .onChange(of: iconStyle) { _, _ in AppIconStyle.applyDockIcon() }
     }
 }

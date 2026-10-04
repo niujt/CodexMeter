@@ -302,7 +302,17 @@ private struct HealthMenuPopover: View {
         }
     }
 
-    private var controls: some View { controlButtons }
+    @ViewBuilder private var controls: some View {
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer {
+                controlButtons.padding(.horizontal, 6).padding(.vertical, 4)
+                    .modifier(PeripheralGlass(interactive: true))
+            }
+        } else {
+            controlButtons.padding(.horizontal, 6).padding(.vertical, 4)
+                .modifier(PeripheralGlass(interactive: true))
+        }
+    }
 
     private var controlButtons: some View {
         HStack(spacing: 8) {
