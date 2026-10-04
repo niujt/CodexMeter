@@ -2,6 +2,8 @@
 
 一个原生 macOS 菜单栏应用和桌面小组件，用于从本机 Codex 会话记录中查看 Token 用量、上下文与 7 天额度。
 
+界面采用黑白灰的扁平布局，以细分隔线、留白和统一字号组织信息，支持浅色、深色和跟随系统外观。
+
 > 数据只在本机读取与计算，不上传会话内容或用量数据。
 
 ## 下载
@@ -10,15 +12,22 @@
 
 当前发布包使用本机开发签名以确保 WidgetKit 扩展能被 macOS 识别；macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
 
-以下截图均为脱敏的演示数据，不包含真实项目、会话或 Token 用量。
+以下截图由当前 SwiftUI 页面和虚构演示数据生成，不包含真实项目、会话、账户记录或 Token 用量。
 
 ## 健康报告
 
-![Codex Health 当前界面（匿名演示数据）](docs/screenshots/dashboard.png)
+![Codex Health 黑白灰健康报告：浅色模式（演示数据）](docs/screenshots/dashboard.png)
+
+<details>
+<summary>查看深色模式</summary>
+
+![Codex Health 黑白灰健康报告：深色模式（演示数据）](docs/screenshots/dashboard-dark.png)
+
+</details>
 
 ## 菜单栏摘要
 
-菜单栏会显示当前 7 天额度剩余比例；点击后可快速查看额度、预测、提醒阈值并打开完整详情。
+菜单栏会显示当前 7 天额度剩余比例；点击后可快速查看额度、重置时间、平均回复速度、今日用量和权限提醒，并打开完整详情。
 
 ![Codex Health 菜单栏弹窗（匿名演示数据）](docs/screenshots/menu-popover.png)
 
@@ -99,6 +108,14 @@ cd CodexMeter
 ```bash
 ./script/build_and_run.sh
 ```
+
+更新 README 截图时可以执行：
+
+```bash
+python3 script/preview_screenshots.py
+```
+
+脚本打开独立演示应用，使用真实页面组件和内存中的演示数据，不读取 Codex 会话、登录凭据或真实重置历史。通过侧栏切换页面，通过“演示预览”菜单切换明暗模式、菜单栏摘要和小组件，再截取窗口。临时构建保留在系统临时目录，便于检查。
 
 ## 数据与限制
 

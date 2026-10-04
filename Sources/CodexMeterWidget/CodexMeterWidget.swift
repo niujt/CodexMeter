@@ -63,6 +63,8 @@ private struct CodexMeterWidgetView: View {
     var body: some View {
         if let usage = entry.usage {
             content(usage)
+                .tint(.primary)
+                .progressViewStyle(WidgetGrayProgressStyle())
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
@@ -72,9 +74,9 @@ private struct CodexMeterWidgetView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             .containerBackground(for: .widget) {
-                Rectangle().fill(.regularMaterial)
+                Color(nsColor: .windowBackgroundColor)
             }
         }
     }
@@ -87,11 +89,11 @@ private struct CodexMeterWidgetView: View {
                 Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                     .font(.caption.weight(.semibold))
                 if usage.isStale(at: entry.date) {
-                    Text("数据可能已过期").font(.caption2).foregroundStyle(.orange)
+                    Text("数据可能已过期").font(.caption2).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text(remainingText(usage))
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .font(.system(size: 30, weight: .medium))
                     .minimumScaleFactor(0.65)
                 Text(usage.currentRatePercent(at: entry.date) == nil ? "等待新周期数据" : "额度剩余")
                     .font(.caption)
@@ -104,9 +106,9 @@ private struct CodexMeterWidgetView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             .containerBackground(for: .widget) {
-                Rectangle().fill(.regularMaterial)
+                Color(nsColor: .windowBackgroundColor)
             }
         default:
             VStack(alignment: .leading, spacing: 10) {
@@ -119,7 +121,7 @@ private struct CodexMeterWidgetView: View {
                         .foregroundStyle(.secondary)
                 }
                 if usage.isStale(at: entry.date) {
-                    Text("数据可能已过期 · 请打开主应用更新").font(.caption2).foregroundStyle(.orange)
+                    Text("数据可能已过期 · 请打开主应用更新").font(.caption2).foregroundStyle(.secondary)
                 }
                 HStack(spacing: 10) {
                     metric("今天", usage.todayTokens)
@@ -176,5 +178,19 @@ private struct CodexMeterWidgetView: View {
     private func remainingText(_ usage: WidgetUsageData) -> String {
         guard let percent = usage.currentRatePercent(at: entry.date) else { return "--" }
         return "\(max(0, 100 - Int(percent.rounded())))%"
+    }
+}
+
+
+private struct WidgetGrayProgressStyle: ProgressViewStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Rectangle().fill(.primary.opacity(0.1))
+                Rectangle().fill(.primary.opacity(0.75))
+                    .frame(width: proxy.size.width * min(1, max(0, configuration.fractionCompleted ?? 0)))
+            }
+        }
+        .frame(height: 3)
     }
 }

@@ -20,9 +20,15 @@ struct AnalyticsDashboardView: View {
             ScrollView {
                 switch selectedSection ?? "健康报告" {
                 case "健康报告":
-                    DashboardContent(store: store)
-                        .padding(24)
-                        .frame(maxWidth: 1_100)
+                    DashboardContent(
+                        snapshot: store.snapshot,
+                        errorMessage: store.errorMessage,
+                        isRefreshing: store.isRefreshing,
+                        measuredVelocity: RateHistory.weightedVelocity()?.percentPerHour,
+                        chooseFolder: { store.chooseCodexFolder() }
+                    )
+                        .padding(28)
+                        .frame(maxWidth: 1_100, alignment: .leading)
                 case "项目与用量":
                     ProjectsUsageView(store: store, pathStore: projectPathStore)
                 case "使用趋势":
@@ -51,6 +57,9 @@ struct AnalyticsDashboardView: View {
                 .background(.bar)
             }
         }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .tint(.primary)
+        .progressViewStyle(FlatProgressStyle())
         .preferredColorScheme(appearanceMode.colorScheme)
         .navigationTitle("Codex Health")
         .toolbar {
@@ -124,7 +133,7 @@ private struct HistoryRecordsView: View {
             HStack(spacing: 12) {
                 Picker("范围", selection: $range) {
                     ForEach(HistoryRange.allCases) { Text($0.title).tag($0) }
-                }.pickerStyle(.segmented).frame(width: 210)
+                }.pickerStyle(.segmented).labelsHidden().frame(width: 210)
                 Picker("模型", selection: $model) {
                     ForEach(models, id: \.self) { Text($0).tag($0) }
                 }.frame(maxWidth: 220)
@@ -172,7 +181,7 @@ private struct HistoryRecordsView: View {
                 }
             }
         }
-        .padding(28).frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
+        .padding(28).frame(maxWidth: 1_100, alignment: .leading)
     }
 }
 
@@ -187,7 +196,7 @@ private struct ResetTimelineRow: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: isLatest ? "clock.arrow.circlepath" : "circle.fill")
                 .font(.callout)
-                .foregroundStyle(isLatest ? DashboardPalette.blue : .secondary)
+                .foregroundStyle(isLatest ? DashboardPalette.ink : .secondary)
                 .frame(width: 20, height: 20)
             VStack(alignment: .leading, spacing: 3) {
                 Text(isLatest ? "当前额度周期" : "已观察到的额度周期")
@@ -207,7 +216,7 @@ private struct ResetTimelineRow: View {
         }
         .padding(.vertical, 7)
         .overlay(alignment: .bottom) {
-            if !isLatest { Divider().opacity(0.45) }
+            if !isLatest { FlatDivider().opacity(0.45) }
         }
     }
 }
@@ -223,7 +232,7 @@ private struct HistoryRecordRow: View {
     let record: UsageRecord
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: "clock").foregroundStyle(DashboardPalette.blue).frame(width: 20)
+            Image(systemName: "clock").foregroundStyle(DashboardPalette.ink).frame(width: 20)
             Text(record.date.formatted(.dateTime.hour().minute()))
                 .font(.callout.monospacedDigit()).frame(width: 50, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
@@ -236,7 +245,7 @@ private struct HistoryRecordRow: View {
                 .font(.callout.weight(.semibold)).monospacedDigit()
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(alignment: .bottom) { FlatDivider() }
     }
 }
 
@@ -268,7 +277,7 @@ private struct UsageTrendsView: View {
                 Picker("粒度", selection: $granularity) {
                     ForEach(TrendGranularity.allCases) { Text($0.title).tag($0) }
                 }
-                .pickerStyle(.segmented).frame(width: 200)
+                .pickerStyle(.segmented).labelsHidden().frame(width: 200)
                 Spacer()
                 Text("总计 \(UsageFormatters.tokens(total)) Token")
                     .foregroundStyle(.secondary)
@@ -290,12 +299,12 @@ private struct UsageTrendsView: View {
                 }
             }
             HStack(spacing: 16) {
-                TrendMetric(title: "今天", value: UsageFormatters.tokens(store.snapshot.today.total), color: DashboardPalette.blue)
-                TrendMetric(title: "近 7 天", value: UsageFormatters.tokens(store.snapshot.lastSevenDays.total), color: .purple)
-                TrendMetric(title: "本月", value: UsageFormatters.tokens(store.snapshot.thisMonth.total), color: DashboardPalette.green)
+                TrendMetric(title: "今天", value: UsageFormatters.tokens(store.snapshot.today.total))
+                TrendMetric(title: "近 7 天", value: UsageFormatters.tokens(store.snapshot.lastSevenDays.total))
+                TrendMetric(title: "本月", value: UsageFormatters.tokens(store.snapshot.thisMonth.total))
             }
         }
-        .padding(28).frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
+        .padding(28).frame(maxWidth: 1_100, alignment: .leading)
     }
 }
 
@@ -315,9 +324,12 @@ private struct TrendBars: View {
                 ForEach(Array(points.enumerated()), id: \.offset) { _, point in
                     VStack(spacing: 7) {
                         Spacer(minLength: 0)
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(LinearGradient(colors: [DashboardPalette.blue, .cyan], startPoint: .top, endPoint: .bottom))
-                            .frame(height: max(5, proxy.size.height * 0.78 * CGFloat(point.1) / CGFloat(maxValue)))
+                        Text(UsageFormatters.tokens(point.1))
+                            .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(DashboardPalette.ink.opacity(0.8))
+                            .frame(width: min(32, proxy.size.width / CGFloat(max(1, points.count)) * 0.5),
+                                   height: max(3, proxy.size.height * 0.65 * CGFloat(point.1) / CGFloat(maxValue)))
                         Text(point.0.formatted(hourly ? .dateTime.hour() : .dateTime.month().day()))
                             .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
@@ -330,12 +342,12 @@ private struct TrendBars: View {
 }
 
 private struct TrendMetric: View {
-    let title: String; let value: String; let color: Color
+    let title: String; let value: String
     var body: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 7) {
                 Text(title).font(.caption).foregroundStyle(.secondary)
-                Text(value).font(.title2.weight(.bold)).foregroundStyle(color).monospacedDigit()
+                Text(value).font(.title2.weight(.medium)).foregroundStyle(.primary).monospacedDigit()
                 Text("Token 消耗").font(.caption2).foregroundStyle(.secondary)
             }
         }.frame(maxWidth: .infinity)
@@ -358,13 +370,13 @@ private struct ModelEfficiencyView: View {
                         DashboardCard {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack {
-                                    Image(systemName: "cpu.fill").foregroundStyle(DashboardPalette.blue)
+                                    Image(systemName: "cpu.fill").foregroundStyle(DashboardPalette.ink)
                                     Text(model.name).font(.headline).lineLimit(1)
                                     Spacer()
                                     Text("\(Int(Double(model.tokens) / Double(max(1, total)) * 100))% 占比")
-                                        .font(.callout.weight(.semibold)).foregroundStyle(DashboardPalette.green)
+                                        .font(.callout.weight(.semibold)).foregroundStyle(DashboardPalette.ink)
                                 }
-                                ProgressView(value: Double(model.tokens), total: Double(max(1, total))).tint(DashboardPalette.blue)
+                                ProgressView(value: Double(model.tokens), total: Double(max(1, total))).tint(DashboardPalette.ink)
                                 HStack {
                                     ModelMetric(label: "Token", value: UsageFormatters.tokens(model.tokens))
                                     ModelMetric(label: "有效轮次", value: "\(model.requests) 次")
@@ -378,7 +390,7 @@ private struct ModelEfficiencyView: View {
                 }
             }
         }
-        .padding(28).frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
+        .padding(28).frame(maxWidth: 1_100, alignment: .leading)
     }
 }
 
@@ -416,7 +428,7 @@ private struct ForecastRiskView: View {
                     DashboardCard {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("7 天额度").font(.headline)
-                            Text("剩余 \(remaining)%").font(.system(size: 48, weight: .bold, design: .rounded)).foregroundStyle(color)
+                            Text("剩余 \(remaining)%").font(.system(size: 36, weight: .medium)).foregroundStyle(color)
                             ProgressView(value: Double(remaining), total: 100).tint(color)
                             Text("约 \(UsageFormatters.countdown(to: rate.resetsAt)) 后重置").font(.caption).foregroundStyle(.secondary)
                         }
@@ -425,9 +437,9 @@ private struct ForecastRiskView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("续航预测").font(.headline)
                             Text(remainingHours.map { UsageFormatters.duration(hours: $0) } ?? "样本不足")
-                                .font(.system(size: 38, weight: .bold, design: .rounded)).foregroundStyle(color)
+                                .font(.system(size: 32, weight: .medium)).foregroundStyle(color)
                             Text(remainingHours == nil ? "继续使用一段时间后会形成预测" : (willExhaust ? "可能在重置前耗尽" : "预计可支撑到重置"))
-                                .foregroundStyle(willExhaust ? .orange : DashboardPalette.green)
+                                .foregroundStyle(.primary)
                             Text("当前平均消耗 \(hourlyRate.map { String(format: "%.2f%% / 小时", $0) } ?? "—")").font(.caption).foregroundStyle(.secondary)
                         }
                     }.frame(maxWidth: .infinity)
@@ -436,8 +448,8 @@ private struct ForecastRiskView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("风险说明").font(.headline)
                         RiskLine(icon: health.icon, color: health.color, title: health.title, detail: health.detail)
-                        RiskLine(icon: "clock.arrow.circlepath", color: DashboardPalette.blue, title: "下次重置", detail: rate.resetsAt.formatted(.dateTime.year().month().day().hour().minute()))
-                        RiskLine(icon: "chart.line.uptrend.xyaxis", color: .purple, title: "估算依据", detail: RateHistory.weightedVelocity().map { "已使用近 \($0.description) 小时的额度变化样本。" } ?? "暂无连续变化样本，已使用本周期平均速度。")
+                        RiskLine(icon: "clock.arrow.circlepath", color: DashboardPalette.ink, title: "下次重置", detail: rate.resetsAt.formatted(.dateTime.year().month().day().hour().minute()))
+                        RiskLine(icon: "chart.line.uptrend.xyaxis", color: .secondary, title: "估算依据", detail: RateHistory.weightedVelocity().map { "已使用近 \($0.description) 小时的额度变化样本。" } ?? "暂无连续变化样本，已使用本周期平均速度。")
                     }
                 }
             } else {
@@ -445,7 +457,7 @@ private struct ForecastRiskView: View {
                     .frame(maxWidth: .infinity, minHeight: 420)
             }
         }
-        .padding(28).frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
+        .padding(28).frame(maxWidth: 1_100, alignment: .leading)
     }
 }
 
@@ -471,7 +483,7 @@ private struct PageHeader: View {
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
                 if let error = store.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.orange)
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer()
@@ -480,9 +492,7 @@ private struct PageHeader: View {
 }
 
 private enum DashboardPalette {
-    static let blue = Color.accentColor
-    static let green = Color.green
-    static let orange = Color.orange
+    static let ink = Color.primary
 }
 
 private struct DashboardSidebar: View {
@@ -497,38 +507,58 @@ private struct DashboardSidebar: View {
     ]
 
     var body: some View {
-        List(selection: $selection) {
-            Section("用量") {
-                ForEach(items, id: \.0) { item in
-                    Label(item.0, systemImage: item.1).tag(item.0)
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("用量")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .padding(.horizontal, 10).padding(.bottom, 4)
+                ForEach(Array(items.enumerated()), id: \.element.0) { index, item in
+                    Button { selection = item.0 } label: {
+                        Label(item.0, systemImage: item.1)
+                            .font(.callout.weight(selection == item.0 ? .semibold : .regular))
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10).padding(.vertical, 9)
+                            .background(.primary.opacity(selection == item.0 ? 0.08 : 0),
+                                        in: RoundedRectangle(cornerRadius: 6))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+                    .help("\(item.0) · ⌘\(index + 1)")
+                    .accessibilityAddTraits(selection == item.0 ? .isSelected : [])
                 }
             }
-        }
-        .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom) {
+            Spacer(minLength: 0)
             Label("本机统计", systemImage: "lock.shield")
                 .font(.caption).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
+                .padding(.horizontal, 10)
         }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
 private struct DashboardContent: View {
-    let store: UsageStore
+    let snapshot: UsageSnapshot
+    let errorMessage: String?
+    let isRefreshing: Bool
+    let measuredVelocity: Double?
+    let chooseFolder: () -> Void
 
-    private var rate: RateWindow? { store.snapshot.sevenDayRate }
+    private var rate: RateWindow? { snapshot.sevenDayRate }
     private var remaining: Int? { rate.map { max(0, 100 - Int($0.usedPercent.rounded())) } }
     private var health: QuotaHealth {
-        .evaluate(rate: rate, percentPerHour: QuotaHealth.velocity(rate: rate, measured: RateHistory.weightedVelocity()?.percentPerHour))
+        .evaluate(rate: rate, percentPerHour: QuotaHealth.velocity(rate: rate, measured: measuredVelocity))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("健康报告").font(.title2.weight(.semibold))
-                    Text(store.snapshot.lastUpdated.map { "更新于 \($0.formatted(.relative(presentation: .named)))" } ?? "等待本机用量")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("健康报告").font(.system(size: 24, weight: .semibold))
+                    Text(snapshot.lastUpdated.map { "更新于 \($0.formatted(.relative(presentation: .named)))" } ?? "等待本机用量")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -537,50 +567,58 @@ private struct DashboardContent: View {
                     .help(health.detail)
             }
 
-            HStack(alignment: .top, spacing: 24) {
-                QuotaSummary(snapshot: store.snapshot, rate: rate, remaining: remaining, color: health.color)
+            HStack(alignment: .top, spacing: 20) {
+                QuotaSummary(snapshot: snapshot, rate: rate, remaining: remaining, color: health.color)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Divider().frame(height: 100)
-                ReplySpeedView(samples: store.snapshot.replySpeedSamples, layout: .metric)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Divider().frame(height: 100)
                 SummaryMetric(
-                    title: "今日用量", value: UsageFormatters.tokens(store.snapshot.today.total),
-                    detail: "输入 \(UsageFormatters.tokens(store.snapshot.today.input)) · 输出 \(UsageFormatters.tokens(store.snapshot.today.output))"
+                    title: "今日用量", value: UsageFormatters.tokens(snapshot.today.total),
+                    detail: "输入 \(UsageFormatters.tokens(snapshot.today.input)) · 输出 \(UsageFormatters.tokens(snapshot.today.output))"
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
+                SummaryMetric(
+                    title: "近 7 天用量", value: UsageFormatters.tokens(snapshot.lastSevenDays.total),
+                    detail: "Token 累计消耗"
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                ReplySpeedView(samples: snapshot.replySpeedSamples, layout: .metric)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .padding(.vertical, 4)
 
-            UsageTrendCard(snapshot: store.snapshot, remaining: remaining)
+            Divider()
+            UsageTrendCard(snapshot: snapshot)
+            Divider()
 
-            HStack(alignment: .top, spacing: 28) {
-                ModelCard(models: store.snapshot.topModels, weeklyTotal: store.snapshot.lastSevenDays.total)
-                Divider()
-                ProjectCard(projects: store.snapshot.topProjects, total: store.snapshot.lastSevenDays.total)
+            HStack(alignment: .top, spacing: 32) {
+                ModelCard(models: snapshot.topModels, weeklyTotal: snapshot.lastSevenDays.total)
+                ProjectCard(projects: snapshot.topProjects, total: snapshot.lastSevenDays.total)
             }
             .fixedSize(horizontal: false, vertical: true)
 
             Divider()
-            MetricsCard(snapshot: store.snapshot)
+            MetricsCard(snapshot: snapshot)
 
-            if let error = store.errorMessage {
+            if let error = errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption).foregroundStyle(.orange)
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            if store.snapshot.fileCount == 0 && !store.isRefreshing {
-                Button("选择 Codex 数据目录…") { store.chooseCodexFolder() }
+            if snapshot.fileCount == 0 && !isRefreshing {
+                Button("选择 Codex 数据目录…", action: chooseFolder)
                     .buttonStyle(.bordered)
             }
         }
     }
 }
 
+/// A flat section shared by the analysis pages; spacing and a rule provide hierarchy.
 private struct DashboardCard<Content: View>: View {
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
-        content.padding(18)
-            .background(.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 18)
+            .overlay(alignment: .bottom) { FlatDivider() }
     }
 }
 
@@ -594,7 +632,7 @@ private struct QuotaSummary: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("7 天剩余额度").font(.caption).foregroundStyle(.secondary)
             Text(remaining.map { "\($0)%" } ?? "—")
-                .font(.system(size: 34, weight: .medium, design: .rounded)).monospacedDigit()
+                .font(.system(size: 28, weight: .medium)).monospacedDigit()
             if let remaining { ProgressView(value: Double(remaining), total: 100).tint(color).frame(maxWidth: 180) }
             Text(rate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? "等待新周期数据")
                 .font(.caption).foregroundStyle(.secondary)
@@ -619,59 +657,32 @@ private struct SummaryMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 34, weight: .medium, design: .rounded)).monospacedDigit()
+            Text(value).font(.system(size: 28, weight: .medium)).monospacedDigit()
             Text(detail).font(.caption).foregroundStyle(.secondary)
         }
     }
 }
 
 private struct UsageTrendCard: View {
-    let snapshot: UsageSnapshot; let remaining: Int?
-    private var points: [Double] {
-        let sorted = snapshot.dailyUsage.sorted { $0.date < $1.date }.suffix(7)
-        let maxValue = max(1, sorted.map(\.tokens).max() ?? 1)
-        return sorted.map { Double($0.tokens) / Double(maxValue) }
-    }
+    let snapshot: UsageSnapshot
+    private var days: [DailyUsage] { snapshot.dailyUsage.sorted { $0.date < $1.date }.suffix(7) }
+
     var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack { Text("使用趋势").font(.headline); Spacer(); Text("近 7 天").font(.caption).foregroundStyle(.secondary) }
-                GeometryReader { proxy in
-                    let width = proxy.size.width
-                    let height = proxy.size.height
-                    Path { path in
-                        guard points.count > 1 else { return }
-                        for (index, point) in points.enumerated() {
-                            let x = width * CGFloat(index) / CGFloat(points.count - 1)
-                            let y = height * (1 - CGFloat(point) * 0.78 - 0.08)
-                            index == 0 ? path.move(to: CGPoint(x: x, y: y)) : path.addLine(to: CGPoint(x: x, y: y))
-                        }
-                    }
-                    .stroke(DashboardPalette.blue, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                    .overlay(alignment: .bottomLeading) {
-                        LinearGradient(colors: [DashboardPalette.blue.opacity(0.10), .clear], startPoint: .top, endPoint: .bottom)
-                            .mask(Path { path in
-                                guard points.count > 1 else { return }
-                                path.move(to: CGPoint(x: 0, y: height))
-                                for (index, point) in points.enumerated() {
-                                    let x = width * CGFloat(index) / CGFloat(points.count - 1)
-                                    let y = height * (1 - CGFloat(point) * 0.78 - 0.08)
-                                    path.addLine(to: CGPoint(x: x, y: y))
-                                }
-                                path.addLine(to: CGPoint(x: width, y: height)); path.closeSubpath()
-                            })
-                    }
-                }
-                .frame(height: 130)
-                HStack {
-                    Text("Token 用量按日汇总")
-                    Spacer()
-                    Text(remaining.map { "剩余 \($0)%" } ?? "等待新周期数据")
-                }
-                    .font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("使用趋势").font(.callout.weight(.semibold))
+                Spacer()
+                Text("近 7 天 · Token").font(.caption).foregroundStyle(.secondary)
+            }
+            if days.isEmpty {
+                ContentUnavailableView("暂无趋势样本", systemImage: "chart.bar.xaxis")
+                    .frame(maxWidth: .infinity, minHeight: 150)
+            } else {
+                TrendBars(points: days.map { ($0.date, $0.tokens) }, hourly: false)
+                    .frame(height: 140)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -693,7 +704,7 @@ private struct ModelCard: View {
                         Spacer()
                         Text(UsageFormatters.tokens(model.tokens)).monospacedDigit()
                     }.font(.callout)
-                    ProgressView(value: Double(model.tokens), total: Double(max(1, weeklyTotal))).tint(.secondary)
+                    ProgressView(value: Double(model.tokens), total: Double(max(1, weeklyTotal))).tint(DashboardPalette.ink)
                     Text("\(model.requests) 个有效轮次 · \(model.averageTurnSeconds.map { "平均 \(UsageFormatters.turnDuration(seconds: $0))" } ?? "暂无耗时样本")")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
@@ -706,7 +717,7 @@ private struct MetricsCard: View {
     let snapshot: UsageSnapshot
     var body: some View {
         HStack(alignment: .top, spacing: 24) {
-            MetricRow("近 7 天用量", UsageFormatters.tokens(snapshot.lastSevenDays.total))
+            MetricRow("本机记录", "\(snapshot.fileCount) 个文件")
             MetricRow("本月用量", UsageFormatters.tokens(snapshot.thisMonth.total))
             MetricRow("当前上下文", snapshot.contextWindow > 0 ? "\(UsageFormatters.tokens(snapshot.currentContextUsed)) / \(UsageFormatters.tokens(snapshot.contextWindow))" : "暂无")
             MetricRow("会话", "\(snapshot.sessionCount) 个")
@@ -754,9 +765,9 @@ private extension QuotaHealth {
     var color: Color {
         switch self {
         case .waiting, .insufficient: .secondary
-        case .critical: .red
-        case .watch: DashboardPalette.orange
-        case .healthy: DashboardPalette.green
+        case .critical: .primary
+        case .watch: .secondary
+        case .healthy: DashboardPalette.ink
         }
     }
     var icon: String {
@@ -765,5 +776,38 @@ private extension QuotaHealth {
         case .critical, .watch: "exclamationmark.shield.fill"
         case .healthy: "checkmark.shield.fill"
         }
+    }
+}
+
+/// Draws determinate progress in gray with the native value semantics intact.
+struct FlatProgressStyle: ProgressViewStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        if let fraction = configuration.fractionCompleted {
+            VStack(alignment: .leading, spacing: 6) {
+                configuration.label
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Rectangle().fill(.primary.opacity(0.1))
+                        Rectangle().fill(.primary.opacity(0.75))
+                            .frame(width: proxy.size.width * min(1, max(0, fraction)))
+                    }
+                }
+                .frame(height: 3)
+                configuration.currentValueLabel
+            }
+        } else {
+            VStack(spacing: 6) {
+                configuration.label
+                ProgressView().progressViewStyle(.circular)
+                configuration.currentValueLabel
+            }
+        }
+    }
+}
+
+
+struct FlatDivider: View {
+    var body: some View {
+        Rectangle().fill(.primary.opacity(0.12)).frame(height: 1)
     }
 }

@@ -25,6 +25,8 @@ struct UsagePopoverView: View {
                     .padding(10)
             }
         }
+        .tint(.primary)
+        .progressViewStyle(FlatProgressStyle())
         .task {
             guard store.snapshot.lastUpdated == nil else { return }
             await store.refresh()
@@ -36,7 +38,7 @@ struct UsagePopoverView: View {
             HStack(alignment: .center) {
                 if compact, let rate = store.snapshot.sevenDayRate {
                     let remaining = max(0, 100 - Int(rate.usedPercent.rounded()))
-                    let color: Color = remaining < 20 ? .red : remaining < 50 ? .orange : .green
+                    let color = Color.primary
                     Image("CodexHealthMark")
                         .resizable()
                         .interpolation(.high)
@@ -170,7 +172,7 @@ struct UsagePopoverView: View {
             if let error = store.errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
             }
 
@@ -186,7 +188,7 @@ struct UsagePopoverView: View {
                             : "无法访问 \(store.snapshot.dataPath)"
                     )
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.secondary)
                     .textSelection(.enabled)
 
                     Button("选择 Codex 数据目录…") {
@@ -222,10 +224,7 @@ private struct HealthMenuPopover: View {
 
     private var rate: RateWindow? { store.snapshot.sevenDayRate }
     private var remaining: Int? { rate.map { max(0, 100 - Int($0.usedPercent.rounded())) } }
-    private var color: Color {
-        guard let remaining else { return .secondary }
-        return remaining < 20 ? .red : remaining < 50 ? .orange : .green
-    }
+    private var color: Color { remaining == nil ? .secondary : .primary }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -277,12 +276,12 @@ private struct HealthMenuPopover: View {
                 } label: {
                     Label(permissionStore.newCount > 0 ? "\(permissionStore.newCount) 条请求需要关注" : "权限请求记录",
                           systemImage: "exclamationmark.shield")
-                        .font(.caption).foregroundStyle(permissionStore.newCount > 0 ? Color.orange : Color.secondary)
+                        .font(.caption).foregroundStyle(permissionStore.newCount > 0 ? Color.primary : Color.secondary)
                 }
             }
             if let error = store.errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption2).foregroundStyle(.orange).lineLimit(2).help(error)
+                    .font(.caption2).foregroundStyle(.secondary).lineLimit(2).help(error)
             }
             Divider()
             HStack {
@@ -303,13 +302,7 @@ private struct HealthMenuPopover: View {
         }
     }
 
-    @ViewBuilder private var controls: some View {
-        if #available(macOS 26.0, *) {
-            controlButtons.padding(5).glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            controlButtons.padding(5).background(.thinMaterial, in: Capsule())
-        }
-    }
+    private var controls: some View { controlButtons }
 
     private var controlButtons: some View {
         HStack(spacing: 8) {
@@ -369,7 +362,7 @@ struct ReplySpeedView: View {
                     Text("平均回复速度").font(.caption).foregroundStyle(.secondary)
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(speed.map { $0.tokensPerSecond.formatted(.number.precision(.fractionLength(1))) } ?? "—")
-                            .font(.system(size: 34, weight: .medium, design: .rounded)).monospacedDigit()
+                            .font(.system(size: 28, weight: .medium)).monospacedDigit()
                         Text("tokens/s").font(.caption).foregroundStyle(.secondary)
                     }
                     Text(speed.map { "近 15 分钟 · \($0.sampleCount) 个有效轮次" } ?? "近 15 分钟暂无样本")
@@ -408,7 +401,7 @@ private struct MenuRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                Image(systemName: icon).frame(width: 18).foregroundStyle(.blue)
+                Image(systemName: icon).frame(width: 18).foregroundStyle(.primary)
                 Text(title).foregroundStyle(.primary)
                 Spacer()
                 Text(shortcut).font(.caption).foregroundStyle(.secondary)
@@ -447,7 +440,7 @@ private struct UsageTrendView: View {
                 ForEach(buckets, id: \.date) { day in
                     VStack(spacing: 3) {
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(.blue)
+                            .fill(.primary.opacity(0.8))
                             .frame(height: max(4, 40 * CGFloat(day.tokens) / CGFloat(maximum)))
                         Text(granularity == "按小时" ? day.date.formatted(.dateTime.hour()) : day.date.formatted(.dateTime.weekday(.narrow)))
                             .font(.caption2).foregroundStyle(.secondary)
@@ -504,7 +497,7 @@ private struct PredictionView: View {
                     .foregroundStyle(.secondary)
             }
             Text((remaining ?? .infinity) < resetHours ? "可能在重置前耗尽" : "预计可支撑到重置")
-                .foregroundStyle((remaining ?? .infinity) < resetHours ? .orange : .green)
+                .foregroundStyle(.primary)
             Text(velocity.map { "按近 \($0.description) 小时额度变化加权估算" } ?? "样本不足，使用额度周期平均速度估算")
                 .font(.caption2).foregroundStyle(.secondary)
         }.font(.caption)
@@ -525,7 +518,6 @@ struct UsageCard: View {
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.vertical, 10)
     }
 }

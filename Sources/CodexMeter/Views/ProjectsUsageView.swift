@@ -27,13 +27,13 @@ struct ProjectsUsageView: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("项目与用量").font(.system(size: 30, weight: .bold))
+                    Text("项目与用量").font(.system(size: 24, weight: .semibold))
                     Text("按 Codex 会话记录中的本地工作目录归类；不会读取项目源码。")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("添加项目目录", systemImage: "folder.badge.plus") { pathStore.addFolder() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                 Button { Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.bordered)
                     .disabled(store.isRefreshing)
@@ -43,7 +43,7 @@ struct ProjectsUsageView: View {
                 Picker("时间范围", selection: $range) {
                     ForEach(ProjectRange.allCases) { Text($0.title).tag($0) }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.segmented).labelsHidden()
                 .frame(width: 280)
                 Toggle("显示完整路径", isOn: $showFullPaths)
                     .toggleStyle(.switch)
@@ -61,7 +61,7 @@ struct ProjectsUsageView: View {
                 )
                 .frame(maxWidth: .infinity, minHeight: 350)
             } else {
-                VStack(spacing: 10) {
+                VStack(spacing: 0) {
                     ForEach(projects, id: \.path) { project in
                         ProjectUsageRow(
                             project: project,
@@ -76,8 +76,10 @@ struct ProjectsUsageView: View {
                 }
             }
         }
-        .padding(24)
-        .frame(minWidth: 720, maxWidth: 1_100, alignment: .leading)
+        .padding(28)
+        .tint(.primary)
+        .progressViewStyle(FlatProgressStyle())
+        .frame(maxWidth: 1_100, alignment: .leading)
         .sheet(item: Binding(
             get: { selectedPath.map(ProjectSelection.init) },
             set: { selectedPath = $0?.path }
@@ -112,7 +114,7 @@ private struct ProjectUsageRow: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 14) {
                 Image(systemName: isFollowed ? "folder.fill.badge.checkmark" : "folder.fill")
-                    .font(.title3).foregroundStyle(isFollowed ? .green : .blue).frame(width: 28)
+                    .font(.title3).foregroundStyle(.secondary).frame(width: 28)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(project.name).font(.headline)
                     Text(showFullPath ? (project.path.isEmpty ? "会话未提供工作目录" : project.path) : project.name)
@@ -130,10 +132,10 @@ private struct ProjectUsageRow: View {
                 }
             }
             ProgressView(value: Double(project.tokens), total: Double(max(1, total)))
-                .tint(.blue)
+                .tint(.primary)
         }
-        .padding(16)
-        .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.vertical, 18)
+        .overlay(alignment: .bottom) { FlatDivider() }
     }
 }
 
