@@ -9,6 +9,7 @@ struct UsagePopoverView: View {
     @State private var projectRange = 1
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
+    @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.flat.rawValue
 
     var body: some View {
         Group {
@@ -39,7 +40,7 @@ struct UsagePopoverView: View {
                 if compact, let rate = store.snapshot.sevenDayRate {
                     let remaining = max(0, 100 - Int(rate.usedPercent.rounded()))
                     let color = Color.primary
-                    Image("CodexHealthMark")
+                    Image((AppIconStyle(rawValue: iconStyle) ?? .flat).assetName(for: .light))
                         .resizable()
                         .interpolation(.high)
                         .scaledToFit()

@@ -1,29 +1,29 @@
 import SwiftUI
 
 enum AppIconStyle: String, CaseIterable, Identifiable {
-    case original, glass
+    case flat, glass
     static let preferenceKey = "codexMeter.appIconStyle"
     var id: String { rawValue }
-    var title: String { self == .original ? "原版（默认）" : "玻璃 · 黑白" }
+    var title: String { self == .flat ? "扁平 · 黑白（默认）" : "玻璃 · 黑白" }
 
     func assetName(for colorScheme: ColorScheme) -> String {
-        self == .glass ? "GlassAppIcon" : (colorScheme == .dark ? "DarkAppIcon" : "LightAppIcon")
+        self == .glass ? "GlassAppIcon" : "FlatAppIcon"
     }
 
-    @MainActor private static var originalDockIcon: NSImage?
-    @MainActor private static var appliedStyle = AppIconStyle.original
+    @MainActor private static var appliedStyle: AppIconStyle?
+
+    static func selected(defaults: UserDefaults = .standard) -> AppIconStyle {
+        AppIconStyle(rawValue: defaults.string(forKey: preferenceKey) ?? "") ?? .flat
+    }
 
     @MainActor static func applyDockIcon(defaults: UserDefaults = .standard) {
-        if originalDockIcon == nil { originalDockIcon = NSApp.applicationIconImage }
-        let style = AppIconStyle(rawValue: defaults.string(forKey: preferenceKey) ?? "") ?? .original
-        guard style != appliedStyle else { return }
-        switch style {
-        case .original:
-            NSApp.applicationIconImage = originalDockIcon
-        case .glass:
-            guard let image = NSImage(named: "GlassAppIcon") else { return }
-            NSApp.applicationIconImage = image
+        let style = selected(defaults: defaults)
+        if defaults.string(forKey: preferenceKey) == "original" {
+            defaults.set(AppIconStyle.flat.rawValue, forKey: preferenceKey)
         }
+        guard style != appliedStyle else { return }
+        guard let image = NSImage(named: style.assetName(for: .light)) else { return }
+        NSApp.applicationIconImage = image
         appliedStyle = style
     }
 }
@@ -36,14 +36,14 @@ struct SettingsView: View {
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
     @AppStorage(RefreshPolicy.intervalKey) private var refreshInterval = RefreshPolicy.lowPowerDefault
     @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
-    @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.original.rawValue
+    @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.flat.rawValue
 
     private var appearanceMode: AppAppearance {
         AppAppearance(rawValue: appearance) ?? .system
     }
 
     private var selectedIcon: AppIconStyle {
-        AppIconStyle(rawValue: iconStyle) ?? .original
+        AppIconStyle(rawValue: iconStyle) ?? .flat
     }
 
     var body: some View {
@@ -90,7 +90,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    Text("原版为默认；可切换 Dock 与应用内 Logo，无需重启。")
+                    Text("仅保留扁平与玻璃两版；切换 Dock 与应用内 Logo，无需重启。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -129,6 +129,9 @@ struct SettingsView: View {
         .scenePadding()
         .tint(.primary)
         .preferredColorScheme(appearanceMode.colorScheme)
+        .onAppear {
+            if AppIconStyle(rawValue: iconStyle) == nil { iconStyle = AppIconStyle.flat.rawValue }
+        }
         .onChange(of: iconStyle) { _, _ in AppIconStyle.applyDockIcon() }
     }
 }

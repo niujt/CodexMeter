@@ -4,7 +4,7 @@
 
 界面采用「外围 Liquid Glass + 内部极简 Flat Content」：侧栏和工具栏使用系统材质，数据、图表和列表保持黑白灰扁平布局。支持浅色、深色和跟随系统外观；macOS 26 及以上使用 Liquid Glass，较早版本使用系统材质。
 
-在「设置 → 通用 → 外观 → 应用 Logo」中可选择原版或玻璃黑白版。原版继续作为默认，切换 Dock 与应用内 Logo 无需重启；Finder 中的安装包图标保持原版。
+在「设置 → 通用 → 外观 → 应用 Logo」中可选择黑白扁平版或玻璃黑白版。黑白扁平版作为默认，切换 Dock、应用内 Logo 和菜单栏标识无需重启；Finder 中的安装包图标使用黑白扁平版。
 
 > 数据只在本机读取与计算，不上传会话内容或用量数据。
 
@@ -30,9 +30,11 @@
 <details>
 <summary>应用 Logo 切换</summary>
 
-默认仍使用原版 Logo；玻璃黑白版可在设置中按需选择。
+仅保留黑白扁平版与玻璃黑白版，默认使用黑白扁平版。
 
-![Codex Health 可选 Logo 设置（演示数据）](docs/screenshots/logo-settings.png)
+| 黑白扁平版（默认） | 玻璃黑白版 |
+| --- | --- |
+| <img src="Resources/Assets.xcassets/FlatAppIcon.imageset/FlatAppIcon.png" width="128" alt="黑白扁平 Logo"> | <img src="Resources/Assets.xcassets/GlassAppIcon.imageset/GlassAppIcon.png" width="128" alt="玻璃黑白 Logo"> |
 
 </details>
 

@@ -208,6 +208,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             ) { [weak self] _ in
                 Task { @MainActor [weak self] in
                     self?.scheduleRefreshTimer()
+                    AppIconStyle.applyDockIcon()
                     self?.applyStatusAppearance()
                 }
             }
@@ -352,14 +353,16 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         let showBadge = UserDefaults.standard.bool(forKey: PermissionPreferences.badgeEnabledKey)
         let count = showBadge ? permissionStore.newCount : 0
         let title = count > 0 ? "\(usageTitle) · ⚠ \(count)" : usageTitle
-        guard title != renderedStatusTitle || button.image == nil else { return }
-        renderedStatusTitle = title
-        button.image = Self.menuBarMark(title: title)
+        let style = AppIconStyle.selected()
+        let renderedKey = "\(style.rawValue):\(title)"
+        guard renderedKey != renderedStatusTitle || button.image == nil else { return }
+        renderedStatusTitle = renderedKey
+        button.image = Self.menuBarMark(title: title, style: style)
         button.title = ""
         button.contentTintColor = NSColor.white
     }
 
-    private static func menuBarMark(title: String) -> NSImage {
+    private static func menuBarMark(title: String, style: AppIconStyle) -> NSImage {
         let markWidth: CGFloat = 19
         let markTitleSpacing: CGFloat = 4
         let font = NSFont.systemFont(ofSize: 13, weight: .regular)
@@ -371,10 +374,18 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         let size = NSSize(width: markWidth + markTitleSpacing + titleSize.width, height: 19)
         let image = NSImage(size: size, flipped: false) { _ in
             let ring = NSBezierPath()
-            ring.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1, startAngle: 42, endAngle: 318, clockwise: false)
+            ring.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1, startAngle: 75, endAngle: 335, clockwise: false)
             ring.lineWidth = 3.1
             NSColor.white.setStroke()
             ring.stroke()
+            let segments: [(CGFloat, CGFloat)] = style == .glass ? [(15, 27), (31, 43), (47, 59)] : [(15, 59)]
+            for (start, end) in segments {
+                let segment = NSBezierPath()
+                segment.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1,
+                                  startAngle: start, endAngle: end, clockwise: false)
+                segment.lineWidth = 3.1
+                segment.stroke()
+            }
 
             let h = NSBezierPath()
             h.move(to: NSPoint(x: 8.0, y: 6.3)); h.line(to: NSPoint(x: 8.0, y: 12.8))
