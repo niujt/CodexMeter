@@ -65,6 +65,9 @@ struct AnalyticsDashboardView: View {
         .navigationTitle("Codex Health")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                WeeklyReceiptButton(snapshot: store.snapshot)
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button { Task { await store.refresh() } } label: {
                     Label("刷新", systemImage: "arrow.clockwise")
                 }

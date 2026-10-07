@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0DECE000000000000000001 /* WeeklyReceiptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECE000000000000000002 /* WeeklyReceiptView.swift */; };
+
 		03CDAFA5A0D64A3BB44D0021 /* CodexPermissionEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */; };
 		03CDAFA5A0D64A3BB44D0022 /* PermissionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0012 /* PermissionStore.swift */; };
 		03CDAFA5A0D64A3BB44D0023 /* PermissionHookInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0013 /* PermissionHookInstaller.swift */; };
@@ -55,6 +57,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C0DECE000000000000000002 /* WeeklyReceiptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/CodexMeter/Views/WeeklyReceiptView.swift; sourceTree = SOURCE_ROOT; };
+
 		03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexPermissionEvent.swift; path = Models/CodexPermissionEvent.swift; sourceTree = "<group>"; };
 		03CDAFA5A0D64A3BB44D0012 /* PermissionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PermissionStore.swift; path = Stores/PermissionStore.swift; sourceTree = "<group>"; };
 		03CDAFA5A0D64A3BB44D0013 /* PermissionHookInstaller.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PermissionHookInstaller.swift; path = Services/PermissionHookInstaller.swift; sourceTree = "<group>"; };
@@ -177,6 +181,7 @@
 				09764D2144F99D08963848D1 /* UsageNotifier.swift */,
 				23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */,
 				F5CFCBAD6DC3C71D1A3144DA /* AnalyticsDashboardView.swift */,
+				C0DECE000000000000000002 /* WeeklyReceiptView.swift */,
 				952959A3BCF91451169A380A /* DesktopWidgetView.swift */,
 				5C96BC0E83BEADE3C8EB613F /* ProjectsUsageView.swift */,
 				F1D16BAAF299E859892B138A /* RateLimitView.swift */,
@@ -321,6 +326,7 @@
 				718A3C8A6AD03AAD2962F124 /* UsageNotifier.swift in Sources */,
 				A6D17D0CE64A7642254FB7EC /* WidgetUsageCache.swift in Sources */,
 				7AE1469C2B21BA2C8B7CC90D /* AnalyticsDashboardView.swift in Sources */,
+				C0DECE000000000000000001 /* WeeklyReceiptView.swift in Sources */,
 				73C75633894F5B3BE5397A9B /* DesktopWidgetView.swift in Sources */,
 				9FB8D66BD03290F0DA27B33B /* ProjectsUsageView.swift in Sources */,
 				1A011CF9C3543D1AA3561AE0 /* RateLimitView.swift in Sources */,
