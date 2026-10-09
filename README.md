@@ -1,6 +1,6 @@
 # Codex Health
 
-一个原生 macOS 菜单栏应用和桌面小组件，用于从本机 Codex 会话记录中查看 Token 用量、上下文与 7 天额度。
+一个从本机 Codex 会话记录中查看 Token 用量与 7 天额度的桌面工具：macOS 提供原生菜单栏应用和桌面小组件，Windows 提供 Dashboard 与额度悬浮球。
 
 界面采用「外围 Liquid Glass + 内部极简 Flat Content」：侧栏和工具栏使用系统材质，数据、图表和列表保持黑白灰扁平布局。支持浅色、深色和跟随系统外观；macOS 26 及以上使用 Liquid Glass，较早版本使用系统材质。
 
@@ -10,11 +10,17 @@
 
 ## 下载
 
-从 [GitHub Releases](https://github.com/niujt/CodexMeter/releases/latest) 下载最新版 DMG，打开后将 `Codex Health.app` 拖入 Applications。
+| 平台 | 安装包 |
+| --- | --- |
+| macOS 15+（Intel / Apple Silicon） | [1.0.8 DMG](https://github.com/niujt/CodexMeter/releases/tag/v1.0.8)，打开后将 `Codex Health.app` 拖入 Applications |
+| Windows x64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-x64-setup.exe) |
+| Windows ARM64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-arm64-setup.exe) |
+
+[Windows 发布说明与校验文件](https://github.com/niujt/CodexMeter/releases/tag/windows-v0.1.1)。Windows 包未签名，原生拖动、置顶和不同 DPI 效果仍待目标机器实测。
 
 当前发布包使用本机开发签名以确保 WidgetKit 扩展能被 macOS 识别；macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
 
-以下截图由当前 SwiftUI 页面和虚构演示数据生成，不包含真实项目、会话、账户记录或 Token 用量。
+以下 macOS 截图由当前 SwiftUI 页面和虚构演示数据生成，不包含真实项目、会话、账户记录或 Token 用量。
 
 ## 健康报告
 
@@ -71,6 +77,35 @@
 ## 历史记录
 
 ![Codex Health 历史记录（已脱敏）](docs/screenshots/history.png)
+
+## Windows 界面与悬浮球
+
+Windows 版沿用黑白灰 Dashboard，提供 x64 和 ARM64 安装包。
+
+以下 Windows 截图来自前端界面与虚构演示数据，悬浮球截图为原尺寸；截图不代表 Windows 原生安装、置顶或 DPI 实测结果。
+
+![Windows 健康报告：浅色模式（演示数据）](docs/screenshots/windows-dashboard.png)
+
+<details>
+<summary>查看 Windows 深色模式</summary>
+
+![Windows 健康报告：深色模式（演示数据）](docs/screenshots/windows-dashboard-dark.png)
+
+</details>
+
+### 悬浮球
+
+悬浮球显示七天剩余额度，可拖动并记住位置，双击打开 Dashboard；外观跟随主界面的浅色、深色或系统主题。没有有效额度或额度已到期时显示「—」。
+
+| 浅色悬浮球 | 深色悬浮球 |
+| --- | --- |
+| <img src="docs/screenshots/windows-floating-light.png" width="88" alt="Windows 浅色悬浮球，剩余额度 58%（演示数据）"> | <img src="docs/screenshots/windows-floating-dark.png" width="88" alt="Windows 深色悬浮球，剩余额度 58%（演示数据）"> |
+
+### 周用量小票
+
+在 Dashboard 点击「导出小票」，预览后保存纯白背景 PNG，适合分享近七天的本机 Token 用量。
+
+<img src="docs/screenshots/windows-receipt-full.png" width="320" alt="纯白周用量小票（演示数据）">
 
 ## 功能
 
