@@ -7,10 +7,16 @@ enum AppIconStyle: String, CaseIterable, Identifiable {
     var title: String { self == .flat ? "扁平 · 黑白（默认）" : "玻璃 · 黑白" }
 
     func assetName(for colorScheme: ColorScheme) -> String {
-        self == .glass ? "GlassAppIcon" : "FlatAppIcon"
+        switch (self, colorScheme) {
+        case (.flat, .light): "FlatAppIconLight"
+        case (.flat, .dark): "FlatAppIcon"
+        case (.glass, .light): "GlassAppIcon"
+        case (.glass, .dark): "GlassAppIconDark"
+        @unknown default: self == .glass ? "GlassAppIcon" : "FlatAppIconLight"
+        }
     }
 
-    @MainActor private static var appliedStyle: AppIconStyle?
+    @MainActor private static var appliedAssetName: String?
 
     static func selected(defaults: UserDefaults = .standard) -> AppIconStyle {
         AppIconStyle(rawValue: defaults.string(forKey: preferenceKey) ?? "") ?? .flat
@@ -21,10 +27,12 @@ enum AppIconStyle: String, CaseIterable, Identifiable {
         if defaults.string(forKey: preferenceKey) == "original" {
             defaults.set(AppIconStyle.flat.rawValue, forKey: preferenceKey)
         }
-        guard style != appliedStyle else { return }
-        guard let image = NSImage(named: style.assetName(for: .light)) else { return }
+        let appearance = AppAppearance(rawValue: defaults.string(forKey: AppAppearance.preferenceKey) ?? "") ?? .system
+        let assetName = style.assetName(for: appearance.resolvedColorScheme(for: NSApp.effectiveAppearance))
+        guard assetName != appliedAssetName else { return }
+        guard let image = NSImage(named: assetName) else { return }
         NSApp.applicationIconImage = image
-        appliedStyle = style
+        appliedAssetName = assetName
     }
 }
 
@@ -35,7 +43,7 @@ struct SettingsView: View {
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
     @AppStorage(RefreshPolicy.intervalKey) private var refreshInterval = RefreshPolicy.lowPowerDefault
-    @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
+    @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
     @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.flat.rawValue
 
     private var appearanceMode: AppAppearance {
@@ -90,7 +98,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    Text("仅保留扁平与玻璃两版；切换 Dock 与应用内 Logo，无需重启。")
+                    Text("扁平与玻璃均随显示模式切换：浅色白底黑字，深色黑底白字；Dock 与应用内 Logo 同步更新，无需重启。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -133,5 +141,6 @@ struct SettingsView: View {
             if AppIconStyle(rawValue: iconStyle) == nil { iconStyle = AppIconStyle.flat.rawValue }
         }
         .onChange(of: iconStyle) { _, _ in AppIconStyle.applyDockIcon() }
+        .onChange(of: appearance) { _, _ in AppIconStyle.applyDockIcon() }
     }
 }

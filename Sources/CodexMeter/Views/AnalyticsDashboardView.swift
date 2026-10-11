@@ -6,7 +6,7 @@ struct AnalyticsDashboardView: View {
     @Environment(\.openSettings) private var openSettings
     @State private var selectedSection: String? = "健康报告"
     @State private var projectPathStore = ProjectPathStore()
-    @AppStorage("codexMeter.appearance") private var appearance = AppAppearance.system.rawValue
+    @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
 
     private var appearanceMode: AppAppearance {
         AppAppearance(rawValue: appearance) ?? .system
@@ -62,6 +62,7 @@ struct AnalyticsDashboardView: View {
         .tint(.primary)
         .progressViewStyle(FlatProgressStyle())
         .preferredColorScheme(appearanceMode.colorScheme)
+        .onChange(of: appearance) { _, _ in AppIconStyle.applyDockIcon() }
         .navigationTitle("Codex Health")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

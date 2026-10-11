@@ -43,6 +43,8 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     case light
     case dark
 
+    static let preferenceKey = "codexMeter.appearance"
+
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -64,6 +66,10 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         case .light: .light
         case .dark: .dark
         }
+    }
+
+    func resolvedColorScheme(for systemAppearance: NSAppearance) -> ColorScheme {
+        colorScheme ?? (systemAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .dark : .light)
     }
 }
 
@@ -134,6 +140,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     private var dashboardWillOpenObserver: NSObjectProtocol?
     private var permissionObserver: NSObjectProtocol?
     private var appearanceObservation: NSKeyValueObservation?
+    private var dockAppearanceObservation: NSKeyValueObservation?
     private var usageTitle = "—"
     private var renderedStatusTitle: String?
 
@@ -142,6 +149,9 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         // regular Dock application when it is explicitly opened.
         _ = NSApp.setActivationPolicy(.accessory)
         AppIconStyle.applyDockIcon()
+        dockAppearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.new]) { _, _ in
+            Task { @MainActor in AppIconStyle.applyDockIcon() }
+        }
         guard let button = statusItem.button else { return }
         button.imagePosition = .imageOnly
         button.target = self
