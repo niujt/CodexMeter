@@ -62,12 +62,16 @@ struct SettingsView: View {
                         Text(store.selectedCodexPath.isEmpty ? "尚未授权" : store.selectedCodexPath)
                             .lineLimit(1)
                             .truncationMode(.middle)
+                            .help(store.selectedCodexPath)
+                            .textSelection(.enabled)
                             .foregroundStyle(.secondary)
                     }
+                    LabeledContent("数据来源", value: store.dataSourceDescription)
+                    Text(store.accountStatus).font(.caption).foregroundStyle(.secondary)
                     Button("重新选择 Codex 数据目录…", systemImage: "folder") {
                         store.chooseCodexFolder()
                     }
-                    Text("仅读取会话记录中的 Token 与额度信息；不会上传会话正文。")
+                    Text("Token 按所选目录统计，不区分账户。额度按当前登录隔离；账户变化后等待新采样。不会上传会话正文。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 
@@ -77,7 +81,7 @@ struct SettingsView: View {
                         Text("每 15 分钟").tag(900.0)
                         Text("每 30 分钟").tag(1_800.0)
                     }
-                    Text("前台按所选间隔刷新；后台以 15 分钟起的间隔由系统调度。低电量模式以 30 分钟起的间隔刷新，温度较高时继续降频；打开摘要和手动刷新仍会按需检查。")
+                    Text("前台按所选间隔刷新；界面隐藏或被遮挡时，以 15 分钟起的间隔由系统调度。低电量模式以 30 分钟起的间隔刷新，温度较高时继续降频；打开摘要和手动刷新仍会按需检查，未变化的数据复用缓存。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 

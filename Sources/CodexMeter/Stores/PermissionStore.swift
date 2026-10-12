@@ -18,7 +18,7 @@ final class PermissionStore {
 
     private(set) var events: [CodexPermissionEvent] = []
     private(set) var errorMessage: String?
-    @ObservationIgnored private let persistenceURL: URL
+    @ObservationIgnored private var persistenceURL: URL?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let fileManager: FileManager
 
@@ -29,9 +29,19 @@ final class PermissionStore {
     ) {
         self.defaults = defaults
         self.fileManager = fileManager
-        self.persistenceURL = persistenceURL ?? PermissionPaths.default.eventsFile
+        self.persistenceURL = persistenceURL
         load()
         expireAndPrune()
+    }
+
+    func configure(persistenceURL: URL?) {
+        guard self.persistenceURL != persistenceURL else { return }
+        self.persistenceURL = persistenceURL
+        events = []
+        errorMessage = nil
+        load()
+        expireAndPrune()
+        NotificationCenter.default.post(name: .codexPermissionStoreDidChange, object: self)
     }
 
     var newCount: Int {
@@ -135,7 +145,7 @@ final class PermissionStore {
     }
 
     private func load() {
-        guard let data = try? Data(contentsOf: persistenceURL) else { return }
+        guard let persistenceURL, let data = try? Data(contentsOf: persistenceURL) else { return }
         do {
             events = try JSONDecoder().decode([CodexPermissionEvent].self, from: data)
                 .map(PermissionEventSanitizer.sanitize)
@@ -146,6 +156,10 @@ final class PermissionStore {
     }
 
     private func persistAndNotify() {
+        guard let persistenceURL else {
+            NotificationCenter.default.post(name: .codexPermissionStoreDidChange, object: self)
+            return
+        }
         do {
             try fileManager.createDirectory(
                 at: persistenceURL.deletingLastPathComponent(),

@@ -17,12 +17,12 @@ struct PermissionReminderTests {
 
     @Test @MainActor
     func storeDeduplicatesWithinThirtySecondsAndExpiresAfterFiveMinutes() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let root = TestFixtureDirectory.root.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
         let suiteName = "PermissionReminderTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defer { TestFixtureDirectory.cleanupDefaults(defaults, suite: suiteName) }
         defaults.set(24, forKey: PermissionPreferences.retentionHoursKey)
         let store = PermissionStore(persistenceURL: root.appendingPathComponent("events.json"), defaults: defaults)
         let now = Date.now
@@ -39,11 +39,11 @@ struct PermissionReminderTests {
 
     @Test
     func installerMergesAndUninstallsOnlyOwnedHandler() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let root = TestFixtureDirectory.root.appendingPathComponent(UUID().uuidString)
         let codexHome = root.appendingPathComponent(".codex")
         let monitorHome = root.appendingPathComponent(".codex-monitor")
         try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         let paths = PermissionPaths(codexHome: codexHome, monitorHome: monitorHome)
         let original: [String: Any] = [
@@ -80,14 +80,14 @@ struct PermissionReminderTests {
             .filter { $0.hasPrefix("hooks.json.codex-monitor-backup-") }
         #expect(backupsAfterRepeatInstall.count == 1)
 
-        try installer.uninstall()
+        try installer.uninstall(removeScript: false)
         let uninstalled = try json(at: paths.hooksConfig)
         let uninstalledHooks = try #require(uninstalled["hooks"] as? [String: Any])
         let remainingGroups = try #require(uninstalledHooks["PermissionRequest"] as? [[String: Any]])
         let remainingCommands = remainingGroups.flatMap { $0["hooks"] as? [[String: Any]] ?? [] }
             .compactMap { $0["command"] as? String }
         #expect(remainingCommands == ["/tmp/existing-permission"])
-        #expect(fileExists(paths.hookScript) == false)
+        #expect(fileExists(paths.hookScript))
         #expect(uninstalledHooks["PreToolUse"] != nil)
     }
 
@@ -95,12 +95,12 @@ struct PermissionReminderTests {
     func generatedHookIsFailOpenSilentAndWritesSanitizedEvent() throws {
         let python = URL(fileURLWithPath: "/usr/bin/python3")
         #expect(fileExists(python))
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let root = TestFixtureDirectory.root.appendingPathComponent(UUID().uuidString)
         let paths = PermissionPaths(
             codexHome: root.appendingPathComponent(".codex"),
             monitorHome: root.appendingPathComponent(".codex-monitor")
         )
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
         try PermissionHookInstaller(paths: paths).install()
 
         let input = """

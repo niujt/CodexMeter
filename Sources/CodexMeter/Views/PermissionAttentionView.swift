@@ -108,6 +108,11 @@ struct PermissionSettingsSection: View {
                 .onChange(of: permissionEnabled) { _, enabled in
                     service.setEnabled(enabled)
                 }
+                .disabled(!service.canInstallHook)
+            if !service.canInstallHook {
+                Text("权限 Hook 需要选择 Codex 主目录；会话目录只用于本地统计。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
 
             LabeledContent("Codex Hook") {
                 HStack(spacing: 6) {
@@ -144,10 +149,12 @@ struct PermissionSettingsSection: View {
             HStack {
                 Button("重新检测") { service.refreshStatus() }
                 Button("安装或修复 Hook") { service.repairHook() }
+                    .disabled(!service.canInstallHook)
                 Button("发送测试提醒") { service.sendTestEvent() }
                 Button("通知设置") { service.openNotificationSettings() }
                 Spacer()
                 Button("卸载 Hook", role: .destructive) { showUninstallConfirmation = true }
+                    .disabled(!service.canInstallHook)
             }
             .controlSize(.small)
 
@@ -164,7 +171,7 @@ struct PermissionSettingsSection: View {
             Button("卸载", role: .destructive) { service.uninstallHook() }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("只会从 ~/.codex/hooks.json 删除包含 .codex-monitor/hooks/codex_permission_hook.py 的 handler，并删除该脚本；其他 Hook、历史记录与设置不会删除。")
+            Text(service.uninstallDescription)
         }
         .task { service.refreshStatus() }
     }

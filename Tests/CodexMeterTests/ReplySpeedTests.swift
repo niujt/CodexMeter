@@ -179,7 +179,7 @@ struct ReplySpeedTests {
 
     private func fixture(_ lines: [String]) throws -> URL {
         // Retain our synthetic temp files; cleanup requires project confirmation.
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("codexmeter-reply-speed-" + UUID().uuidString)
+        let root = TestFixtureDirectory.root.appendingPathComponent("codexmeter-reply-speed-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try lines.joined(separator: "\n").write(to: root.appendingPathComponent("session.jsonl"), atomically: true, encoding: .utf8)
         return root

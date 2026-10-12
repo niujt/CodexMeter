@@ -6,6 +6,7 @@ struct UsagePopoverView: View {
     let compact: Bool
     var isVisible = true
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.colorScheme) private var colorScheme
     @State private var projectRange = 1
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
@@ -28,9 +29,9 @@ struct UsagePopoverView: View {
         }
         .tint(.primary)
         .progressViewStyle(FlatProgressStyle())
-        .task {
-            guard store.snapshot.lastUpdated == nil else { return }
-            await store.refresh()
+        .task(id: isVisible) {
+            guard isVisible else { return }
+            await store.refreshIfNeeded()
         }
     }
 
@@ -40,7 +41,7 @@ struct UsagePopoverView: View {
                 if compact, let rate = store.snapshot.sevenDayRate {
                     let remaining = max(0, 100 - Int(rate.usedPercent.rounded()))
                     let color = Color.primary
-                    Image((AppIconStyle(rawValue: iconStyle) ?? .flat).assetName(for: .light))
+                    Image((AppIconStyle(rawValue: iconStyle) ?? .flat).assetName(for: colorScheme))
                         .resizable()
                         .interpolation(.high)
                         .scaledToFit()
@@ -96,11 +97,10 @@ struct UsagePopoverView: View {
                 RateLimitView(title: "7 天额度", window: weekRate)
                 PredictionView(
                     window: weekRate,
-                    weeklyTokens: store.snapshot.lastSevenDays.total,
-                    observedTurns: store.snapshot.panelModels.reduce(0) { $0 + $1.requests }
+                    velocity: store.measuredVelocity
                 )
             } else {
-                Text("等待新周期数据")
+                Text(store.quotaWaitingMessage)
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -243,7 +243,7 @@ private struct HealthMenuPopover: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(rate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? "等待新周期数据")
+                    Text(rate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? store.quotaWaitingMessage)
                         .font(.caption).foregroundStyle(.secondary)
                     if let spark = store.snapshot.sparkRate {
                         Text("Spark 剩余 \(max(0, 100 - Int(spark.usedPercent.rounded())))%")
@@ -331,6 +331,9 @@ private struct HealthMenuPopover: View {
                     showPermissionHistory.toggle()
                     permissionsExpanded = showPermissionHistory
                 }
+                Button("重新读取全部记录") {
+                    Task { await store.refresh(force: true) }
+                }.disabled(store.isRefreshing)
                 Divider()
                 Button("退出") { NSApplication.shared.terminate(nil) }
             } label: {
@@ -485,28 +488,16 @@ private struct TokenBreakdownView: View {
 
 private struct PredictionView: View {
     let window: RateWindow
-    let weeklyTokens: Int
-    let observedTurns: Int
+    let velocity: RateVelocity?
     var body: some View {
         let resetHours = max(0, window.resetsAt.timeIntervalSinceNow / 3_600)
-        let velocity = RateHistory.weightedVelocity()
         let elapsedHours = max(0.1, Double(window.windowMinutes) / 60 - resetHours)
         let fallbackRate = window.usedPercent / elapsedHours
         let rate = velocity?.percentPerHour ?? fallbackRate
         let remaining = rate > 0 ? (100 - window.usedPercent) / rate : nil
-        let remainingTokens = window.usedPercent > 0
-            ? Double(weeklyTokens) * (100 - window.usedPercent) / window.usedPercent
-            : nil
-        let estimatedTurns = remainingTokens.flatMap { tokens in
-            observedTurns > 0 ? Int((tokens / Double(observedTurns)).rounded(.down)) : nil
-        }
         VStack(alignment: .leading, spacing: 4) {
             Text("用量预测").font(.callout.weight(.semibold))
             Text(remaining.map { "预计还能使用 \(UsageFormatters.duration(hours: $0))" } ?? "样本不足，暂不预测")
-            if let estimatedTurns {
-                Text("按近 7 天平均 Token / 轮估算，约还能完成 \(estimatedTurns) 轮")
-                    .foregroundStyle(.secondary)
-            }
             Text((remaining ?? .infinity) < resetHours ? "可能在重置前耗尽" : "预计可支撑到重置")
                 .foregroundStyle(.primary)
             Text(velocity.map { "按近 \($0.description) 小时额度变化加权估算" } ?? "样本不足，使用额度周期平均速度估算")

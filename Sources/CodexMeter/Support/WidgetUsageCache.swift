@@ -13,6 +13,7 @@ struct WidgetUsageData: Codable, Sendable, Equatable {
     var sampledAt: Date? = nil
     var rateResetsAt: Date? = nil
     var sourceIncomplete: Bool? = nil
+    var contextID: String? = nil
 
     func isStale(at now: Date) -> Bool {
         now.timeIntervalSince(updatedAt) > 30 * 60
@@ -68,5 +69,6 @@ enum WidgetUsageCache {
             && lhs.sampledAt == rhs.sampledAt
             && lhs.rateResetsAt == rhs.rateResetsAt
             && lhs.sourceIncomplete == rhs.sourceIncomplete
+            && lhs.contextID == rhs.contextID
     }
 }

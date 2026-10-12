@@ -34,8 +34,8 @@ final class PermissionAttentionService {
     private(set) var integrationMessage: String?
     private(set) var notificationStatus = "尚未请求"
 
-    @ObservationIgnored private let paths: PermissionPaths
-    @ObservationIgnored private let installer: PermissionHookInstaller
+    @ObservationIgnored private var paths: PermissionPaths?
+    @ObservationIgnored private var installer: PermissionHookInstaller?
     @ObservationIgnored private let store: PermissionStore
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let fileManager: FileManager
@@ -52,7 +52,7 @@ final class PermissionAttentionService {
     @ObservationIgnored private var sessionSummaryDates: [String: Date] = [:]
 
     init(
-        paths: PermissionPaths = .default,
+        paths: PermissionPaths? = nil,
         store: PermissionStore = .shared,
         defaults: UserDefaults = .standard,
         fileManager: FileManager = .default
@@ -61,27 +61,50 @@ final class PermissionAttentionService {
         self.store = store
         self.defaults = defaults
         self.fileManager = fileManager
-        self.installer = PermissionHookInstaller(paths: paths, fileManager: fileManager)
-        hookStatus = installer.status()
+        self.installer = paths.map { PermissionHookInstaller(paths: $0, fileManager: fileManager) }
+        store.configure(persistenceURL: paths?.eventsFile)
+        hookStatus = installer?.status() ?? .notInstalled
+    }
+
+    private var isStarted = false
+    var canInstallHook: Bool { paths != nil }
+    var uninstallDescription: String {
+        guard let paths else { return "当前未选择 Codex 主目录。" }
+        return "从 \(paths.hooksConfig.path) 移除 Codex Health 拥有的 Hook，并删除脚本 \(paths.hookScript.path)。其他 Hook、历史记录与设置保留。"
+    }
+
+    func configure(paths: PermissionPaths?) {
+        guard self.paths?.monitorHome != paths?.monitorHome || self.paths?.codexHome != paths?.codexHome else { return }
+        stopDirectoryMonitor()
+        self.paths = paths
+        installer = paths.map { PermissionHookInstaller(paths: $0, fileManager: fileManager) }
+        store.configure(persistenceURL: paths?.eventsFile)
+        notificationDates = []; sessionNotificationDates = [:]; sessionSoundDates = [:]; sessionSummaryDates = [:]
+        hookStatus = installer?.status() ?? .notInstalled
+        integrationMessage = paths == nil ? "当前为会话目录，权限 Hook 需要选择 Codex 主目录。" : nil
+        if isStarted { start() }
     }
 
     func start() {
+        isStarted = true
         PermissionPreferences.configure(defaults: defaults)
-        hookStatus = installer.status()
+        hookStatus = installer?.status() ?? .notInstalled
         if defaults.bool(forKey: PermissionPreferences.enabledKey) {
             repairHook()
         }
-        do {
-            try fileManager.createDirectory(
-                at: paths.spoolDirectory,
-                withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700]
-            )
-            try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: paths.spoolDirectory.path)
-            startDirectoryMonitor()
-            processSpool()
-        } catch {
-            integrationMessage = "权限提醒队列无法启动：\(error.localizedDescription)"
+        if let paths {
+            do {
+                try fileManager.createDirectory(
+                    at: paths.spoolDirectory,
+                    withIntermediateDirectories: true,
+                    attributes: [.posixPermissions: 0o700]
+                )
+                try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: paths.spoolDirectory.path)
+                startDirectoryMonitor()
+                processSpool()
+            } catch {
+                integrationMessage = "权限提醒队列无法启动：\(error.localizedDescription)"
+            }
         }
         if expiryObserver == nil {
             expiryObserver = NotificationCenter.default.addObserver(forName: .codexPermissionStoreDidChange, object: store, queue: .main) { [weak self] _ in
@@ -137,6 +160,7 @@ final class PermissionAttentionService {
     }
 
     func repairHook() {
+        guard let installer else { integrationMessage = "请选择 Codex 主目录后再安装 Hook。"; return }
         do {
             try installer.install()
             hookStatus = installer.status()
@@ -148,6 +172,7 @@ final class PermissionAttentionService {
     }
 
     func uninstallHook() {
+        guard let installer else { return }
         do {
             try installer.uninstall()
             defaults.set(false, forKey: PermissionPreferences.enabledKey)
@@ -160,7 +185,7 @@ final class PermissionAttentionService {
     }
 
     func refreshStatus() {
-        hookStatus = installer.status()
+        hookStatus = installer?.status() ?? .notInstalled
         refreshNotificationStatus()
     }
 
@@ -221,13 +246,15 @@ final class PermissionAttentionService {
         }
     }
 
+    private func stopDirectoryMonitor() {
+        if let directorySource { directorySource.cancel(); self.directorySource = nil }
+        else if directoryDescriptor >= 0 { close(directoryDescriptor) }
+        directoryDescriptor = -1
+    }
+
     private func startDirectoryMonitor() {
-        if let directorySource {
-            directorySource.cancel()
-            self.directorySource = nil
-        } else if directoryDescriptor >= 0 {
-            close(directoryDescriptor)
-        }
+        stopDirectoryMonitor()
+        guard let paths else { return }
         directoryDescriptor = open(paths.spoolDirectory.path, O_EVTONLY)
         guard directoryDescriptor >= 0 else { return }
 
@@ -236,10 +263,10 @@ final class PermissionAttentionService {
             eventMask: [.write, .extend, .attrib, .rename, .delete],
             queue: DispatchQueue.global(qos: .utility)
         )
-        source.setEventHandler { [weak self] in
+        source.setEventHandler { @Sendable [weak self] in
             Task { @MainActor [weak self] in self?.processSpool() }
         }
-        source.setCancelHandler { [descriptor = directoryDescriptor] in
+        source.setCancelHandler { @Sendable [descriptor = directoryDescriptor] in
             if descriptor >= 0 { close(descriptor) }
         }
         directorySource = source
@@ -247,6 +274,7 @@ final class PermissionAttentionService {
     }
 
     private func processSpool() {
+        guard let paths else { return }
         guard let files = try? fileManager.contentsOfDirectory(
             at: paths.spoolDirectory,
             includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],

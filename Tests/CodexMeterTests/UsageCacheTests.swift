@@ -30,8 +30,12 @@ struct UsageCacheTests {
         #expect(restored.panelModels.first?.averageTurnSeconds == 20)
         #expect(RecentReplySpeed.summarize(restored.replySpeedSamples, now: now)?.tokensPerSecond == 3)
         let cacheFiles = try FileManager.default.contentsOfDirectory(at: fixture.cache, includingPropertiesForKeys: nil)
-        let data = try Data(contentsOf: #require(cacheFiles.first))
-        #expect(data.range(of: Data("NEVER_STORE_THIS_SENTENCE".utf8)) == nil)
+        #expect(!cacheFiles.isEmpty)
+        let enumerator = try #require(FileManager.default.enumerator(at: fixture.cache, includingPropertiesForKeys: nil))
+        for url in enumerator.allObjects.compactMap({ $0 as? URL }) where url.pathExtension == "plist" {
+            let data = try Data(contentsOf: url)
+            #expect(data.range(of: Data("NEVER_STORE_THIS_SENTENCE".utf8)) == nil)
+        }
     }
 
     @Test func changedFileIsTheOnlyFileReadAfterRestart() async throws {
@@ -45,9 +49,25 @@ struct UsageCacheTests {
         let loaded = try await restarted.load(now: now, codexHome: fixture.root)
         #expect(await restarted.parsedFileCount == 1)
         #expect(await restarted.reusedFileCount == 1)
+        #expect(await restarted.persistedSummaryCount == 1)
         #expect(loaded.allTime.total == 450)
         let reference = try await CodexUsageReader(calendar: calendar).load(now: now, codexHome: fixture.root)
         #expect(loaded == reference)
+    }
+
+    @Test func corruptSingleSummaryRebuildsOnlyThatSession() async throws {
+        let fixture = try makeFixture()
+        let original = try await reader(fixture).load(now: now, codexHome: fixture.root)
+        let contents = try FileManager.default.contentsOfDirectory(at: fixture.cache, includingPropertiesForKeys: nil)
+        let directory = try #require(contents.first(where: { $0.pathExtension == "summaries" }))
+        let summaries = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        try Data("corrupt single summary".utf8).write(to: #require(summaries.first))
+        let restarted = reader(fixture)
+        let rebuilt = try await restarted.load(now: now, codexHome: fixture.root)
+        #expect(rebuilt == original)
+        #expect(await restarted.parsedFileCount == 1)
+        #expect(await restarted.reusedFileCount == 1)
+        #expect(await restarted.persistedSummaryCount == 1)
     }
 
     @Test func progressSeparatesFilesCheckedFromFilesActuallyRead() async throws {
@@ -99,7 +119,7 @@ struct UsageCacheTests {
         let fixture = try makeFixture()
         let original = try await reader(fixture).load(now: now, codexHome: fixture.root)
         let files = try FileManager.default.contentsOfDirectory(at: fixture.cache, includingPropertiesForKeys: nil)
-        try Data("invalid cache".utf8).write(to: #require(files.first))
+        try Data("invalid cache".utf8).write(to: #require(files.first(where: { $0.pathExtension == "plist" })))
         let rebuilding = reader(fixture)
         #expect(try await rebuilding.load(now: now, codexHome: fixture.root) == original)
         #expect(await rebuilding.parsedFileCount == 2)
@@ -164,7 +184,7 @@ struct UsageCacheTests {
 
     private func makeFixture() throws -> Fixture {
         // All inputs are synthetic. Retain temp artifacts per the project deletion rule.
-        let base = FileManager.default.temporaryDirectory.appendingPathComponent("codexmeter-cache-test-" + UUID().uuidString)
+        let base = TestFixtureDirectory.root.appendingPathComponent("codexmeter-cache-test-" + UUID().uuidString)
         let root = base.appendingPathComponent("sessions", isDirectory: true)
         let cache = base.appendingPathComponent("cache", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

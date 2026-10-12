@@ -4,11 +4,6 @@ struct PermissionPaths: Sendable {
     let codexHome: URL
     let monitorHome: URL
 
-    static let `default` = PermissionPaths(
-        codexHome: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex", isDirectory: true),
-        monitorHome: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex-monitor", isDirectory: true)
-    )
-
     var hooksConfig: URL { codexHome.appendingPathComponent("hooks.json") }
     var hookDirectory: URL { monitorHome.appendingPathComponent("hooks", isDirectory: true) }
     var hookScript: URL { hookDirectory.appendingPathComponent("codex_permission_hook.py") }
@@ -43,8 +38,8 @@ enum PermissionHookInstallerError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidConfig: "~/.codex/hooks.json 不是有效 JSON，未做任何覆盖。"
-        case .invalidHooksShape: "~/.codex/hooks.json 的 hooks 结构无法安全合并。"
+        case .invalidConfig: "所选 Codex 主目录中的 hooks.json 不是有效 JSON，未做任何覆盖。"
+        case .invalidHooksShape: "所选 Codex 主目录中的 hooks.json 的 hooks 结构无法安全合并。"
         case .pythonUnavailable: "未找到 /usr/bin/python3，无法安装权限提醒 Hook。"
         }
     }
@@ -56,7 +51,7 @@ struct PermissionHookInstaller {
     let paths: PermissionPaths
     let fileManager: FileManager
 
-    init(paths: PermissionPaths = .default, fileManager: FileManager = .default) {
+    init(paths: PermissionPaths, fileManager: FileManager = .default) {
         self.paths = paths
         self.fileManager = fileManager
     }
@@ -100,7 +95,7 @@ struct PermissionHookInstaller {
         try writeRoot(root, backingUpExisting: true)
     }
 
-    func uninstall() throws {
+    func uninstall(removeScript: Bool = true) throws {
         if fileManager.fileExists(atPath: paths.hooksConfig.path) {
             let root = try readRoot()
             let cleaned = try removingOwnedHandlers(from: root)
@@ -108,15 +103,27 @@ struct PermissionHookInstaller {
                 try writeRoot(cleaned, backingUpExisting: true)
             }
         }
-        if fileManager.fileExists(atPath: paths.hookScript.path) {
+        if removeScript, fileManager.fileExists(atPath: paths.hookScript.path) {
             try fileManager.removeItem(at: paths.hookScript)
         }
     }
 
     private var hookCommand: String {
-        let escaped = paths.hookScript.path.replacingOccurrences(of: "\\", with: "\\\\")
+        Self.command(for: paths.hookScript)
+    }
+
+    static func command(for script: URL) -> String {
+        "/usr/bin/python3 '" + script.path.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+    }
+
+    private func owns(_ command: String?) -> Bool {
+        guard let command else { return false }
+        let legacy = paths.hookScript.path.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
-        return "/usr/bin/python3 \"\(escaped)\""
+        let oldDefault = fileManager.homeDirectoryForCurrentUser.appendingPathComponent(".codex-monitor/hooks/codex_permission_hook.py")
+        return command == hookCommand || command == "/usr/bin/python3 \"\(legacy)\""
+            || command == Self.command(for: oldDefault)
+            || command == "/usr/bin/python3 \"\(oldDefault.path)\""
     }
 
     private func readRoot() throws -> [String: Any] {
@@ -140,7 +147,7 @@ struct PermissionHookInstaller {
         return groups.contains { group in
             let handlers = group["hooks"] as? [[String: Any]] ?? []
             return handlers.contains { handler in
-                (handler["command"] as? String)?.contains(Self.commandMarker) == true
+                owns(handler["command"] as? String)
             }
         }
     }
@@ -148,7 +155,7 @@ struct PermissionHookInstaller {
     private func hasSingleCurrentHandler(_ root: [String: Any]) -> Bool {
         let groups = (root["hooks"] as? [String: Any])?["PermissionRequest"] as? [[String: Any]] ?? []
         let owned = groups.flatMap { $0["hooks"] as? [[String: Any]] ?? [] }.filter { handler in
-            (handler["command"] as? String)?.contains(Self.commandMarker) == true
+            owns(handler["command"] as? String)
         }
         guard owned.count == 1, let handler = owned.first else { return false }
         return handler["type"] as? String == "command"
@@ -169,7 +176,7 @@ struct PermissionHookInstaller {
                 continue
             }
             let remaining = handlers.filter { handler in
-                !((handler["command"] as? String)?.contains(Self.commandMarker) == true)
+                !(owns(handler["command"] as? String))
             }
             if !remaining.isEmpty {
                 group["hooks"] = remaining

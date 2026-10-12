@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		C0DECE000000000000000001 /* WeeklyReceiptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECE000000000000000002 /* WeeklyReceiptView.swift */; };
-
+		C0DECA000000000000000001 /* CodexDataContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECA000000000000000002 /* CodexDataContext.swift */; };
 		03CDAFA5A0D64A3BB44D0021 /* CodexPermissionEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */; };
 		03CDAFA5A0D64A3BB44D0022 /* PermissionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0012 /* PermissionStore.swift */; };
 		03CDAFA5A0D64A3BB44D0023 /* PermissionHookInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0013 /* PermissionHookInstaller.swift */; };
@@ -40,6 +40,12 @@
 		FEBADF776B5F64FA07883229 /* ProjectPathStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */; };
 		9C0DE100000000000000000A /* ResetHistoryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DE000000000000000000A /* ResetHistoryClient.swift */; };
 		9C0DE100000000000000000B /* ResetHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DE000000000000000000B /* ResetHistoryView.swift */; };
+		66B2BFA227E63D018274AB49 /* HistoryRecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E88C8B955634A98B53ACD618 /* HistoryRecordsView.swift */; };
+		C14D1948084E01B228412CD0 /* UsageTrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32572A57C5D55FD099EA869 /* UsageTrendsView.swift */; };
+		335BD5B9F6FD0EF350E640A1 /* ModelEfficiencyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11BFA321E80938EEEB156C09 /* ModelEfficiencyView.swift */; };
+		3141C1578432818E4531087B /* ForecastRiskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403F2024120E5BDBD50143D3 /* ForecastRiskView.swift */; };
+		702166D7CA40429566050A51 /* DashboardComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E1F92290E78D8BE4B708964 /* DashboardComponents.swift */; };
+		08E3BC9988E1498AB15D1696 /* DashboardContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50513A86B4D3B2CF549F68D1 /* DashboardContent.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -58,7 +64,7 @@
 
 /* Begin PBXFileReference section */
 		C0DECE000000000000000002 /* WeeklyReceiptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/CodexMeter/Views/WeeklyReceiptView.swift; sourceTree = SOURCE_ROOT; };
-
+		C0DECA000000000000000002 /* CodexDataContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CodexDataContext.swift; path = Services/CodexDataContext.swift; sourceTree = "<group>"; };
 		03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexPermissionEvent.swift; path = Models/CodexPermissionEvent.swift; sourceTree = "<group>"; };
 		03CDAFA5A0D64A3BB44D0012 /* PermissionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PermissionStore.swift; path = Stores/PermissionStore.swift; sourceTree = "<group>"; };
 		03CDAFA5A0D64A3BB44D0013 /* PermissionHookInstaller.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PermissionHookInstaller.swift; path = Services/PermissionHookInstaller.swift; sourceTree = "<group>"; };
@@ -93,6 +99,12 @@
 		FEBA2DCB237A29B20A1D0088 /* UsagePopoverView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsagePopoverView.swift; path = Views/UsagePopoverView.swift; sourceTree = "<group>"; };
 		9C0DE000000000000000000A /* ResetHistoryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResetHistoryClient.swift; path = Services/ResetHistoryClient.swift; sourceTree = "<group>"; };
 		9C0DE000000000000000000B /* ResetHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResetHistoryView.swift; path = Views/ResetHistoryView.swift; sourceTree = "<group>"; };
+		E88C8B955634A98B53ACD618 /* HistoryRecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HistoryRecordsView.swift; path = Views/HistoryRecordsView.swift; sourceTree = "<group>"; };
+		A32572A57C5D55FD099EA869 /* UsageTrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UsageTrendsView.swift; path = Views/UsageTrendsView.swift; sourceTree = "<group>"; };
+		11BFA321E80938EEEB156C09 /* ModelEfficiencyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ModelEfficiencyView.swift; path = Views/ModelEfficiencyView.swift; sourceTree = "<group>"; };
+		403F2024120E5BDBD50143D3 /* ForecastRiskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ForecastRiskView.swift; path = Views/ForecastRiskView.swift; sourceTree = "<group>"; };
+		9E1F92290E78D8BE4B708964 /* DashboardComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DashboardComponents.swift; path = Views/DashboardComponents.swift; sourceTree = "<group>"; };
+		50513A86B4D3B2CF549F68D1 /* DashboardContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DashboardContent.swift; path = Views/DashboardContent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -168,6 +180,7 @@
 				82670BF12FC78B0C163EDCA9 /* UsageSnapshot.swift */,
 				03CDAFA5A0D64A3BB44D0013 /* PermissionHookInstaller.swift */,
 				03CDAFA5A0D64A3BB44D0014 /* PermissionAttentionService.swift */,
+				C0DECA000000000000000002 /* CodexDataContext.swift */,
 				09E69407D7632A4091F79FD5 /* CodexFolderAccess.swift */,
 				9C0DE000000000000000000A /* ResetHistoryClient.swift */,
 				9C0DE000000000000000000B /* ResetHistoryView.swift */,
@@ -181,7 +194,13 @@
 				09764D2144F99D08963848D1 /* UsageNotifier.swift */,
 				23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */,
 				F5CFCBAD6DC3C71D1A3144DA /* AnalyticsDashboardView.swift */,
+				50513A86B4D3B2CF549F68D1 /* DashboardContent.swift */,
+				9E1F92290E78D8BE4B708964 /* DashboardComponents.swift */,
+				403F2024120E5BDBD50143D3 /* ForecastRiskView.swift */,
+				11BFA321E80938EEEB156C09 /* ModelEfficiencyView.swift */,
+				A32572A57C5D55FD099EA869 /* UsageTrendsView.swift */,
 				C0DECE000000000000000002 /* WeeklyReceiptView.swift */,
+				E88C8B955634A98B53ACD618 /* HistoryRecordsView.swift */,
 				952959A3BCF91451169A380A /* DesktopWidgetView.swift */,
 				5C96BC0E83BEADE3C8EB613F /* ProjectsUsageView.swift */,
 				F1D16BAAF299E859892B138A /* RateLimitView.swift */,
@@ -313,6 +332,7 @@
 				7B9213CCE8549C58FC736BF7 /* UsageSnapshot.swift in Sources */,
 				03CDAFA5A0D64A3BB44D0023 /* PermissionHookInstaller.swift in Sources */,
 				03CDAFA5A0D64A3BB44D0024 /* PermissionAttentionService.swift in Sources */,
+				C0DECA000000000000000001 /* CodexDataContext.swift in Sources */,
 				2B32E4686F7EA743978AD390 /* CodexFolderAccess.swift in Sources */,
 				9C0DE100000000000000000A /* ResetHistoryClient.swift in Sources */,
 				9C0DE100000000000000000B /* ResetHistoryView.swift in Sources */,
@@ -326,7 +346,13 @@
 				718A3C8A6AD03AAD2962F124 /* UsageNotifier.swift in Sources */,
 				A6D17D0CE64A7642254FB7EC /* WidgetUsageCache.swift in Sources */,
 				7AE1469C2B21BA2C8B7CC90D /* AnalyticsDashboardView.swift in Sources */,
+				08E3BC9988E1498AB15D1696 /* DashboardContent.swift in Sources */,
+				702166D7CA40429566050A51 /* DashboardComponents.swift in Sources */,
+				3141C1578432818E4531087B /* ForecastRiskView.swift in Sources */,
+				335BD5B9F6FD0EF350E640A1 /* ModelEfficiencyView.swift in Sources */,
+				C14D1948084E01B228412CD0 /* UsageTrendsView.swift in Sources */,
 				C0DECE000000000000000001 /* WeeklyReceiptView.swift in Sources */,
+				66B2BFA227E63D018274AB49 /* HistoryRecordsView.swift in Sources */,
 				73C75633894F5B3BE5397A9B /* DesktopWidgetView.swift in Sources */,
 				9FB8D66BD03290F0DA27B33B /* ProjectsUsageView.swift in Sources */,
 				1A011CF9C3543D1AA3561AE0 /* RateLimitView.swift in Sources */,

@@ -5,6 +5,43 @@ import Testing
 struct EnergyEfficiencyTests {
     private let now = Date(timeIntervalSince1970: 1_791_000_000)
 
+    @Test func countOnlyRefreshAvoidsIntermediateSnapshotWorkAndCoalescesActivity() async throws {
+        let root = try tempDirectory()
+        let line = try tokenLine()
+        let fileCount = 160
+        for index in 0..<fileCount {
+            try line.write(to: root.appendingPathComponent("session-\(index).jsonl"), atomically: true, encoding: .utf8)
+        }
+        let progress = EnergyProgressProbe()
+        let reader = CodexUsageReader()
+        let result = try await reader.loadWithActivity(now: now, codexHome: root,
+            onFileProgress: { completed, total in await progress.files(completed, total) },
+            onActivity: { read, reused in await progress.activity(read, reused) })
+        #expect(result.allTime.total == fileCount * 100)
+        #expect(await reader.finalizedSnapshotCount == 1)
+        #expect(await progress.lastFileProgress?.0 == fileCount)
+        #expect(await progress.lastFileProgress?.1 == fileCount)
+        #expect(await progress.lastActivity?.0 == fileCount)
+        #expect(await progress.lastActivity?.1 == 0)
+        #expect(await progress.activityCount < fileCount)
+        let coldCallbacks = await progress.activityCount
+        let coldFinalizations = await reader.finalizedSnapshotCount
+
+        let progressive = CodexUsageReader()
+        let reference = try await progressive.load(now: now, codexHome: root) { _, _, _ in }
+        #expect(reference == result)
+        #expect(await progressive.finalizedSnapshotCount > 1)
+        let warmed = try await reader.loadWithActivity(now: now.addingTimeInterval(1), codexHome: root,
+            onFileProgress: { completed, total in await progress.files(completed, total) },
+            onActivity: { read, reused in await progress.activity(read, reused) })
+        #expect(warmed == result)
+        #expect(await reader.finalizedSnapshotCount == 0)
+        #expect(await reader.readByteCount == 0)
+        #expect(await progress.lastActivity?.0 == 0)
+        #expect(await progress.lastActivity?.1 == fileCount)
+        print("Energy fixture: \(fileCount) files, \(coldCallbacks) activity callbacks, \(coldFinalizations) final aggregate; unchanged refresh: 0 read bytes, 0 aggregate rebuilds.")
+    }
+
     @MainActor @Test func emptyPermissionHistoryHasNoWritesOrMaintenanceDeadline() throws {
         let fixture = try permissionFixture()
         let store = PermissionStore(persistenceURL: fixture.file, defaults: fixture.defaults)
@@ -53,13 +90,14 @@ struct EnergyEfficiencyTests {
         var snapshot = UsageSnapshot.empty
         snapshot.mainMenuRate = RateWindow(usedPercent: 5, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(86_400))
         snapshot.lastUpdated = now
-        QuotaRateCache.save(snapshot, defaults: defaults, now: now)
+        snapshot.mainRateSampledAt = now
+        QuotaRateCache.save(snapshot, scope: QuotaScope(id: "synthetic", since: .distantPast), defaults: defaults, now: now)
         let initialWrites = defaults.writeCount
         #expect(initialWrites == 1)
-        for tick in 1...120 { QuotaRateCache.save(snapshot, defaults: defaults, now: now.addingTimeInterval(Double(tick))) }
+        for tick in 1...120 { QuotaRateCache.save(snapshot, scope: QuotaScope(id: "synthetic", since: .distantPast), defaults: defaults, now: now.addingTimeInterval(Double(tick))) }
         #expect(defaults.writeCount == initialWrites)
         snapshot.mainMenuRate = RateWindow(usedPercent: 6, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(86_400))
-        QuotaRateCache.save(snapshot, defaults: defaults, now: now)
+        QuotaRateCache.save(snapshot, scope: QuotaScope(id: "synthetic", since: .distantPast), defaults: defaults, now: now)
         #expect(defaults.writeCount == initialWrites + 1)
     }
 
@@ -113,7 +151,7 @@ struct EnergyEfficiencyTests {
 
     private func tempDirectory() throws -> URL {
         // Synthetic inputs only; retain artifacts rather than deleting them.
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("codexmeter-energy-test-" + UUID().uuidString)
+        let url = TestFixtureDirectory.root.appendingPathComponent("codexmeter-energy-test-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
@@ -122,5 +160,17 @@ struct EnergyEfficiencyTests {
         let json: [String: Any] = ["timestamp": ISO8601DateFormatter().string(from: now), "type": "event_msg",
             "payload": ["type": "token_count", "info": ["total_token_usage": ["input_tokens": 90, "output_tokens": 10, "total_tokens": 100]]]]
         return String(decoding: try JSONSerialization.data(withJSONObject: json), as: UTF8.self) + "\n"
+    }
+}
+
+private actor EnergyProgressProbe {
+    private(set) var activityCount = 0
+    private(set) var lastFileProgress: (Int, Int)?
+    private(set) var lastActivity: (Int, Int)?
+
+    func files(_ completed: Int, _ total: Int) { lastFileProgress = (completed, total) }
+    func activity(_ read: Int, _ reused: Int) {
+        activityCount += 1
+        lastActivity = (read, reused)
     }
 }

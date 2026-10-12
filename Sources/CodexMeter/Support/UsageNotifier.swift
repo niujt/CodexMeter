@@ -2,15 +2,15 @@ import Foundation
 import UserNotifications
 
 enum UsageNotifier {
-    static func evaluate(_ rate: RateWindow) {
+    static func evaluate(_ rate: RateWindow, scope: QuotaScope, velocity: RateVelocity?) {
         let remaining = Int((100 - rate.usedPercent).rounded())
         let threshold = UserDefaults.standard.object(forKey: "codexMeter.lowRateThreshold") as? Int ?? 20
         let day = Calendar.current.startOfDay(for: .now).timeIntervalSince1970
         let level = remaining <= 10 ? "critical" : "low"
-        let key = "codexMeter.notified." + String(day) + "." + level
+        let key = "codexMeter.notified." + scope.id + "." + String(day) + "." + level
         let deduplicate = UserDefaults.standard.object(forKey: "codexMeter.deduplicateAlerts") as? Bool ?? true
-        notifyUpcomingReset(rate, deduplicate: deduplicate)
-        notifyPredictedExhaustion(rate, deduplicate: deduplicate)
+        notifyUpcomingReset(rate, scope: scope, deduplicate: deduplicate)
+        notifyPredictedExhaustion(rate, scope: scope, velocity: velocity, deduplicate: deduplicate)
         guard remaining <= threshold, !(deduplicate && UserDefaults.standard.bool(forKey: key)) else { return }
         if deduplicate { UserDefaults.standard.set(true, forKey: key) }
         let remainingText = String(remaining)
@@ -24,9 +24,9 @@ enum UsageNotifier {
         }
     }
 
-    private static func notifyUpcomingReset(_ rate: RateWindow, deduplicate: Bool) {
+    private static func notifyUpcomingReset(_ rate: RateWindow, scope: QuotaScope, deduplicate: Bool) {
         guard rate.resetsAt.timeIntervalSinceNow > 0, rate.resetsAt.timeIntervalSinceNow <= 1_800 else { return }
-        let key = "codexMeter.notified.reset." + String(Int(rate.resetsAt.timeIntervalSince1970))
+        let key = "codexMeter.notified.reset." + scope.id + "." + String(Int(rate.resetsAt.timeIntervalSince1970))
         guard !(deduplicate && UserDefaults.standard.bool(forKey: key)) else { return }
         if deduplicate { UserDefaults.standard.set(true, forKey: key) }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
@@ -38,11 +38,11 @@ enum UsageNotifier {
         }
     }
 
-    private static func notifyPredictedExhaustion(_ rate: RateWindow, deduplicate: Bool) {
-        guard let velocity = RateHistory.weightedVelocity(), velocity.percentPerHour > 0 else { return }
+    private static func notifyPredictedExhaustion(_ rate: RateWindow, scope: QuotaScope, velocity: RateVelocity?, deduplicate: Bool) {
+        guard let velocity, velocity.percentPerHour > 0 else { return }
         let remainingHours = (100 - rate.usedPercent) / velocity.percentPerHour
         guard remainingHours < rate.resetsAt.timeIntervalSinceNow / 3_600 else { return }
-        let key = "codexMeter.notified.exhaustion." + String(Calendar.current.startOfDay(for: .now).timeIntervalSince1970)
+        let key = "codexMeter.notified.exhaustion." + scope.id + "." + String(Calendar.current.startOfDay(for: .now).timeIntervalSince1970)
         guard !(deduplicate && UserDefaults.standard.bool(forKey: key)) else { return }
         if deduplicate { UserDefaults.standard.set(true, forKey: key) }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in

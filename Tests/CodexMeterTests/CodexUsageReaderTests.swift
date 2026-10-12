@@ -5,11 +5,11 @@ import Testing
 struct CodexUsageReaderTests {
     @Test
     func aggregatesCumulativeSessionTotalsAsDeltas() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = TestFixtureDirectory.root
             .appendingPathComponent(UUID().uuidString)
         let sessions = root.appendingPathComponent("sessions/2026/07/27")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         let lines = [
             event(timestamp: "2026-07-27T01:00:00.000Z", input: 80, output: 20, total: 100),
@@ -46,11 +46,11 @@ struct CodexUsageReaderTests {
 
     @Test
     func aggregatesCacheHitRateFromInputTokenFields() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = TestFixtureDirectory.root
             .appendingPathComponent(UUID().uuidString)
         let sessions = root.appendingPathComponent("sessions/2026/07/27")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         let samples = [
             modelTokenEvent(model: "gpt-cache", timestamp: "2026-07-27T01:00:00.000Z", input: 100, cachedInput: 25, output: 20, total: 120),
@@ -81,11 +81,11 @@ struct CodexUsageReaderTests {
 
     @Test
     func separatesMainAndSparkSevenDayQuota() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = TestFixtureDirectory.root
             .appendingPathComponent(UUID().uuidString)
         let sessions = root.appendingPathComponent("sessions/2026/07/30")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         let switchedSession = [
             session(model: "gpt-5-codex", timestamp: "2026-07-30T01:00:00.000Z", usedPercent: 13),
@@ -113,11 +113,11 @@ struct CodexUsageReaderTests {
 
     @Test
     func ignoresExpiredSevenDayQuotaAsCurrentRate() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = TestFixtureDirectory.root
             .appendingPathComponent(UUID().uuidString)
         let sessions = root.appendingPathComponent("sessions/2026/08/04")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         try session(model: "gpt-5-codex", timestamp: "2026-08-03T01:00:00.000Z", usedPercent: 100)
             .write(
@@ -140,11 +140,11 @@ struct CodexUsageReaderTests {
 
     @Test
     func invalidatesCachedQuotaWhenWindowExpires() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = TestFixtureDirectory.root
             .appendingPathComponent(UUID().uuidString)
         let sessions = root.appendingPathComponent("sessions/2026/08/03")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         try session(model: "gpt-5-codex", timestamp: "2026-08-03T01:00:00.000Z", usedPercent: 100)
             .write(
@@ -168,11 +168,11 @@ struct CodexUsageReaderTests {
 
     @Test
     func prefersCanonicalQuotaWhenAnotherBucketReportsLater() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = TestFixtureDirectory.root
             .appendingPathComponent(UUID().uuidString)
         let sessions = root.appendingPathComponent("sessions/2026/08/08")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         let canonicalReset = 1_786_768_697.0
         let alternateReset = 1_786_794_883.0
@@ -214,11 +214,11 @@ struct CodexUsageReaderTests {
 
     @Test
     func readsCanonicalSevenDayQuotaFromPrimaryWindow() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = TestFixtureDirectory.root
             .appendingPathComponent(UUID().uuidString)
         let sessions = root.appendingPathComponent("sessions/2026/08/11")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         let reset = 1_787_014_816.0
         try primaryQuotaSession(
@@ -246,11 +246,11 @@ struct CodexUsageReaderTests {
 
     @Test
     func doesNotUseAlternateBucketWhileCanonicalBucketWaitsAfterReset() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = TestFixtureDirectory.root
             .appendingPathComponent(UUID().uuidString)
         let sessions = root.appendingPathComponent("sessions/2026/08/08")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestFixtureDirectory.cleanup(root) }
 
         try quotaSession(
             model: "gpt-5-codex",
@@ -338,43 +338,45 @@ struct CodexUsageReaderTests {
 struct QuotaRateCacheTests {
     @Test
     func restoresOnlyUnexpiredQuotaRates() {
-        let suite = "QuotaRateCacheTests.\(UUID().uuidString)"
+        let suite = "CodexMeterTests.QuotaRateCache.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { TestFixtureDirectory.cleanupDefaults(defaults, suite: suite) }
         let now = Date(timeIntervalSince1970: 2_000_000_000)
 
         var source = UsageSnapshot.empty
         source.mainMenuRate = RateWindow(usedPercent: 13, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(3_600))
         source.sparkRate = RateWindow(usedPercent: 4, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(7_200))
-        QuotaRateCache.save(source, defaults: defaults, now: now)
+        source.mainRateSampledAt = now; source.sparkRateSampledAt = now
+        QuotaRateCache.save(source, scope: QuotaScope(id: "synthetic", since: .distantPast), defaults: defaults, now: now)
 
         var restored = UsageSnapshot.empty
-        QuotaRateCache.restore(into: &restored, defaults: defaults, now: now.addingTimeInterval(60))
+        QuotaRateCache.restore(into: &restored, scope: QuotaScope(id: "synthetic", since: .distantPast), defaults: defaults, now: now.addingTimeInterval(60))
         #expect(restored.mainMenuRate?.usedPercent == 13)
         #expect(restored.sparkRate?.usedPercent == 4)
         #expect(restored.mainRateIsCached)
         #expect(restored.sparkRateIsCached)
 
         var expired = UsageSnapshot.empty
-        QuotaRateCache.restore(into: &expired, defaults: defaults, now: now.addingTimeInterval(7_201))
+        QuotaRateCache.restore(into: &expired, scope: QuotaScope(id: "synthetic", since: .distantPast), defaults: defaults, now: now.addingTimeInterval(7_201))
         #expect(expired.mainMenuRate == nil)
         #expect(expired.sparkRate == nil)
     }
 
     @Test
     func doesNotReplaceFreshQuotaWithCache() {
-        let suite = "QuotaRateCacheTests.\(UUID().uuidString)"
+        let suite = "CodexMeterTests.QuotaRateCache.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { TestFixtureDirectory.cleanupDefaults(defaults, suite: suite) }
         let now = Date(timeIntervalSince1970: 2_000_000_000)
 
         var cached = UsageSnapshot.empty
         cached.mainMenuRate = RateWindow(usedPercent: 13, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(3_600))
-        QuotaRateCache.save(cached, defaults: defaults, now: now)
+        cached.mainRateSampledAt = now
+        QuotaRateCache.save(cached, scope: QuotaScope(id: "synthetic", since: .distantPast), defaults: defaults, now: now)
 
         var fresh = UsageSnapshot.empty
         fresh.mainMenuRate = RateWindow(usedPercent: 21, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(3_600))
-        QuotaRateCache.restoreMissing(into: &fresh, defaults: defaults, now: now)
+        QuotaRateCache.restoreMissing(into: &fresh, scope: QuotaScope(id: "synthetic", since: .distantPast), defaults: defaults, now: now)
         #expect(fresh.mainMenuRate?.usedPercent == 21)
         #expect(!fresh.mainRateIsCached)
     }
@@ -390,7 +392,7 @@ struct UsageOptimizationTests {
     private func date(_ text: String) -> Date { ISO8601DateFormatter().date(from: text)! }
 
     private func fixture() throws -> URL {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("CodexMeterOptimizationTests-\(UUID().uuidString)")
+        let root = TestFixtureDirectory.root.appendingPathComponent("CodexMeterOptimizationTests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         // Keep synthetic fixtures for inspection; no cleanup of files or user settings.
         return root

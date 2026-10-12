@@ -11,7 +11,7 @@ private actor ProgressSamples {
 
 struct ProgressiveLoadingTests {
     @Test func publishesPartialAggregatesWithoutChangingFinalResult() async throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("codex-progress-fixture-" + UUID().uuidString)
+        let root = TestFixtureDirectory.root.appendingPathComponent("codex-progress-fixture-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let line = #"{"timestamp":"2026-09-18T01:00:00Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":80,"output_tokens":20,"total_tokens":100},"last_token_usage":{"total_tokens":100},"model_context_window":200000}}}"#
         for index in 0..<3 {

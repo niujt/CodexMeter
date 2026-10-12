@@ -1,12 +1,13 @@
 import SwiftUI
 
 struct ResetHistoryView: View {
-    let codexPath: String
+    let store: UsageStore
     @State private var events: [ResetHistoryEvent] = []
     @State private var isLoading = false
     @State private var hasLoaded = false
     @State private var error: String?
     @State private var requestID = UUID()
+    @State private var showsAllEvents = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -17,7 +18,7 @@ struct ResetHistoryView: View {
                 Button(isLoading ? "读取中…" : (hasLoaded ? "刷新重置历史" : "读取重置历史")) {
                     Task { await refresh() }
                 }
-                .disabled(isLoading)
+                .disabled(isLoading || store.context?.quotaScope == nil)
             }
             if isLoading {
                 ProgressView("正在读取重置历史…").controlSize(.small)
@@ -27,10 +28,10 @@ struct ResetHistoryView: View {
                 Text("过去 30 天没有获得或使用重置次数的记录。")
                     .font(.callout).foregroundStyle(.secondary)
             } else if !hasLoaded {
-                Text("将自动查询重置历史，仅查询，不消耗重置次数。")
+                Text(store.context?.quotaScope == nil ? store.accountStatus : "点击后使用所选目录的当前登录向 ChatGPT 查询，仅查询，不消耗重置次数。")
                     .font(.callout).foregroundStyle(.secondary)
             }
-            ForEach(events) { event in
+            ForEach(Array(events.prefix(showsAllEvents ? events.count : 10))) { event in
                 HStack {
                     Text(event.title).font(.callout)
                     Spacer()
@@ -40,31 +41,38 @@ struct ResetHistoryView: View {
                 .padding(.vertical, 5)
                 Divider()
             }
+            if events.count > 10 {
+                Button(showsAllEvents ? "收起" : "更多（剩余 \(events.count - 10) 条）") {
+                    showsAllEvents.toggle()
+                }.buttonStyle(.plain).foregroundStyle(.secondary)
+            }
         }
-        .task(id: codexPath) {
+        .task(id: store.context?.id) {
             requestID = UUID()
             events = []
+            showsAllEvents = false
             hasLoaded = false
             isLoading = false
             error = nil
-            await refresh()
         }
     }
 
     @MainActor
     private func refresh() async {
-        guard !isLoading else { return }
+        store.synchronizeContext()
+        guard !isLoading, let context = store.context, context.quotaScope != nil else { return }
         let id = UUID()
         requestID = id
         isLoading = true
         error = nil
         do {
-            let loaded = try await ResetHistoryClient().load(codexPath: codexPath)
-            guard requestID == id else { return }
+            let loaded = try await ResetHistoryClient().load(context: context)
+            guard requestID == id, store.context?.id == context.id else { return }
             events = loaded
+            showsAllEvents = false
             hasLoaded = true
         } catch {
-            guard requestID == id else { return }
+            guard requestID == id, store.context?.id == context.id else { return }
             self.error = error.localizedDescription
         }
         isLoading = false

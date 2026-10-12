@@ -45,11 +45,12 @@ struct ResetHistoryPage: Decodable, Sendable {
 }
 
 enum ResetHistoryError: LocalizedError {
-    case loginRequired, rejected(Int), invalidResponse, incomplete
+    case loginRequired, accountChanged, rejected(Int), invalidResponse, incomplete
 
     var errorDescription: String? {
         switch self {
         case .loginRequired: "未找到可用的 Codex 登录凭据，请先在 Codex 登录 ChatGPT 账户，并确认数据目录。"
+        case .accountChanged: "读取期间账户已变化，请重新查询。"
         case .rejected(let status): "重置历史读取失败（HTTP \(status)）。请确认登录状态；此接口可能不接受当前登录凭据。"
         case .invalidResponse: "重置历史响应无法识别，请稍后重试。"
         case .incomplete: "重置历史分页未完成，请重试。"
@@ -68,13 +69,9 @@ private final class ResetHistorySessionDelegate: NSObject, URLSessionTaskDelegat
 }
 
 actor ResetHistoryClient {
-    private struct Auth: Decodable {
-        struct Tokens: Decodable {
-            let access_token: String
-            let account_id: String
-        }
-        let tokens: Tokens
-    }
+    typealias Transport = @Sendable (URLRequest) async throws -> (Data, Int)
+    private let transport: Transport?
+    init(transport: Transport? = nil) { self.transport = transport }
 
     // This is the first-party desktop settings endpoint, not a public API contract.
     static func request(token: String, accountID: String, cursor: String?) -> URLRequest {
@@ -89,16 +86,16 @@ actor ResetHistoryClient {
         return request
     }
 
-    func load(codexPath: String) async throws -> [ResetHistoryEvent] {
-        let root = codexPath.isEmpty
-            ? (ProcessInfo.processInfo.environment["CODEX_HOME"] ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex").path)
-            : codexPath
-        let authURL = URL(fileURLWithPath: root).appendingPathComponent("auth.json")
-        guard let data = try? Data(contentsOf: authURL),
-              let auth = try? JSONDecoder().decode(Auth.self, from: data),
-              !auth.tokens.access_token.isEmpty, !auth.tokens.account_id.isEmpty else {
+    func load(context: CodexDataContext) async throws -> [ResetHistoryEvent] {
+        guard let home = context.source.home, let identity = context.accountIdentity else {
             throw ResetHistoryError.loginRequired
         }
+        func credentials() throws -> CodexCredentials {
+            guard let auth = CodexCredentials.read(home: home) else { throw ResetHistoryError.loginRequired }
+            guard auth.identity == identity else { throw ResetHistoryError.accountChanged }
+            return auth
+        }
+        _ = try credentials()
         let configuration = URLSessionConfiguration.ephemeral
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
@@ -109,11 +106,21 @@ actor ResetHistoryClient {
         var events: [String: ResetHistoryEvent] = [:]
         for _ in 0..<100 {
             try Task.checkCancellation()
-            let (data, response) = try await session.data(for: Self.request(
-                token: auth.tokens.access_token, accountID: auth.tokens.account_id, cursor: cursor
-            ))
-            guard let response = response as? HTTPURLResponse else { throw ResetHistoryError.invalidResponse }
-            guard response.statusCode == 200 else { throw ResetHistoryError.rejected(response.statusCode) }
+            let auth = try credentials()
+            let request = Self.request(token: auth.token, accountID: auth.accountID, cursor: cursor)
+            let data: Data
+            let status: Int
+            if let transport {
+                (data, status) = try await transport(request)
+            } else {
+                let (body, response) = try await session.data(for: request)
+                guard let response = response as? HTTPURLResponse else { throw ResetHistoryError.invalidResponse }
+                data = body
+                status = response.statusCode
+            }
+            try Task.checkCancellation()
+            _ = try credentials() // Never publish a response or send another page for an obsolete account.
+            guard status == 200 else { throw ResetHistoryError.rejected(status) }
             guard let page = try? ResetHistoryPage.decode(data) else { throw ResetHistoryError.invalidResponse }
             for event in page.events { events[event.id] = event }
             guard let next = page.nextCursor, !next.isEmpty else {

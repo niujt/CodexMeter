@@ -107,6 +107,7 @@ struct RateTimelineEvent: Sendable, Equatable {
     let usedPercent: Double
     let resetsAt: Date
     let limitID: String?
+    var tokens: Int = 0
 }
 
 struct UsageSnapshot: Sendable, Equatable {
@@ -128,6 +129,8 @@ struct UsageSnapshot: Sendable, Equatable {
     var secondaryRate: RateWindow?
     var mainMenuRate: RateWindow?
     var sparkRate: RateWindow?
+    var mainRateSampledAt: Date?
+    var sparkRateSampledAt: Date?
     var mainRateIsCached = false
     var sparkRateIsCached = false
     var selectedRateLimitID: String?

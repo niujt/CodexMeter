@@ -163,6 +163,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         popoverController.sizingOptions = [.preferredContentSize]
         popover.contentSize = NSSize(width: 320, height: 340)
         UNUserNotificationCenter.current().delegate = self
+        sharedStore.synchronizeContext()
         PermissionAttentionService.shared.start()
         permissionObserver = NotificationCenter.default.addObserver(
             forName: .codexPermissionStoreDidChange,
