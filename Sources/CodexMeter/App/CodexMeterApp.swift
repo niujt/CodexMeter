@@ -139,7 +139,6 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     private var defaultsObserver: NSObjectProtocol?
     private var dashboardWillOpenObserver: NSObjectProtocol?
     private var permissionObserver: NSObjectProtocol?
-    private var appearanceObservation: NSKeyValueObservation?
     private var dockAppearanceObservation: NSKeyValueObservation?
     private var usageTitle = "—"
     private var renderedStatusTitle: String?
@@ -157,9 +156,6 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         button.target = self
         button.action = #selector(togglePopover(_:))
         button.toolTip = "Codex Health"
-        appearanceObservation = button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            Task { @MainActor [weak self] in self?.applyStatusAppearance() }
-        }
         applyStatusAppearance()
         popover.behavior = .transient
         popover.delegate = self
@@ -273,7 +269,8 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
 
     private var hasVisibleInterface: Bool {
         NSApp.isActive && (popover.isShown || NSApp.windows.contains {
-            $0.isVisible && !$0.isMiniaturized && ($0.canBecomeMain || ($0.styleMask.contains(.titled) && $0.canBecomeKey))
+            $0.isVisible && !$0.isMiniaturized && $0.occlusionState.contains(.visible)
+                && ($0.canBecomeMain || ($0.styleMask.contains(.titled) && $0.canBecomeKey))
         })
     }
 
@@ -321,7 +318,6 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             if let store {
                 popoverController.rootView = UsagePopoverView(store: store, permissionStore: permissionStore, compact: true, isVisible: true)
-                Task { await store.refreshIfNeeded() }
             }
             NSApp.activate(ignoringOtherApps: true)
             scheduleRefreshTimer()
@@ -357,9 +353,8 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
 
     private func applyStatusAppearance() {
         guard let button = statusItem.button else { return }
-        // Draw the percentage into the same non-template image as the mark.
-        // NSStatusBarButton can otherwise re-tint attributed titles according
-        // to the menu bar appearance even when a white foreground is supplied.
+        // Use one template for the mark and percentage. AppKit handles contrast
+        // and highlighted states without rebuilding the image on theme changes.
         let showBadge = UserDefaults.standard.bool(forKey: PermissionPreferences.badgeEnabledKey)
         let count = showBadge ? permissionStore.newCount : 0
         let title = count > 0 ? "\(usageTitle) · ⚠ \(count)" : usageTitle
@@ -369,7 +364,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         renderedStatusTitle = renderedKey
         button.image = Self.menuBarMark(title: title, style: style)
         button.title = ""
-        button.contentTintColor = NSColor.white
+        button.contentTintColor = nil
     }
 
     private static func menuBarMark(title: String, style: AppIconStyle) -> NSImage {
@@ -378,7 +373,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         let font = NSFont.systemFont(ofSize: 13, weight: .regular)
         let titleAttributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: NSColor.white
+            .foregroundColor: NSColor.black
         ]
         let titleSize = (title as NSString).size(withAttributes: titleAttributes)
         let size = NSSize(width: markWidth + markTitleSpacing + titleSize.width, height: 19)
@@ -386,7 +381,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             let ring = NSBezierPath()
             ring.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1, startAngle: 75, endAngle: 335, clockwise: false)
             ring.lineWidth = 3.1
-            NSColor.white.setStroke()
+            NSColor.black.setStroke()
             ring.stroke()
             let segments: [(CGFloat, CGFloat)] = style == .glass ? [(15, 27), (31, 43), (47, 59)] : [(15, 59)]
             for (start, end) in segments {
@@ -402,7 +397,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             h.move(to: NSPoint(x: 11.3, y: 6.3)); h.line(to: NSPoint(x: 11.3, y: 12.8))
             h.move(to: NSPoint(x: 8.0, y: 9.5)); h.line(to: NSPoint(x: 11.3, y: 9.5))
             h.lineWidth = 1.45
-            NSColor.white.setStroke()
+            NSColor.black.setStroke()
             h.stroke()
 
             let titleY = (size.height - titleSize.height) / 2
@@ -412,9 +407,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             )
             return true
         }
-        // Keep the mark as a regular image so AppKit does not replace the
-        // white strokes with the menu bar's automatic template tint.
-        image.isTemplate = false
+        image.isTemplate = true
         return image
     }
 
