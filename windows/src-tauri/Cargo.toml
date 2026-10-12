@@ -1,0 +1,20 @@
+[package]
+name = "codex-health-windows"
+version = "0.1.2"
+edition = "2021"
+[lib]
+name = "codex_health_windows"
+crate-type = ["staticlib", "cdylib", "rlib"]
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+chrono = "0.4"
+codex-health-usage = { path = "../usage-core" }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+notify = "8"
+tauri-plugin-notification = "2"

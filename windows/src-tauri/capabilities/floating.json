@@ -1,0 +1,11 @@
+{
+  "identifier": "floating",
+  "description": "Floating quota indicator and dragging",
+  "windows": [
+    "floating"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging"
+  ]
+}
