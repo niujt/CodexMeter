@@ -1,0 +1,49 @@
+name: Windows installers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: x64
+            runner: windows-latest
+          - architecture: arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      CODEX_HEALTH_TEST_ROOT: ${{ runner.temp }}/codex-health-synthetic-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - name: Install Rust
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: Build and test native Windows installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+        shell: pwsh
+        run: ./windows/build-windows.ps1 -Architecture '${{ matrix.architecture }}'
+      - name: Verify architecture and collect installer and updater signature
+        shell: pwsh
+        run: python ./windows/verify-packages.py --architecture '${{ matrix.architecture }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.architecture }}
+          path: output/windows/*/*
+          if-no-files-found: error
+          retention-days: 7

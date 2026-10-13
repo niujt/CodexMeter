@@ -1,5 +1,6 @@
 mod permissions;
 mod state;
+mod updates;
 use chrono::{DateTime, Utc};
 use codex_health_usage::{context, Snapshot};
 use serde::{Deserialize, Serialize};
@@ -342,6 +343,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             get_app_state,
             read_usage,
@@ -356,7 +358,10 @@ pub fn run() {
             test_permission_notification,
             open_codex,
             open_project,
-            get_reset_history
+            get_reset_history,
+            updates::app_version,
+            updates::check_app_update,
+            updates::install_app_update
         ])
         .setup(|app| {
             let config = app.path().app_config_dir()?;

@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, reactive, watch } from "vue";
+import { ref, computed, reactive, watch, onMounted } from "vue";
+import { useAppUpdater } from "../updater";
 import Modal from "./Modal.vue";
 import type { DesktopClient } from "../desktop";
 import type { Preferences } from "../types";
 import { FolderOpen } from "@lucide/vue";
 const props = defineProps<{ desktop: DesktopClient }>();
 const emit = defineEmits<{ close: [] }>();
+const updater = useAppUpdater(props.desktop.command);
+onMounted(() => { void updater.loadVersion(); });
+function close() { if (!updater.state.installing) emit('close'); }
 const tab = ref("通用"),
   pending = ref(false),
   message = ref("");
@@ -82,7 +86,7 @@ async function clear() {
 }
 </script>
 <template>
-  <Modal title="设置" @close="emit('close')"
+  <Modal title="设置" @close="close"
     ><div class="segments settings-tabs">
       <button
         v-for="name in ['通用', '提醒', '关于']"
@@ -273,8 +277,21 @@ async function clear() {
     <div v-else class="about">
       <img :src="logo" width="64" height="64" alt="Codex Health" />
       <h2>Codex Health</h2>
-      <p>Windows · v0.1.2</p>
+      <p>Windows · {{ updater.state.version ? `v${updater.state.version}` : '版本待检查' }}</p>
       <small>本地优先的 Codex 用量健康中心</small>
+      <div class="settings-group">
+        <h3>应用更新</h3>
+        <p class="muted">检查新版本，按本机架构下载安装。安装时应用会退出，由安装程序完成更新。</p>
+        <button @click="updater.checkUpdate" :disabled="updater.state.checking || updater.state.installing">{{ updater.state.checking ? '正在检查…' : '检查更新' }}</button>
+        <template v-if="updater.state.update">
+          <p>可更新至 v{{ updater.state.update.version }}</p>
+          <p class="selectable" style="white-space: pre-wrap">{{ updater.state.update.notes }}</p>
+          <button class="primary" @click="updater.installUpdate" :disabled="updater.state.installing">{{ updater.state.installing ? '正在更新…' : '下载并安装更新' }}</button>
+        </template>
+        <progress v-if="updater.state.installing && updater.state.total" :value="updater.state.downloaded" :max="updater.state.total" aria-label="更新下载进度" />
+        <p v-if="updater.state.message" role="status">{{ updater.state.message }}</p>
+        <p v-if="updater.state.error" class="notice" role="alert">{{ updater.state.error }}</p>
+      </div>
     </div>
     <p v-if="message" class="notice" role="status">{{ message }}</p>
     <p v-if="pending" class="muted" role="status">正在保存设置…</p></Modal
