@@ -8,9 +8,9 @@
 
 源码包含更新器和公开配置。构建需要实际传入更新源和公开公钥，不能只依据未填写的模板判断本机或 GitHub Actions 是否已配置签名密钥。只有构建后的配置确实缺失时，才显示原因并禁用检查按钮。已有 `SPARKLE_PRIVATE_KEY` 应在受信任 CI 中复用，公开公钥注入应用，私钥不得下载到本地或输出到日志。当前构建脚本使用 Apple Development 或 ad-hoc 签名，不代表已经具备 Developer ID 公证发布流程。
 
-本次已通过独立手动流程 `macos-public-update-config.yml` 复用现有 Secret，生成 `Resources/Updates.xcconfig` 与 `updates/macos/appcast.xml`，并由 Sparkle 2.10.0 官方工具验证签名和拒绝篡改。该流程只在当前仓库默认分支手动运行，源码和工具准备步骤不接收 Secret；私钥仅经标准输入交给受信任工具，不写入文件或产物。更新源暂时没有安装包条目，不宣称发布了新 Mac 安装包。
+本次已通过独立手动流程 `macos-public-update-config.yml` 复用现有 Secret，生成 `Resources/Updates.xcconfig` 与 `updates/macos/appcast.xml`，并由 Sparkle 2.10.0 官方工具验证签名和拒绝篡改。该流程只在当前仓库默认分支手动运行，源码和工具准备步骤不接收 Secret；私钥仅经标准输入交给受信任工具，不写入文件或产物。手动发布时可以复用同一流程签署已在本机验证的 DMG：先创建与源码提交绑定的草稿 Release，上传包并传入 SHA-256；CI 核对标签、摘要、签名、更新配置、版本及双架构后，才接收 Secret。输出包含包签名、签名 appcast 和公开验证记录；不自动发布 Release 或推送更新源。
 
-旧版 1.0.8 不含更新器，需要安装一次包含 Sparkle 的首版；之后才能通过应用内更新升级。不要把对旧版的首次迁移说成也能自动完成。
+早期 1.0.8（16）不含更新器，需先手动安装含 Sparkle 的版本。已集成更新源的 1.0.8（17）可以检查并升级至本次 1.0.9（18）；不能只凭展示版本判断是否支持更新。
 
 ## 发布前必须准备
 
@@ -18,7 +18,7 @@
 2. 确认 macOS 发布身份及权限：正式分发推荐 Developer ID 签名、公证，并保留应用与 Widget 的 App Group、嵌套代码签名。不要关闭 library validation、Gatekeeper 或任何系统安全检查来让更新通过。现有开发签名和 ad-hoc 包必须分别实测，不能假定它们是可分发安装包。
 3. 专用稳定更新源为 `https://raw.githubusercontent.com/niujt/CodexMeter/main/updates/macos/appcast.xml`。签名后的更新源随源码推送，未来只能加入已验证的 Mac 更新包；更换域名或分支需要同步修改配置校验与测试。
 4. Xcode 工程与构建脚本默认读取 `Resources/Updates.xcconfig` 中的真实公钥。如需其他公开配置，可通过 `UPDATE_XCCONFIG=/absolute/path/Updates.xcconfig` 显式覆盖。此文件只包含公开配置，不能放入私钥；只有确实需要新密钥时才使用模板，不能覆盖现有签名身份。
-5. 设置递增的 `CFBundleVersion`，并同步应用与 Widget 的展示版本/构建号。本次本地集成使用 1.0.8（17），尚未发布签名更新包。Sparkle 按构建号比较；同一构建号不得对应不同发布内容。
+5. 设置递增的 `CFBundleVersion`，并同步应用与 Widget 的展示版本/构建号。当前更新验证包为 1.0.9（18），用于从已集成更新器的 1.0.8（17）测试升级。该包采用同一团队的 Apple Development 签名，尚未公证，不能把它称为 Developer ID 公证发布。Sparkle 按构建号比较；同一构建号不得对应不同发布内容。
 
 ## 构建和配置门禁
 
@@ -38,7 +38,7 @@ spctl --assess --type execute --verbose '/path/to/Codex Health.app'
 python3 script/validate_update_config.py '/path/to/Codex Health.app'
 ```
 
-## 生成更新源（模板，未执行）
+## 生成更新源
 
 经授权使用可信 macOS 构建机或 GitHub Actions macOS runner，以及官方 Sparkle 2.10.0 工具。归档目录只放已验证的 macOS 包，不混放 Windows 包；初期不启用 delta。现有通用 DMG 可以作为 Sparkle 更新载荷，无需用户手动拖拽。需验证其中确实同时包含 arm64/x86_64，且主应用、Widget、版本与签名均正确。
 
@@ -51,7 +51,7 @@ python3 script/validate_update_config.py '/path/to/Codex Health.app'
 
 `vNEXT_VERSION` 必须替换为本次真实发布标签；生成后核对 enclosure URL。`generate_appcast` 从归档中读取 `SURequireSignedFeed` 并签名 feed、release notes 和更新包；本机可使用已获授权的钥匙串；CI 可从已获授权的加密 secret 经标准输入传给 `--ed-key-file -`，不可将私钥放进命令行参数、文件附件或日志。工具可能移动旧归档，始终使用专用发布工作目录，不使用源码目录。
 
-发布流程：先上传并核对更新包，再发布完整的签名 `appcast.xml` 到上述规划位置；不要发布占位 appcast。签名后不能再手工编辑 feed 或说明，任何编辑都必须重新签名。不可未经确认推送仓库、创建 Release 或上传发布包。本次没有执行这些步骤。
+发布流程：先上传并核对更新包，再发布完整的签名 `appcast.xml`。签名后不能再手工编辑 feed 或说明，任何编辑都必须重新签名。本次用户已授权推送代码、上传 GitHub 包并发布签名更新源，以便亲自测试应用内升级；保留当前已安装版本作为升级起点，不进行本机手动替换。
 
 ## Mac 验收清单
 
@@ -61,7 +61,7 @@ python3 script/validate_update_config.py '/path/to/Codex Health.app'
 - 真实旧/新两版：无更新、发现新版、下载、取消后重试、断网后重试、多次点击、关闭设置再打开、安装并重启。
 - 下载完成后按钮进入安装/重启阶段；重启后的版本、Widget、用户设置及数据保留正确。
 - 篡改包/无签名或错误签名的 feed/说明/包必须被拒绝。
-- 稳定源不包含 Windows 或测试/预发布版本；验证 macOS 最低版本、Intel 与 Apple Silicon。
+- 源不包含 Windows 包；本次经用户明确授权发布 Mac 更新验证包，并在说明中标注开发签名、未公证的限制。正式稳定发布需满足 Developer ID 与公证要求。验证 macOS 最低版本、Intel 与 Apple Silicon。
 - 从只读 DMG、无写权限目录启动时应给出安全失败或系统授权，绝不绕过安全检查。
 - 首次含更新器的版本需单独安装一次，此后才验证自动替换升级。
 
@@ -79,11 +79,11 @@ python3 script/validate_update_config.py '/path/to/Codex Health.app'
 
 ## GitHub Actions 与两类签名
 
-GitHub-hosted macOS runner 可以构建、测试、打包与签名。现有无密钥验证工作流仍只验证故意未配置的通用包；独立的 `macos-public-update-config.yml` 已在默认分支手动执行，复用已有 Secret 生成公开公钥和签名更新源，不发布应用安装包。未来正式分发签名任务应使用配置了审批人的 GitHub Environment，不向 fork 或未信任 PR 开放密钥。
+GitHub-hosted macOS runner 可以构建、测试、打包与签名。现有无密钥验证工作流仍只验证故意未配置的通用包；独立的 `macos-public-update-config.yml` 已在默认分支手动执行，复用已有 Secret 生成公开公钥和签名更新源，也可签署已审核的草稿 Release 中的包，由本地核对后发布。未来正式分发签名任务应使用配置了审批人的 GitHub Environment，不向 fork 或未信任 PR 开放密钥。
 
 - **Sparkle Ed25519 更新签名**：证明 appcast、发布说明和更新包由可信发布者产生。私钥签名，公钥内置应用；与 Apple 开发者证书是两套独立材料。本实现要求签名 feed 和提取前包验证，并将签名失败过期时间设置为 0，绝不因为失败时间过长而降级。
 - **Apple Developer ID 代码签名和公证**：让 macOS/Gatekeeper 识别发布身份并验证分发包，正确覆盖应用、Widget、Sparkle helper/XPC。Sparkle 签名不代替这项；Developer ID/公证也不代替更新源的签名。没有 Apple 分发证书时可做编译验证，但不能宣称已获得正式可分发包。
 
-签名更新源流程已复用现有 `SPARKLE_PRIVATE_KEY`；公开公钥保存在仓库公开配置中。未来正式分发 CI 还需要受保护的 Developer ID Application 证书及其导出密码、团队 ID，以及用于公证的 Apple 身份/API 密钥材料。若 Widget/App Group 需要 provisioning profile，也需准备正确 profile。实际 secret 名称以工作流为准；不要把任何私密材料发到普通聊天。新增凭据与权限、发布正式安装包前应单独确认。
+签名更新源流程已复用现有 `SPARKLE_PRIVATE_KEY`；公开公钥保存在仓库公开配置中。未来正式分发 CI 还需要受保护的 Developer ID Application 证书及其导出密码、团队 ID，以及用于公证的 Apple 身份/API 密钥材料。若 Widget/App Group 需要 provisioning profile，也需准备正确 profile。实际 secret 名称以工作流为准；不要把任何私密材料发到普通聊天。不重新生成密钥或新增凭据；本次沿用现有 Secret，发布范围已获用户确认。
 
 建议上线次序：先运行无凭据的 macOS 构建/测试；在审批环境安全配置所需凭据；验证 Archive/Export、Developer ID 签名与公证；生成已签名的更新包和 feed；经批准发布；最后实测安装旧版→下载→安装并重启。检查更新源和用户数据保留后才能宣布功能已上线。

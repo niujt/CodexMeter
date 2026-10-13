@@ -6,9 +6,12 @@ import binascii
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
+from email.utils import format_datetime
 
 FEED = 'https://raw.githubusercontent.com/niujt/CodexMeter/main/updates/macos/appcast.xml'
 
@@ -18,7 +21,22 @@ def main():
     parser.add_argument('--public-key-tool', required=True)
     parser.add_argument('--sign-tool', required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--package', type=Path)
+    parser.add_argument('--release-tag')
+    parser.add_argument('--version')
+    parser.add_argument('--build', type=int)
+    parser.add_argument('--expected-sha256')
     args = parser.parse_args()
+    package_metadata = None
+    if args.package:
+        if (not args.version or not re.fullmatch(r'\d+\.\d+\.\d+', args.version)
+                or args.release_tag != 'macos-v' + args.version or not args.build or args.build <= 0
+                or args.package.name != f'CodexMeter-{args.version}-macos.dmg'
+                or not re.fullmatch(r'[0-9a-f]{64}', args.expected_sha256 or '')):
+            raise SystemExit('Invalid release package metadata.')
+        package_digest = hashlib.sha256(args.package.read_bytes()).hexdigest()
+        if package_digest != args.expected_sha256:
+            raise SystemExit('Release package SHA-256 mismatch.')
     encoded = os.environ.pop('SPARKLE_PRIVATE_KEY', '').strip()
     try:
         secret = base64.b64decode(encoded, validate=True)
@@ -40,6 +58,11 @@ def main():
         raise SystemExit('Public key tool returned invalid data.')
     if len(decoded_public) != 32 or not any(decoded_public):
         raise SystemExit('Public key tool returned an invalid Ed25519 public key.')
+    if args.package:
+        configured = Path('Resources/Updates.xcconfig').read_text(encoding='utf-8')
+        expected_key = re.search(r'^CODEX_HEALTH_UPDATE_PUBLIC_KEY\s*=\s*(\S+)', configured, re.MULTILINE)
+        if not expected_key or expected_key.group(1) != public_key:
+            raise SystemExit('Existing Secret does not match the published app public key; refusing a trust change.')
     args.output.mkdir(parents=True, exist_ok=False)
     feed = args.output / 'appcast.xml'
     # Re-exporting configuration must preserve any already published update items.
@@ -54,14 +77,59 @@ def main():
                     '    <link>https://github.com/niujt/CodexMeter</link>\n'
                     '    <description>Signed macOS update feed. No newer package is published yet.</description>\n'
                         '    <language>zh-cn</language>\n  </channel>\n</rss>\n', encoding='utf-8')
-    update_count = len(ET.fromstring(feed.read_bytes()).findall('./channel/item'))
-
-    def invoke(path, verify=False):
+    def invoke(path, verify=False, signature=None):
         command = [args.sign_tool, '--ed-key-file', '-']
         if verify:
             command.append('--verify')
-        return subprocess.run(command + [str(path)], input=key_input, env=child_env,
+        return subprocess.run(command + [str(path)] + ([signature] if signature else []), input=key_input, env=child_env,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if args.package:
+        signed_package = invoke(args.package)
+        signature = re.search(r'sparkle:edSignature="([A-Za-z0-9+/=]+)"', signed_package.stdout.decode('utf-8', errors='replace'))
+        length = re.search(r'length="(\d+)"', signed_package.stdout.decode('utf-8', errors='replace'))
+        if (signed_package.returncode or not signature or not length
+                or int(length.group(1)) != args.package.stat().st_size
+                or invoke(args.package, verify=True, signature=signature.group(1)).returncode):
+            raise SystemExit('Official Sparkle package signing/verification failed.')
+        tampered_package = args.output.parent / (args.output.name + '-tampered.dmg')
+        payload = args.package.read_bytes()
+        tampered_package.write_bytes(bytes([payload[0] ^ 1]) + payload[1:])
+        if invoke(tampered_package, verify=True, signature=signature.group(1)).returncode == 0:
+            raise SystemExit('Tampered package was unexpectedly accepted.')
+        sparkle = 'http://www.andymatuschak.org/xml-namespaces/sparkle'
+        ET.register_namespace('sparkle', sparkle)
+        tree = ET.fromstring(feed.read_bytes())
+        channel = tree.find('channel')
+        if channel is None:
+            raise SystemExit('Published feed has no channel.')
+        for existing in channel.findall('item'):
+            version = existing.findtext(f'{{{sparkle}}}version')
+            if not version or not version.isdecimal() or int(version) >= args.build:
+                raise SystemExit('Release build must increase monotonically; existing builds are immutable.')
+        item = ET.Element('item')
+        ET.SubElement(item, 'title').text = f'Codex Health {args.version}'
+        ET.SubElement(item, f'{{{sparkle}}}version').text = str(args.build)
+        ET.SubElement(item, f'{{{sparkle}}}shortVersionString').text = args.version
+        ET.SubElement(item, f'{{{sparkle}}}minimumSystemVersion').text = '15.0.0'
+        ET.SubElement(item, 'pubDate').text = format_datetime(datetime.now(timezone.utc))
+        ET.SubElement(item, 'description').text = (
+            '新增手动刷新结果反馈：区分新额度采样、暂无新采样、读取不完整和刷新失败。'
+            '检查完成时间与额度采样时间分别显示，后台刷新不会覆盖手动检查结果。'
+            '本次为 Apple Development 签名的更新验证包，尚未公证。')
+        download_url = f'https://github.com/niujt/CodexMeter/releases/download/{args.release_tag}/{args.package.name}'
+        ET.SubElement(item, 'enclosure', {'url': download_url, 'length': length.group(1),
+            'type': 'application/octet-stream', f'{{{sparkle}}}edSignature': signature.group(1)})
+        channel.insert(0, item)
+        channel.find('description').text = 'Codex Health signed macOS updates.'
+        ET.indent(tree)
+        feed.write_bytes(ET.tostring(tree, encoding='utf-8', xml_declaration=True) + b'\n')
+        package_metadata = {'file': args.package.name, 'version': args.version, 'build': args.build,
+            'url': download_url, 'sha256': package_digest, 'length': int(length.group(1)),
+            'edSignature': signature.group(1), 'packageVerified': True, 'packageTamperingRejected': True}
+        (args.output / (args.package.name + '.sig')).write_text(signature.group(1) + '\n', encoding='ascii')
+
+    update_count = len(ET.fromstring(feed.read_bytes()).findall('./channel/item'))
 
     if invoke(feed).returncode or invoke(feed, verify=True).returncode:
         raise SystemExit('Official Sparkle feed signing/verification failed; no public configuration is usable.')
@@ -82,6 +150,7 @@ def main():
         'feedURL': FEED, 'publicKey': public_key, 'signingToolVersion': '2.10.0',
         'feedVerified': True, 'tamperingRejected': True, 'publishedUpdateCount': update_count,
         'appcastSHA256': hashlib.sha256(signed).hexdigest(),
+        'package': package_metadata,
     }, indent=2) + '\n', encoding='utf-8')
     print('Existing Secret reused; public configuration and signed feed verified; tampering rejected.')
 

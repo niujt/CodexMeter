@@ -64,7 +64,7 @@ struct UsagePopoverView: View {
                 }
                 Spacer()
                 Button {
-                    Task { await store.refresh() }
+                    Task { await store.refresh(userInitiated: true) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -173,7 +173,10 @@ struct UsagePopoverView: View {
                 if !compact { Button("退出") { NSApplication.shared.terminate(nil) }.buttonStyle(.bordered) }
             }
 
-            if let error = store.errorMessage {
+            if let feedback = store.refreshFeedback {
+                UsageRefreshFeedbackView(feedback: feedback)
+            }
+            if let error = store.errorMessage, error != store.refreshFeedback?.detail {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(.primary)
@@ -239,6 +242,9 @@ private struct HealthMenuPopover: View {
             if let spark = store.snapshot.sparkRate {
                 QuotaSampleView(title: "Spark 剩余额度", window: spark, sampledAt: store.snapshot.sparkRateSampledAt, numberSize: 16)
             }
+            if let feedback = store.refreshFeedback {
+                UsageRefreshFeedbackView(feedback: feedback)
+            }
 
             Divider()
             ReplySpeedView(samples: store.snapshot.replySpeedSamples, layout: .row, isVisible: isVisible)
@@ -262,7 +268,7 @@ private struct HealthMenuPopover: View {
                         .font(.caption).foregroundStyle(permissionStore.newCount > 0 ? Color.primary : Color.secondary)
                 }
             }
-            if let error = store.errorMessage {
+            if let error = store.errorMessage, error != store.refreshFeedback?.detail {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(2).help(error)
             }
@@ -299,7 +305,7 @@ private struct HealthMenuPopover: View {
 
     private var controlButtons: some View {
         HStack(spacing: 8) {
-            Button { Task { await store.refresh() } } label: {
+            Button { Task { await store.refresh(userInitiated: true) } } label: {
                 Image(systemName: "arrow.clockwise").frame(width: 20, height: 20)
             }.disabled(store.isRefreshing).help("刷新")
             Button { openSettings() } label: {
@@ -314,7 +320,7 @@ private struct HealthMenuPopover: View {
                     permissionsExpanded = showPermissionHistory
                 }
                 Button("重新读取全部记录") {
-                    Task { await store.refresh(force: true) }
+                    Task { await store.refresh(force: true, userInitiated: true) }
                 }.disabled(store.isRefreshing)
                 Divider()
                 Button("退出") { NSApplication.shared.terminate(nil) }
@@ -328,6 +334,31 @@ private struct HealthMenuPopover: View {
     private func openDashboard() {
         NotificationCenter.default.post(name: .codexHealthDashboardWillOpen, object: nil)
         openWindow(id: "dashboard")
+    }
+}
+
+private struct UsageRefreshFeedbackView: View {
+    let feedback: UsageRefreshFeedback
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(feedback.message, systemImage: symbol)
+            Text("手动检查于 \(feedback.checkedAt.formatted(date: .abbreviated, time: .standard))")
+            if let detail = feedback.detail {
+                Text(detail).lineLimit(2).help(detail)
+            }
+        }
+        .font(.caption2).foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+        .help("\(feedback.message)。检查时间仅表示本机读取完成时间，额度采样时间以原始记录为准。")
+    }
+
+    private var symbol: String {
+        switch feedback.outcome {
+        case .newSample: "checkmark.circle"
+        case .noNewSample: "clock"
+        case .incomplete, .failed: "exclamationmark.triangle"
+        }
     }
 }
 

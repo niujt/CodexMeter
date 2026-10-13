@@ -2,6 +2,15 @@ name: macOS public update configuration
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional reviewed draft release tag (macos-vVERSION); empty exports public configuration only'
+        type: string
+        default: ''
+      package_sha256:
+        description: 'Required SHA-256 of the locally validated development-signed DMG when signing a release'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -36,14 +45,59 @@ jobs:
             --public-key-tool "$RUNNER_TEMP/sparkle-public-key" \
             --sign-tool "$RUNNER_TEMP/sparkle/bin/sign_update" \
             --output "$RUNNER_TEMP/synthetic-public-config"
+      - name: Verify package signing and release guards using synthetic data
+        run: |
+          python3 script/test_macos_release_export.py \
+            --public-key-tool "$RUNNER_TEMP/sparkle-public-key" \
+            --sign-tool "$RUNNER_TEMP/sparkle/bin/sign_update"
+      - name: Download and validate the reviewed release package before receiving any Secret
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          PACKAGE_SHA256: ${{ inputs.package_sha256 }}
+        run: |
+          set -euo pipefail
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)
+          BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Resources/Info.plist)
+          test "$RELEASE_TAG" = "macos-v$VERSION"
+          test "${#PACKAGE_SHA256}" = 64
+          git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
+          mkdir "$RUNNER_TEMP/release-package"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "CodexMeter-$VERSION-macos.dmg" --dir "$RUNNER_TEMP/release-package"
+          PACKAGE="$RUNNER_TEMP/release-package/CodexMeter-$VERSION-macos.dmg"
+          printf '%s  %s\n' "$PACKAGE_SHA256" "$PACKAGE" | shasum -a 256 -c -
+          bash script/validate_distribution.sh --dmg "$PACKAGE"
+          MOUNT="$RUNNER_TEMP/release-mount"
+          mkdir "$MOUNT"
+          hdiutil attach "$PACKAGE" -readonly -nobrowse -mountpoint "$MOUNT"
+          trap 'hdiutil detach "$MOUNT"' EXIT
+          python3 script/validate_update_config.py "$MOUNT/Codex Health.app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$MOUNT/Codex Health.app/Contents/Info.plist")" = "$VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$MOUNT/Codex Health.app/Contents/Info.plist")" = "$BUILD"
+          for BINARY in "$MOUNT/Codex Health.app/Contents/MacOS/CodexMeter" "$MOUNT/Codex Health.app/Contents/PlugIns/CodexMeterWidget.appex/Contents/MacOS/CodexMeterWidget"; do
+            lipo "$BINARY" -verify_arch arm64 x86_64
+          done
+          printf 'RELEASE_VERSION=%s\nRELEASE_BUILD=%s\n' "$VERSION" "$BUILD" >> "$GITHUB_ENV"
       - name: Reuse the configured signing Secret and export public files only
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          PACKAGE_SHA256: ${{ inputs.package_sha256 }}
         run: |
+          set -euo pipefail
+          RELEASE_ARGS=()
+          if [[ -n "$RELEASE_TAG" ]]; then
+            RELEASE_ARGS=(--package "$RUNNER_TEMP/release-package/CodexMeter-$RELEASE_VERSION-macos.dmg"
+              --release-tag "$RELEASE_TAG" --version "$RELEASE_VERSION" --build "$RELEASE_BUILD"
+              --expected-sha256 "$PACKAGE_SHA256")
+          fi
           python3 script/export_macos_update_config.py \
             --public-key-tool "$RUNNER_TEMP/sparkle-public-key" \
             --sign-tool "$RUNNER_TEMP/sparkle/bin/sign_update" \
-            --output "$RUNNER_TEMP/macos-update-public"
+            --output "$RUNNER_TEMP/macos-update-public" "${RELEASE_ARGS[@]}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: macos-update-public

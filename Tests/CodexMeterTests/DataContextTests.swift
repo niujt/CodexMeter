@@ -173,6 +173,75 @@ struct DataContextTests {
         #expect(await reader.parsedFileCount == 0)
     }
 
+    @MainActor @Test func manualRefreshDistinguishesQuotaSamplesFromChecksAndTokenChanges() async throws {
+        let (root, defaults) = try fixture()
+        let sessions = root.appendingPathComponent("sessions")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        try Self.auth(home: root, account: "A", at: now.addingTimeInterval(-100))
+        let file = sessions.appendingPathComponent("quota.jsonl")
+        let sampledAt = now.addingTimeInterval(-60)
+        let original = try token(at: sampledAt, total: 100, quota: 9)
+        try original.write(to: file, atomically: true, encoding: .utf8)
+        let store = UsageStore(reader: CodexUsageReader(), folderAccess: CodexFolderAccess(defaults: defaults, selectedURL: root),
+            defaults: defaults, effectsEnabled: false, clock: { now })
+        await store.refresh(userInitiated: true)
+        #expect(store.refreshFeedback?.outcome == .newSample)
+        await store.refresh(force: true, userInitiated: true)
+        #expect(store.refreshFeedback?.outcome == .noNewSample)
+        #expect(store.snapshot.mainRateSampledAt == sampledAt)
+        try (original + token(at: now, total: 150)).write(to: file, atomically: true, encoding: .utf8)
+        await store.refresh(userInitiated: true)
+        #expect(store.snapshot.allTime.total == 150)
+        #expect(store.snapshot.mainRateSampledAt == sampledAt)
+        #expect(store.refreshFeedback?.outcome == .noNewSample)
+        #expect(store.refreshFeedback?.checkedAt == now)
+        // A newer quota sample counts even if its percentage did not change.
+        try (original + token(at: now, total: 200, quota: 9)).write(to: file, atomically: true, encoding: .utf8)
+        await store.refresh(userInitiated: true)
+        #expect(store.refreshFeedback?.outcome == .newSample)
+        #expect(store.snapshot.mainRateSampledAt == now)
+        let feedback = store.refreshFeedback
+        await store.refresh()
+        #expect(store.refreshFeedback == feedback)
+        try Self.auth(home: root, account: "B", at: now)
+        #expect(store.synchronizeContext())
+        #expect(store.refreshFeedback == nil)
+    }
+
+    @MainActor @Test func manualRefreshReportsIncompleteReadsAndFailure() async throws {
+        let (root, defaults) = try fixture()
+        try (token(at: now, total: 100) + "invalid-json\n").write(
+            to: root.appendingPathComponent("partial.jsonl"), atomically: true, encoding: .utf8)
+        let store = UsageStore(reader: CodexUsageReader(), folderAccess: CodexFolderAccess(defaults: defaults, selectedURL: root),
+            defaults: defaults, effectsEnabled: false, clock: { now })
+        await store.refresh(userInitiated: true)
+        #expect(store.snapshot.allTime.total == 100)
+        #expect(store.errorMessage != nil)
+        #expect(store.refreshFeedback?.outcome == .incomplete)
+        #expect(store.refreshFeedback?.detail == store.errorMessage)
+        let failed = UsageStore(reader: CodexUsageReader(),
+            folderAccess: CodexFolderAccess(defaults: defaults, selectedURL: root.appendingPathComponent("missing/.codex")),
+            defaults: defaults, effectsEnabled: false, clock: { now })
+        await failed.refresh(userInitiated: true)
+        #expect(failed.errorMessage != nil)
+        #expect(failed.refreshFeedback?.outcome == .failed)
+        #expect(failed.refreshFeedback?.detail == failed.errorMessage)
+    }
+
+    @Test func cachedExpiredAndFutureSamplesNeverReportANewQuota() {
+        var loaded = UsageSnapshot.empty
+        loaded.mainMenuRate = RateWindow(usedPercent: 9, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(3_600))
+        loaded.mainRateSampledAt = now.addingTimeInterval(-60)
+        loaded.mainRateIsCached = true
+        #expect(UsageRefreshFeedback.completed(previous: .empty, loaded: loaded, checkedAt: now, hasWarning: false).outcome == .noNewSample)
+        loaded.mainRateIsCached = false
+        loaded.mainRateSampledAt = now.addingTimeInterval(60)
+        #expect(UsageRefreshFeedback.completed(previous: .empty, loaded: loaded, checkedAt: now, hasWarning: false).outcome == .noNewSample)
+        loaded.mainRateSampledAt = now.addingTimeInterval(-60)
+        loaded.mainMenuRate = RateWindow(usedPercent: 9, windowMinutes: 10_080, resetsAt: now)
+        #expect(UsageRefreshFeedback.completed(previous: .empty, loaded: loaded, checkedAt: now, hasWarning: false).outcome == .noNewSample)
+    }
+
     @MainActor @Test func directorySwitchClearsSnapshotAndFailureNeverRestoresOtherDirectory() async throws {
         let (root, defaults) = try fixture()
         try token(at: now, total: 100).write(to: root.appendingPathComponent("session.jsonl"), atomically: true, encoding: .utf8)

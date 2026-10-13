@@ -44,8 +44,10 @@ fi
 xcodebuild "${UPDATE_BUILD_ARGS[@]}" \
   -scheme CodexMeter \
   -configuration Release \
+  -destination 'generic/platform=macOS' \
   -derivedDataPath "$BUILD_DIR" \
   -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
+  ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO \
   build "${CODEX_XCODE_SIGNING_ARGS[@]}"
 
 mkdir -p "$DIST_DIR"

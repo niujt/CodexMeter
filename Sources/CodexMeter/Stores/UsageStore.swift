@@ -6,6 +6,34 @@ extension Notification.Name {
     static let codexHealthUsageDidRefresh = Notification.Name("codexHealthUsageDidRefresh")
 }
 
+struct UsageRefreshFeedback: Equatable {
+    enum Outcome { case newSample, noNewSample, incomplete, failed }
+    let outcome: Outcome
+    let checkedAt: Date
+    var detail: String? = nil
+
+    var message: String {
+        switch outcome {
+        case .newSample: "发现新额度采样"
+        case .noNewSample: "检查完成，暂无新额度采样"
+        case .incomplete: "读取不完整，请查看提示"
+        case .failed: "刷新失败，请查看提示"
+        }
+    }
+
+    static func completed(previous: UsageSnapshot, loaded: UsageSnapshot, checkedAt: Date,
+                          hasWarning: Bool) -> Self {
+        // A successful file check or a Token-only event must never renew quota sampling time.
+        let sample = loaded.mainRateSampledAt
+        let valid = QuotaSampleState(percent: loaded.sevenDayRate?.usedPercent, sampledAt: sample,
+                                    resetsAt: loaded.sevenDayRate?.resetsAt, now: checkedAt).recordedPercent != nil
+        let newer = sample.map { $0 > (previous.mainRateSampledAt ?? .distantPast) } ?? false
+        let outcome: Outcome = hasWarning ? .incomplete
+            : (valid && newer && !loaded.mainRateIsCached ? .newSample : .noNewSample)
+        return Self(outcome: outcome, checkedAt: checkedAt)
+    }
+}
+
 @MainActor
 @Observable
 final class UsageStore {
@@ -14,6 +42,7 @@ final class UsageStore {
     private(set) var context: CodexDataContext?
     private(set) var isRefreshing = false
     private(set) var errorMessage: String?
+    private(set) var refreshFeedback: UsageRefreshFeedback?
     private(set) var processedFiles = 0
     private(set) var totalFiles = 0
     private(set) var readFiles = 0
@@ -74,6 +103,7 @@ final class UsageStore {
             context = nil
             isRefreshing = false
             errorMessage = folderAccess.restoreError
+            refreshFeedback = nil
             if effectsEnabled { PermissionAttentionService.shared.configure(paths: nil); publishWidget() }
             return false
         }
@@ -92,6 +122,7 @@ final class UsageStore {
         isRefreshing = false
         processedFiles = 0; totalFiles = 0; readFiles = 0; reusedFiles = 0
         errorMessage = nil
+        refreshFeedback = nil
         if effectsEnabled {
             PermissionAttentionService.shared.configure(paths: source.permissionPaths())
             watchAccount()
@@ -117,12 +148,17 @@ final class UsageStore {
         await refresh()
     }
 
-    func refresh(force: Bool = false) async {
+    func refresh(force: Bool = false, userInitiated: Bool = false) async {
         synchronizeContext()
-        guard let context, !isRefreshing else { return }
+        guard !isRefreshing else { return }
+        guard let context else {
+            if userInitiated { refreshFeedback = .init(outcome: .failed, checkedAt: clock(), detail: errorMessage) }
+            return
+        }
         let request = generation
         let now = clock()
         isRefreshing = true
+        if userInitiated { refreshFeedback = nil }
         processedFiles = 0; totalFiles = 0; readFiles = 0; reusedFiles = 0
         let previous = snapshot
         let showsPartialResults = !hasCompleteSnapshot
@@ -149,7 +185,7 @@ final class UsageStore {
         do {
             var loaded = try await task.value
             guard request == generation else { return }
-            if synchronizeContext() { await refresh(force: force); return }
+            if synchronizeContext() { await refresh(force: force, userInitiated: userInitiated); return }
             guard request == generation else { return }
             hasCompleteSnapshot = true
             lastSuccessfulRefresh = clock()
@@ -173,12 +209,19 @@ final class UsageStore {
                 publishWidget()
                 if snapshot != previous { NotificationCenter.default.post(name: .codexHealthUsageDidRefresh, object: self) }
             }
+            if userInitiated {
+                var feedback = UsageRefreshFeedback.completed(previous: previous, loaded: snapshot, checkedAt: clock(),
+                                                              hasWarning: errorMessage != nil)
+                feedback.detail = errorMessage
+                refreshFeedback = feedback
+            }
         } catch {
             guard request == generation else { return }
-            if synchronizeContext() { await refresh(force: force); return }
+            if synchronizeContext() { await refresh(force: force, userInitiated: userInitiated); return }
             guard request == generation, !(error is CancellationError) else { return }
             snapshot = previous
             errorMessage = "读取失败，已保留当前目录的上次结果：\(error.localizedDescription)"
+            if userInitiated { refreshFeedback = .init(outcome: .failed, checkedAt: clock(), detail: errorMessage) }
         }
     }
 
