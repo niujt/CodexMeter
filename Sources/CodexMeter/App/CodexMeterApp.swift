@@ -348,8 +348,8 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         let rate = snapshot.sevenDayRate
         let sample = QuotaSampleState(percent: rate?.usedPercent, sampledAt: snapshot.mainRateSampledAt,
                                       resetsAt: rate?.resetsAt, now: now)
-        usageTitle = sample.remaining.map { "\($0)%" } ?? "—"
-        button.toolTip = sample.description + (sample.remaining == nil ? sample.lastRemaining.map { " · 上次剩余 \($0)%" } ?? "" : "")
+        usageTitle = sample.recordedRemaining.map { sample.isStale ? "\($0)%·旧" : "\($0)%" } ?? "—"
+        button.toolTip = sample.description + (sample.isStale ? sample.recordedRemaining.map { " · 上次剩余 \($0)%" } ?? "" : "")
         applyStatusAppearance()
         if let deadline = snapshot.quotaDisplayDeadlines.filter({ $0 > now }).min() {
             quotaExpiryTask = Task { @MainActor [weak self] in

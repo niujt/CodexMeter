@@ -11,13 +11,16 @@ struct QuotaSampleView: View {
         TimelineView(.explicit([Date.now] + QuotaSampleState.deadlines(sampledAt: sampledAt, resetsAt: window?.resetsAt))) { context in
             let sample = QuotaSampleState(percent: window?.usedPercent, sampledAt: sampledAt, resetsAt: window?.resetsAt, now: context.date)
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.caption).foregroundStyle(.secondary)
-                Text(sample.remaining.map { "\($0)%" } ?? "—")
+                Text(sample.isStale && sample.recordedRemaining != nil ? "\(title) · 上次记录" : title)
+                    .font(.caption).foregroundStyle(.secondary)
+                Text(sample.recordedRemaining.map { "\($0)%" } ?? "—")
                     .font(.system(size: numberSize, weight: .medium)).monospacedDigit()
-                if let remaining = sample.remaining {
-                    ProgressView(value: Double(remaining), total: 100).tint(.primary)
-                } else if let last = sample.lastRemaining {
-                    Text("上次剩余 \(last)% · 等待新采样").font(.caption2).foregroundStyle(.secondary)
+                if let remaining = sample.recordedRemaining {
+                    ProgressView(value: Double(remaining), total: 100)
+                        .tint(sample.isStale ? Color.secondary : Color.primary)
+                    if sample.isStale {
+                        Text("等待新采样").font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
                 Text(sample.description).font(.caption2).foregroundStyle(.secondary)
             }

@@ -16,7 +16,10 @@ struct QuotaSampleState {
     var hasValidTime: Bool { sampledAt.map { $0 <= now } ?? false }
     var isStale: Bool { sampledAt.map { $0 <= now && now.timeIntervalSince($0) >= Self.lifetime } ?? false }
     var currentPercent: Double? { hasValidTime && !isStale ? lastPercent : nil }
+    /// Keep a valid observation visible until its quota cycle ends, even when it is no longer fresh.
+    var recordedPercent: Double? { hasValidTime ? lastPercent : nil }
     var remaining: Int? { currentPercent.map { Int((100 - $0).rounded()) } }
+    var recordedRemaining: Int? { recordedPercent.map { Int((100 - $0).rounded()) } }
     var lastRemaining: Int? { lastPercent.map { Int((100 - $0).rounded()) } }
     var description: String {
         let time = hasValidTime ? "采样于 \(sampledAt!.formatted(.dateTime.year().month().day().hour().minute().second()))" : "采样时间未知"
@@ -48,6 +51,10 @@ struct WidgetUsageData: Codable, Sendable, Equatable {
 
     func currentRatePercent(at now: Date) -> Double? {
         quotaSample(at: now).currentPercent
+    }
+
+    func recordedRatePercent(at now: Date) -> Double? {
+        quotaSample(at: now).recordedPercent
     }
 
     func quotaSample(at now: Date) -> QuotaSampleState {

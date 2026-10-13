@@ -96,10 +96,10 @@ private struct CodexMeterWidgetView: View {
                 Text(remainingText(usage))
                     .font(.system(size: 30, weight: .medium))
                     .minimumScaleFactor(0.65)
-                Text(usage.currentRatePercent(at: entry.date) == nil ? "等待新周期数据" : "额度剩余")
+                Text(usage.recordedRatePercent(at: entry.date) == nil ? "等待新周期数据" : (usage.quotaSample(at: entry.date).isStale ? "上次记录的剩余额度" : "额度剩余"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if let percent = usage.currentRatePercent(at: entry.date),
+                if let percent = usage.recordedRatePercent(at: entry.date),
                    let resetsAt = usage.rateResetsAt {
                     ProgressView(value: max(0, 100 - percent), total: 100)
                     Text("本周期到期 \(resetsAt, format: .dateTime.month().day().hour().minute())")
@@ -117,7 +117,7 @@ private struct CodexMeterWidgetView: View {
                     Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                         .font(.headline)
                     Spacer()
-                    Text(usage.currentRatePercent(at: entry.date) == nil ? "额度待更新" : "剩余 \(remainingText(usage))")
+                    Text(usage.recordedRatePercent(at: entry.date) == nil ? "额度待更新" : "\(usage.quotaSample(at: entry.date).isStale ? "上次剩余" : "剩余") \(remainingText(usage))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -130,9 +130,9 @@ private struct CodexMeterWidgetView: View {
                     metric("近 7 天", usage.weekTokens)
                     metric("本月", usage.monthTokens)
                 }
-                if let percent = usage.currentRatePercent(at: entry.date) {
+                if let percent = usage.recordedRatePercent(at: entry.date) {
                     HStack {
-                        Text(usage.rateWindowMinutes == 10_080 ? "7 天额度" : "额度")
+                        Text((usage.rateWindowMinutes == 10_080 ? "7 天额度" : "额度") + (usage.quotaSample(at: entry.date).isStale ? " · 上次记录" : ""))
                         Spacer()
                         Text("剩余 \(max(0, 100 - Int(percent.rounded())))%")
                     }
@@ -178,7 +178,7 @@ private struct CodexMeterWidgetView: View {
     }
 
     private func remainingText(_ usage: WidgetUsageData) -> String {
-        guard let percent = usage.currentRatePercent(at: entry.date) else { return "--" }
+        guard let percent = usage.recordedRatePercent(at: entry.date) else { return "--" }
         return "\(max(0, 100 - Int(percent.rounded())))%"
     }
 }

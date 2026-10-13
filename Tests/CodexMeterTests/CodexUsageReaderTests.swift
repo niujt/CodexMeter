@@ -648,17 +648,40 @@ struct QuotaObservationRegressionTests {
         #expect(state(now, now.addingTimeInterval(899)).remaining == 91)
         let old = state(now, now.addingTimeInterval(900))
         #expect(old.remaining == nil)
+        #expect(old.recordedRemaining == 91)
         #expect(old.lastRemaining == 91)
         #expect(old.description.contains("旧采样"))
         #expect(state(nil, now).remaining == nil)
+        #expect(state(nil, now).recordedRemaining == nil)
         #expect(state(now.addingTimeInterval(1), now).remaining == nil)
+        #expect(state(now.addingTimeInterval(1), now).recordedRemaining == nil)
         #expect(state(now, now.addingTimeInterval(3_600)).lastRemaining == nil)
+        #expect(state(now, now.addingTimeInterval(3_600)).recordedRemaining == nil)
         #expect(QuotaSampleState.deadlines(sampledAt: now, resetsAt: now.addingTimeInterval(3_600), now: now).first == now.addingTimeInterval(900))
         let widget = WidgetUsageData(todayTokens: 0, weekTokens: 0, monthTokens: 0, contextTokens: 0, contextLimit: 0,
                                     ratePercent: 9, rateWindowMinutes: 10_080, updatedAt: now.addingTimeInterval(900), sampledAt: now,
                                     rateResetsAt: now.addingTimeInterval(3_600))
         #expect(widget.currentRatePercent(at: now.addingTimeInterval(900)) == nil)
+        #expect(widget.recordedRatePercent(at: now.addingTimeInterval(900)) == 9)
+        #expect(widget.recordedRatePercent(at: now.addingTimeInterval(3_600)) == nil)
         #expect(widget.quotaSample(at: now.addingTimeInterval(900)).lastRemaining == 91)
+    }
+
+    @Test func oldQuotaRemainsVisibleWithoutEnablingCurrentPredictions() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        var snapshot = UsageSnapshot.empty
+        snapshot.mainMenuRate = RateWindow(usedPercent: 15, windowMinutes: 10_080, resetsAt: now.addingTimeInterval(86_400))
+        snapshot.mainRateSampledAt = now.addingTimeInterval(-3_600)
+        let sample = QuotaSampleState(percent: snapshot.sevenDayRate?.usedPercent, sampledAt: snapshot.mainRateSampledAt,
+                                      resetsAt: snapshot.sevenDayRate?.resetsAt, now: now)
+        #expect(sample.isStale)
+        #expect(sample.recordedRemaining == 85)
+        #expect(sample.currentPercent == nil)
+        #expect(snapshot.currentSevenDayRate(at: now) == nil)
+        // A new account starts with an empty snapshot; never carry the old display through.
+        snapshot = .empty
+        #expect(QuotaSampleState(percent: snapshot.sevenDayRate?.usedPercent, sampledAt: snapshot.mainRateSampledAt,
+                                resetsAt: snapshot.sevenDayRate?.resetsAt, now: now).recordedRemaining == nil)
     }
 }
 
