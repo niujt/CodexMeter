@@ -146,6 +146,7 @@ subprocess.run([
 ], check=True)
 subprocess.run([
     "xcrun", "swiftc", "-swift-version", "6", "-parse-as-library",
+    "-D", "CODEX_HEALTH_PREVIEW",
     *map(str, sorted(SOURCES.glob("*.swift"))),
     "-o", str(APP / "Contents/MacOS/ScreenshotPreview"),
 ], check=True)

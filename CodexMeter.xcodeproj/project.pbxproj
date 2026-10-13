@@ -3,10 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0DECF000000000000000020 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C0DECF000000000000000021 /* Sparkle */; };
+		C0DECF000000000000000002 /* AppUpdateSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000012 /* AppUpdateSection.swift */; };
+		C0DECF000000000000000001 /* AppUpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000011 /* AppUpdateChecker.swift */; };
 		C0DECE000000000000000001 /* WeeklyReceiptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECE000000000000000002 /* WeeklyReceiptView.swift */; };
 		C0DECA000000000000000001 /* CodexDataContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECA000000000000000002 /* CodexDataContext.swift */; };
 		03CDAFA5A0D64A3BB44D0021 /* CodexPermissionEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */; };
@@ -63,6 +66,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C0DECF000000000000000012 /* AppUpdateSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppUpdateSection.swift; path = Views/AppUpdateSection.swift; sourceTree = "<group>"; };
+		C0DECF000000000000000011 /* AppUpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppUpdateChecker.swift; path = Services/AppUpdateChecker.swift; sourceTree = "<group>"; };
 		C0DECE000000000000000002 /* WeeklyReceiptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/CodexMeter/Views/WeeklyReceiptView.swift; sourceTree = SOURCE_ROOT; };
 		C0DECA000000000000000002 /* CodexDataContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CodexDataContext.swift; path = Services/CodexDataContext.swift; sourceTree = "<group>"; };
 		03CDAFA5A0D64A3BB44D0011 /* CodexPermissionEvent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodexPermissionEvent.swift; path = Models/CodexPermissionEvent.swift; sourceTree = "<group>"; };
@@ -121,6 +126,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6E734A7D26050D421FD07666 /* Cocoa.framework in Frameworks */,
+				C0DECF000000000000000020 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -204,6 +210,8 @@
 				952959A3BCF91451169A380A /* DesktopWidgetView.swift */,
 				5C96BC0E83BEADE3C8EB613F /* ProjectsUsageView.swift */,
 				F1D16BAAF299E859892B138A /* RateLimitView.swift */,
+				C0DECF000000000000000011 /* AppUpdateChecker.swift */,
+				C0DECF000000000000000012 /* AppUpdateSection.swift */,
 				88F62FBA68EF45CBCDA030EF /* SettingsView.swift */,
 				FEBA2DCB237A29B20A1D0088 /* UsagePopoverView.swift */,
 				03CDAFA5A0D64A3BB44D0015 /* PermissionAttentionView.swift */,
@@ -252,6 +260,7 @@
 			dependencies = (
 			);
 			name = CodexMeter;
+			packageProductDependencies = (C0DECF000000000000000021 /* Sparkle */,);
 			productName = CodexMeter;
 			productReference = F04004A0A79CA697E5B19A7B /* CodexMeter.app */;
 			productType = "com.apple.product-type.application";
@@ -283,7 +292,7 @@
 				LastUpgradeCheck = 1600;
 			};
 			buildConfigurationList = D0FB4C99558331E1A84E6586 /* Build configuration list for PBXProject "CodexMeter" */;
-			compatibilityVersion = "Xcode 3.2";
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -294,6 +303,7 @@
 			minimizedProjectReferenceProxies = 0;
 			preferredProjectObjectVersion = 100;
 			productRefGroup = 8FA71ACE7C4FAD5E64A63E4C /* Products */;
+			packageReferences = (C0DECF000000000000000022 /* XCRemoteSwiftPackageReference "Sparkle" */,);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -356,6 +366,8 @@
 				73C75633894F5B3BE5397A9B /* DesktopWidgetView.swift in Sources */,
 				9FB8D66BD03290F0DA27B33B /* ProjectsUsageView.swift in Sources */,
 				1A011CF9C3543D1AA3561AE0 /* RateLimitView.swift in Sources */,
+				C0DECF000000000000000001 /* AppUpdateChecker.swift in Sources */,
+				C0DECF000000000000000002 /* AppUpdateSection.swift in Sources */,
 				4802D9AD7D21F45991157B54 /* SettingsView.swift in Sources */,
 				CAEA2FCFB2E53DE2B5CE22C9 /* UsagePopoverView.swift in Sources */,
 				03CDAFA5A0D64A3BB44D0025 /* PermissionAttentionView.swift in Sources */,
@@ -560,6 +572,22 @@
 			name = Debug;
 		};
 /* End XCBuildConfiguration section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+        C0DECF000000000000000022 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+            isa = XCRemoteSwiftPackageReference;
+            repositoryURL = "https://github.com/sparkle-project/Sparkle";
+            requirement = {kind = exactVersion; version = 2.10.0;};
+        };
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+        C0DECF000000000000000021 /* Sparkle */ = {
+            isa = XCSwiftPackageProductDependency;
+            package = C0DECF000000000000000022 /* XCRemoteSwiftPackageReference "Sparkle" */;
+            productName = Sparkle;
+        };
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCConfigurationList section */
 		9C7FF7C10137E2A3628B712F /* Build configuration list for PBXNativeTarget "CodexMeter" */ = {

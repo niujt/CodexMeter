@@ -16,8 +16,13 @@ trap 'rm -rf "$SIGNING_DIR"' EXIT
 source "$ROOT_DIR/script/signing.sh"
 codexmeter_select_signing
 
-xcodebuild \
-  -project "$ROOT_DIR/CodexMeter.xcodeproj" \
+UPDATE_BUILD_ARGS=(-project "$ROOT_DIR/CodexMeter.xcodeproj")
+if [[ -n "${UPDATE_XCCONFIG:-}" ]]; then
+  [[ -f "$UPDATE_XCCONFIG" ]] || { echo "Missing UPDATE_XCCONFIG: $UPDATE_XCCONFIG" >&2; exit 1; }
+  UPDATE_BUILD_ARGS+=(-xcconfig "$UPDATE_XCCONFIG")
+fi
+
+xcodebuild "${UPDATE_BUILD_ARGS[@]}" \
   -scheme CodexMeter \
   -configuration Release \
   -derivedDataPath "$BUILD_DIR" \
@@ -41,6 +46,10 @@ if [[ "$CODEX_SIGNING_MODE" == "adhoc" ]]; then
   codesign --force --sign - --entitlements "$SIGNING_DIR/app.entitlements" "$APP_BUNDLE"
 fi
 codesign --verify --deep --strict "$APP_BUNDLE"
+
+if [[ "${REQUIRE_APP_UPDATES:-0}" == "1" ]]; then
+  python3 "$ROOT_DIR/script/validate_update_config.py" "$APP_BUNDLE"
+fi
 
 mkdir -p "$IMAGE_ROOT"
 ditto "$APP_BUNDLE" "$IMAGE_ROOT/$APP_NAME.app"

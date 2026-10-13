@@ -1,0 +1,6 @@
+// Copy outside the repository (or to an ignored local file) and fill in the PUBLIC key.
+// This URL is a planned publication location. Do not claim it is live before publishing.
+// $() preserves the URL's double slash in Xcode configuration syntax.
+CODEX_HEALTH_UPDATE_FEED_URL = https:/$()/raw.githubusercontent.com/niujt/CodexMeter/main/updates/macos/appcast.xml
+CODEX_HEALTH_UPDATE_PUBLIC_KEY = REPLACE_WITH_SPARKLE_PUBLIC_ED25519_KEY
+// Never put the private signing key, Keychain password or credentials in this file.
