@@ -620,7 +620,7 @@ impl AppState {
         }
         if let Some(window) = app.get_webview_window("floating") {
             let (width, height) = if prefs.floating_style == "summary" {
-                (300., 245.)
+                (300., 300.)
             } else {
                 (88., 88.)
             };

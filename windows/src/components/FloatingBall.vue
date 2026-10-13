@@ -136,7 +136,6 @@ onUnmounted(() => {
         }}</strong>
       </div>
       <small v-if="summaryRate">{{ summaryQuota.label }}</small>
-      <small v-if="summaryQuota.stale && summaryRemaining !== null">等待新采样</small>
       <progress
         v-if="summaryRemaining !== null"
         :value="summaryRemaining"
@@ -249,7 +248,7 @@ html.floating-window #app {
 }
 .floating-surface.summary {
   width: 300px;
-  height: 245px;
+  height: 300px;
   padding: 7px;
   color: var(--ink);
 }
