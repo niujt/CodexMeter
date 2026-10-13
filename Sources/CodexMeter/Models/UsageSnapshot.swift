@@ -129,6 +129,7 @@ struct UsageSnapshot: Sendable, Equatable {
     var secondaryRate: RateWindow?
     var mainMenuRate: RateWindow?
     var sparkRate: RateWindow?
+    var primaryRateSampledAt: Date?
     var mainRateSampledAt: Date?
     var sparkRateSampledAt: Date?
     var mainRateIsCached = false
@@ -144,6 +145,18 @@ struct UsageSnapshot: Sendable, Equatable {
     var dataDirectoryExists = false
 
     static let empty = Self()
+
+    func currentSevenDayRate(at now: Date = .now) -> RateWindow? {
+        let rate = sevenDayRate
+        return QuotaSampleState(percent: rate?.usedPercent, sampledAt: mainRateSampledAt,
+                                resetsAt: rate?.resetsAt, now: now).currentPercent == nil ? nil : rate
+    }
+
+    var quotaDisplayDeadlines: [Date] {
+        QuotaSampleState.deadlines(sampledAt: mainRateSampledAt, resetsAt: sevenDayRate?.resetsAt)
+            + QuotaSampleState.deadlines(sampledAt: primaryRateSampledAt, resetsAt: primaryRate?.resetsAt)
+            + QuotaSampleState.deadlines(sampledAt: sparkRateSampledAt, resetsAt: sparkRate?.resetsAt)
+    }
 }
 
 /// Shared interpretation for the dashboard headline and forecast cards.

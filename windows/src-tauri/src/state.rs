@@ -389,7 +389,11 @@ impl AppState {
                 return Err("目录已切换，请重新刷新".into());
             }
             if prefs.quota_notifications {
-                if let Some(rate) = &snapshot.seven_day_rate {
+                if let Some(rate) = snapshot.seven_day_rate.as_ref().filter(|_| {
+                    snapshot
+                        .main_rate_sampled_at
+                        .is_some_and(|at| at <= now && now - at < Duration::minutes(15))
+                }) {
                     let remaining = 100. - rate.used_percent;
                     if remaining < f64::from(prefs.low_rate_threshold)
                         || snapshot.prediction.will_exhaust
@@ -542,20 +546,33 @@ impl AppState {
     }
     pub fn update_tray(&self, app: &tauri::AppHandle) {
         let data = self.data.lock().unwrap();
+        let now = Utc::now();
         let remaining = data
             .snapshot
             .as_ref()
-            .and_then(|s| s.seven_day_rate.as_ref())
-            .filter(|r| r.resets_at > Utc::now())
-            .map(|r| format!("{:.0}%", 100. - r.used_percent))
-            .unwrap_or_else(|| "—".into());
+            .and_then(|s| {
+                let rate = s.seven_day_rate.as_ref().filter(|r| r.resets_at > now)?;
+                let at = s.main_rate_sampled_at.filter(|at| *at <= now)?;
+                let label = if now - at >= Duration::minutes(15) {
+                    "旧采样 · 上次剩余"
+                } else {
+                    "本地采样 · 剩余"
+                };
+                Some(format!(
+                    "{} {:.0}% · 采样于 {} · 非实时",
+                    label,
+                    100. - rate.used_percent,
+                    at.with_timezone(&chrono::Local).format("%m-%d %H:%M:%S")
+                ))
+            })
+            .unwrap_or_else(|| "— · 等待额度采样".into());
         let count = data
             .events
             .iter()
             .filter(|e| e.status == "new" && e.attention != "info")
             .count();
         let tooltip = format!(
-            "Codex Health · 7 天剩余额度 {}{}",
+            "Codex Health · 7 天额度 {}{}",
             remaining,
             if data.saved.prefs.badge_enabled && count > 0 {
                 format!(" · 需要关注 {}", count)

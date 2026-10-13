@@ -60,7 +60,7 @@ final class UsageStore {
         return context.accountIdentity == nil ? "额度需登录 ChatGPT 账户" : "等待当前账户新采样"
     }
     var measuredVelocity: RateVelocity? {
-        guard let scope = context?.quotaScope, let rate = snapshot.sevenDayRate else { return nil }
+        guard let scope = context?.quotaScope, let rate = snapshot.currentSevenDayRate(at: clock()) else { return nil }
         return RateHistory.weightedVelocity(scope: scope, resetsAt: rate.resetsAt, defaults: defaults, now: clock())
     }
 
@@ -161,7 +161,9 @@ final class UsageStore {
                 if !snapshot.mainRateIsCached, let sampledAt = snapshot.mainRateSampledAt {
                     RateHistory.append(rate, sampledAt: sampledAt, scope: scope, defaults: defaults, now: now)
                 }
-                if effectsEnabled { UsageNotifier.evaluate(rate, scope: scope, velocity: measuredVelocity) }
+                if effectsEnabled, snapshot.currentSevenDayRate(at: now) != nil {
+                    UsageNotifier.evaluate(rate, scope: scope, velocity: measuredVelocity)
+                }
             }
             let cacheWarning = await reader.cacheWarning
             guard request == generation else { return }
@@ -185,7 +187,7 @@ final class UsageStore {
             monthTokens: snapshot.thisMonth.total, contextTokens: snapshot.currentContextUsed,
             contextLimit: snapshot.contextWindow, ratePercent: snapshot.sevenDayRate?.usedPercent,
             rateWindowMinutes: snapshot.sevenDayRate?.windowMinutes, updatedAt: clock(),
-            sampledAt: snapshot.lastUpdated, rateResetsAt: snapshot.sevenDayRate?.resetsAt,
+            sampledAt: snapshot.mainRateSampledAt, rateResetsAt: snapshot.sevenDayRate?.resetsAt,
             sourceIncomplete: !hasCompleteSnapshot || snapshot.readWarning != nil, contextID: context?.id)
         do {
             if try WidgetUsageCache.saveIfChanged(usage) { WidgetCenter.shared.reloadTimelines(ofKind: "CodexMeterWidgetV4") }

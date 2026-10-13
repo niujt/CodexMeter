@@ -1,5 +1,32 @@
 import Foundation
 
+/// Local observations are never a live account query. Checking files does not renew a sample.
+struct QuotaSampleState {
+    static let lifetime: TimeInterval = 15 * 60
+    let percent: Double?
+    let sampledAt: Date?
+    let resetsAt: Date?
+    let now: Date
+
+    var lastPercent: Double? {
+        guard let percent, percent.isFinite, (0...100).contains(percent),
+              let resetsAt, resetsAt > now else { return nil }
+        return percent
+    }
+    var hasValidTime: Bool { sampledAt.map { $0 <= now } ?? false }
+    var isStale: Bool { sampledAt.map { $0 <= now && now.timeIntervalSince($0) >= Self.lifetime } ?? false }
+    var currentPercent: Double? { hasValidTime && !isStale ? lastPercent : nil }
+    var remaining: Int? { currentPercent.map { Int((100 - $0).rounded()) } }
+    var lastRemaining: Int? { lastPercent.map { Int((100 - $0).rounded()) } }
+    var description: String {
+        let time = hasValidTime ? "采样于 \(sampledAt!.formatted(.dateTime.year().month().day().hour().minute().second()))" : "采样时间未知"
+        return "\(isStale ? "旧采样" : "本地采样") · \(time) · 非实时"
+    }
+    static func deadlines(sampledAt: Date?, resetsAt: Date?, now: Date = .now) -> [Date] {
+        [sampledAt?.addingTimeInterval(lifetime), resetsAt].compactMap { $0 }.filter { $0 > now }.sorted()
+    }
+}
+
 struct WidgetUsageData: Codable, Sendable, Equatable {
     let todayTokens: Int
     let weekTokens: Int
@@ -20,8 +47,11 @@ struct WidgetUsageData: Codable, Sendable, Equatable {
     }
 
     func currentRatePercent(at now: Date) -> Double? {
-        guard let rateResetsAt, rateResetsAt > now else { return nil }
-        return ratePercent
+        quotaSample(at: now).currentPercent
+    }
+
+    func quotaSample(at now: Date) -> QuotaSampleState {
+        QuotaSampleState(percent: ratePercent, sampledAt: sampledAt, resetsAt: rateResetsAt, now: now)
     }
 }
 

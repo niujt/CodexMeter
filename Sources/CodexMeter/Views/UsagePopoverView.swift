@@ -13,6 +13,10 @@ struct UsagePopoverView: View {
     @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.flat.rawValue
 
     var body: some View {
+        TimelineView(.explicit([Date.now] + store.snapshot.quotaDisplayDeadlines)) { _ in content }
+    }
+
+    private var content: some View {
         Group {
             if compact {
                 HealthMenuPopover(store: store, permissionStore: permissionStore, isVisible: isVisible)
@@ -38,7 +42,7 @@ struct UsagePopoverView: View {
     private var detailedContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center) {
-                if compact, let rate = store.snapshot.sevenDayRate {
+                if compact, let rate = store.snapshot.currentSevenDayRate() {
                     let remaining = max(0, 100 - Int(rate.usedPercent.rounded()))
                     let color = Color.primary
                     Image((AppIconStyle(rawValue: iconStyle) ?? .flat).assetName(for: colorScheme))
@@ -94,11 +98,10 @@ struct UsagePopoverView: View {
 
             Divider()
             if let weekRate = store.snapshot.sevenDayRate {
-                RateLimitView(title: "7 天额度", window: weekRate)
-                PredictionView(
-                    window: weekRate,
-                    velocity: store.measuredVelocity
-                )
+                RateLimitView(title: "7 天额度", window: weekRate, sampledAt: store.snapshot.mainRateSampledAt)
+                if store.snapshot.currentSevenDayRate() != nil {
+                    PredictionView(window: weekRate, velocity: store.measuredVelocity)
+                }
             } else {
                 Text(store.quotaWaitingMessage)
                     .font(.callout)
@@ -223,9 +226,6 @@ private struct HealthMenuPopover: View {
     @State private var showPermissionHistory = false
     @State private var permissionsExpanded = false
 
-    private var rate: RateWindow? { store.snapshot.sevenDayRate }
-    private var remaining: Int? { rate.map { max(0, 100 - Int($0.usedPercent.rounded())) } }
-    private var color: Color { remaining == nil ? .secondary : .primary }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -235,27 +235,9 @@ private struct HealthMenuPopover: View {
                 controls
             }
 
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("7 天剩余额度").font(.caption).foregroundStyle(.secondary)
-                    Text(remaining.map { "\($0)%" } ?? "—")
-                        .font(.system(size: 32, weight: .medium, design: .rounded)).monospacedDigit()
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(rate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? store.quotaWaitingMessage)
-                        .font(.caption).foregroundStyle(.secondary)
-                    if let spark = store.snapshot.sparkRate {
-                        Text("Spark 剩余 \(max(0, 100 - Int(spark.usedPercent.rounded())))%")
-                            .font(.caption2).foregroundStyle(.secondary)
-                            .help(store.snapshot.sparkRateIsCached ? "来自本地有效缓存" : "最新 Spark 额度")
-                    }
-                }
-            }
-            if let remaining { ProgressView(value: Double(remaining), total: 100).tint(color) }
-            if store.snapshot.mainRateIsCached || store.snapshot.sparkRateIsCached {
-                Label("部分额度来自有效缓存", systemImage: "clock.arrow.circlepath")
-                    .font(.caption2).foregroundStyle(.secondary)
+            QuotaSampleView(title: "7 天剩余额度", window: store.snapshot.sevenDayRate, sampledAt: store.snapshot.mainRateSampledAt, numberSize: 32)
+            if let spark = store.snapshot.sparkRate {
+                QuotaSampleView(title: "Spark 剩余额度", window: spark, sampledAt: store.snapshot.sparkRateSampledAt, numberSize: 16)
             }
 
             Divider()

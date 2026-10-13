@@ -36,7 +36,7 @@ private struct UsageProvider: TimelineProvider {
             contextLimit: 258_400,
             ratePercent: 16,
             rateWindowMinutes: 10_080,
-            updatedAt: .now, rateResetsAt: .now.addingTimeInterval(86_400)
+            updatedAt: .now, sampledAt: .now, rateResetsAt: .now.addingTimeInterval(86_400)
         ))
     }
 
@@ -48,7 +48,7 @@ private struct UsageProvider: TimelineProvider {
         let entry = UsageEntry(date: .now, usage: WidgetUsageCache.load())
         // Include expiry entries so cached quota disappears even with the main app closed.
         let nextCheck = Date.now.addingTimeInterval(1_800)
-        let deadlines = [entry.usage?.rateResetsAt, entry.usage?.updatedAt.addingTimeInterval(1_801)]
+        let deadlines = [entry.usage?.rateResetsAt, entry.usage?.sampledAt?.addingTimeInterval(QuotaSampleState.lifetime), entry.usage?.updatedAt.addingTimeInterval(1_801)]
             .compactMap { $0 }.filter { $0 > entry.date }
         let dates = Array(Set(deadlines + [nextCheck])).sorted()
         let entries = [entry] + dates.map { UsageEntry(date: $0, usage: entry.usage) }
@@ -91,6 +91,7 @@ private struct CodexMeterWidgetView: View {
                 if usage.isStale(at: entry.date) {
                     Text("数据可能已过期").font(.caption2).foregroundStyle(.secondary)
                 }
+                Text(usage.quotaSample(at: entry.date).description).font(.caption2).foregroundStyle(.secondary)
                 Spacer()
                 Text(remainingText(usage))
                     .font(.system(size: 30, weight: .medium))
@@ -123,6 +124,7 @@ private struct CodexMeterWidgetView: View {
                 if usage.isStale(at: entry.date) {
                     Text("数据可能已过期 · 请打开主应用更新").font(.caption2).foregroundStyle(.secondary)
                 }
+                Text(usage.quotaSample(at: entry.date).description).font(.caption2).foregroundStyle(.secondary)
                 HStack(spacing: 10) {
                     metric("今天", usage.todayTokens)
                     metric("近 7 天", usage.weekTokens)

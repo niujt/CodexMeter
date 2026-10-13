@@ -140,6 +140,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     private var dashboardWillOpenObserver: NSObjectProtocol?
     private var permissionObserver: NSObjectProtocol?
     private var dockAppearanceObservation: NSKeyValueObservation?
+    private var quotaExpiryTask: Task<Void, Never>?
     private var usageTitle = "—"
     private var renderedStatusTitle: String?
 
@@ -341,15 +342,23 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     }
 
     private func update(snapshot: UsageSnapshot) {
-        guard statusItem.button != nil else { return }
-        guard let rate = snapshot.mainMenuRate ?? snapshot.sevenDayRate else {
-            usageTitle = "—"
-            applyStatusAppearance()
-            return
-        }
-        let remaining = snapshot.remainingPercent(for: rate)
-        usageTitle = "\(remaining)%"
+        quotaExpiryTask?.cancel()
+        guard let button = statusItem.button else { return }
+        let now = Date.now
+        let rate = snapshot.sevenDayRate
+        let sample = QuotaSampleState(percent: rate?.usedPercent, sampledAt: snapshot.mainRateSampledAt,
+                                      resetsAt: rate?.resetsAt, now: now)
+        usageTitle = sample.remaining.map { "\($0)%" } ?? "—"
+        button.toolTip = sample.description + (sample.remaining == nil ? sample.lastRemaining.map { " · 上次剩余 \($0)%" } ?? "" : "")
         applyStatusAppearance()
+        if let deadline = snapshot.quotaDisplayDeadlines.filter({ $0 > now }).min() {
+            quotaExpiryTask = Task { @MainActor [weak self] in
+                do { try await Task.sleep(for: .seconds(max(0.025, deadline.timeIntervalSinceNow))) }
+                catch { return }
+                guard let self, !Task.isCancelled else { return }
+                self.update(snapshot: self.store?.snapshot ?? snapshot)
+            }
+        }
     }
 
     private func applyStatusAppearance() {

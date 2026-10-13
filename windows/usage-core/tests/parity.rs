@@ -69,6 +69,98 @@ fn content(snapshot: &Snapshot) -> Value {
     value
 }
 #[test]
+fn quota_only_update_changes_97_to_91_without_changing_token_counters() {
+    let at = now();
+    let (root, cache) = fixture("quota-only");
+    let reset = (at + Duration::days(7)).timestamp();
+    write(&root, vec![token(at, 80, 20, 0, Some((3., reset)))], true);
+    let mut reader = Reader::with_cache(cache.clone());
+    let first = reader.load(&root, at).unwrap();
+    assert_eq!(first.seven_day_rate.unwrap().used_percent, 3.);
+    let sampled = at + Duration::seconds(10);
+    append(
+        &root,
+        json!({"type":"event_msg","timestamp":sampled.to_rfc3339(),"payload":{"type":"token_count","info":null,"rate_limits":{"limit_id":"codex","primary":{"used_percent":12,"window_minutes":300,"resets_at":reset},"secondary":{"used_percent":9,"window_minutes":10080,"resets_at":reset}}}}),
+    );
+    let quota_only = reader.load(&root, sampled).unwrap();
+    assert_eq!(quota_only.seven_day_rate.as_ref().unwrap().used_percent, 9.);
+    assert_eq!(quota_only.main_rate_sampled_at, Some(sampled));
+    assert_eq!(quota_only.primary_rate_sampled_at, Some(sampled));
+    assert_eq!(quota_only.all_time.total, 100);
+    assert_eq!(quota_only.context_window, first.context_window);
+    assert!(quota_only.warnings.is_empty());
+    append(
+        &root,
+        token(sampled + Duration::seconds(1), 100, 30, 0, None),
+    );
+    let checked = sampled + Duration::seconds(60);
+    let last = reader.load(&root, checked).unwrap();
+    assert_eq!(last.all_time.total, 130);
+    assert_eq!(last.main_rate_sampled_at, Some(sampled));
+    let restarted = Reader::with_cache(cache).load(&root, checked).unwrap();
+    assert_eq!(content(&restarted), content(&last));
+    assert_eq!(restarted.read_stats.parsed_files, 0);
+}
+
+#[test]
+fn quota_only_file_and_invalid_token_payload_still_update_quota() {
+    let at = now();
+    let (root, _) = fixture("quota-no-tokens");
+    let reset = (at + Duration::days(7)).timestamp();
+    let quota = |info: Value, percent: f64| json!({"type":"event_msg","timestamp":at.to_rfc3339(),"payload":{"type":"token_count","info":info,"rate_limits":{"limit_id":"codex","secondary":{"used_percent":percent,"window_minutes":10080,"resets_at":reset}}}});
+    write(&root, vec![quota(Value::Null, 9.)], true);
+    let snapshot = Reader::default().load(&root, at).unwrap();
+    assert_eq!(snapshot.seven_day_rate.unwrap().used_percent, 9.);
+    assert_eq!(snapshot.all_time.total, 0);
+    assert!(snapshot.warnings.is_empty());
+    write(
+        &root,
+        vec![quota(
+            json!({"total_token_usage":{"total_tokens":"invalid"}}),
+            12.,
+        )],
+        true,
+    );
+    let snapshot = Reader::default().load(&root, at).unwrap();
+    assert_eq!(snapshot.seven_day_rate.unwrap().used_percent, 12.);
+    assert_eq!(snapshot.all_time.total, 0);
+    assert!(!snapshot.warnings.is_empty());
+}
+
+#[test]
+fn old_parser_cache_is_rebuilt_without_deleting_source_or_cache_files() {
+    let at = now();
+    let (root, cache) = fixture("quota-cache-version");
+    write(
+        &root,
+        vec![token(
+            at,
+            80,
+            20,
+            0,
+            Some((9., (at + Duration::days(7)).timestamp())),
+        )],
+        true,
+    );
+    Reader::with_cache(cache.clone()).load(&root, at).unwrap();
+    let mut migrated = 0;
+    for entry in walkdir::WalkDir::new(&cache)
+        .into_iter()
+        .flatten()
+        .filter(|e| e.file_type().is_file())
+    {
+        migrated += 1;
+        let mut cached: Value = serde_json::from_slice(&fs::read(entry.path()).unwrap()).unwrap();
+        cached["version"] = json!(1);
+        cached["parser"]["summary"]["quotas"] = json!([]);
+        fs::write(entry.path(), serde_json::to_vec(&cached).unwrap()).unwrap();
+    }
+    assert_eq!(migrated, 1);
+    let snapshot = Reader::with_cache(cache).load(&root, at).unwrap();
+    assert_eq!(snapshot.seven_day_rate.unwrap().used_percent, 9.);
+    assert_eq!(snapshot.read_stats.parsed_files, 1);
+}
+#[test]
 fn turns_speed_cache_hit_and_context_match_native_semantics() {
     let at = now();
     let (root, _) = fixture("metrics");

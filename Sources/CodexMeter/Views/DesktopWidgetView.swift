@@ -41,19 +41,9 @@ struct DesktopWidgetView: View {
             }
 
             if let window = store.snapshot.primaryRate {
-                HStack {
-                    Text(rateTitle(window))
-                    Spacer()
-                    Text("\(window.usedPercent, specifier: "%.0f")%")
-                        .monospacedDigit()
-                }
-                .font(.caption.weight(.medium))
-                ProgressView(value: min(window.usedPercent, 100), total: 100)
-                    .tint(.primary)
+                QuotaSampleView(title: rateTitle(window), window: window, sampledAt: store.snapshot.primaryRateSampledAt, numberSize: 20)
             } else {
-                Text("等待新周期数据")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text("等待新周期数据").font(.caption).foregroundStyle(.secondary)
             }
 
             Spacer(minLength: 0)

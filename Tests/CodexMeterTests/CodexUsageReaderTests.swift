@@ -595,3 +595,105 @@ struct UsageOptimizationTests {
         #expect(throws: (any Error).self) { try WidgetUsageCache.saveIfChanged(current, to: root.appendingPathComponent("missing/widget.json")) }
     }
 }
+
+struct QuotaObservationRegressionTests {
+    @Test func quotaOnlyUpdatesDoNotResetTokenCountersOrContext() async throws {
+        let root = TestFixtureDirectory.root.appendingPathComponent("quota-observation-\(UUID().uuidString)")
+        let sessions = root.appendingPathComponent("sessions")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let reset = now.addingTimeInterval(7 * 86_400).timeIntervalSince1970
+        func event(_ offset: Double, info: Any, percent: Double?) throws -> String {
+            var payload: [String: Any] = ["type": "token_count", "info": info]
+            if let percent { payload["rate_limits"] = ["limit_id": "codex", "primary": ["used_percent": 12, "window_minutes": 300, "resets_at": reset], "secondary": ["used_percent": percent, "window_minutes": 10_080, "resets_at": reset]] }
+            let json: [String: Any] = ["type": "event_msg", "timestamp": now.addingTimeInterval(offset).ISO8601Format(), "payload": payload]
+            return String(data: try JSONSerialization.data(withJSONObject: json), encoding: .utf8)!
+        }
+        let baseline: [String: Any] = ["total_token_usage": ["input_tokens": 80, "output_tokens": 20, "total_tokens": 100], "last_token_usage": ["total_tokens": 50], "model_context_window": 200_000]
+        let next: [String: Any] = ["total_token_usage": ["input_tokens": 100, "output_tokens": 30, "total_tokens": 130], "last_token_usage": ["total_tokens": 60], "model_context_window": 200_000]
+        let file = sessions.appendingPathComponent("synthetic.jsonl")
+        let cache = root.appendingPathComponent("cache")
+        let reader = CodexUsageReader(cacheDirectory: cache)
+        try event(0, info: baseline, percent: 3).write(to: file, atomically: true, encoding: .utf8)
+        #expect(try await reader.load(now: now, codexHome: root).sevenDayRate?.usedPercent == 3)
+        let lines = try [event(0, info: baseline, percent: 3), event(10, info: NSNull(), percent: 9)]
+        try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
+        let quota = try await reader.load(now: now.addingTimeInterval(10), codexHome: root)
+        #expect(quota.sevenDayRate?.usedPercent == 9)
+        #expect(quota.mainRateSampledAt == now.addingTimeInterval(10))
+        #expect(quota.primaryRateSampledAt == now.addingTimeInterval(10))
+        #expect(quota.allTime.total == 100)
+        #expect(quota.currentContextUsed == 50)
+        #expect(quota.readWarning == nil)
+        try (lines + [event(11, info: next, percent: nil)]).joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
+        let last = try await reader.load(now: now.addingTimeInterval(60), codexHome: root)
+        #expect(last.allTime.total == 130)
+        #expect(last.mainRateSampledAt == now.addingTimeInterval(10))
+        let restarted = CodexUsageReader(cacheDirectory: cache)
+        #expect(try await restarted.load(now: now.addingTimeInterval(60), codexHome: root) == last)
+        #expect(await restarted.parsedFileCount == 0)
+        try event(10, info: NSNull(), percent: 9).write(to: file, atomically: true, encoding: .utf8)
+        let onlyQuota = try await reader.load(now: now.addingTimeInterval(60), codexHome: root, force: true)
+        #expect(onlyQuota.sevenDayRate?.usedPercent == 9)
+        #expect(onlyQuota.allTime.total == 0)
+        #expect(onlyQuota.mainRateSampledAt == now.addingTimeInterval(10))
+    }
+
+    @Test func oldQuotaIsNotRenewedBySourceChecksOrUnknownSampleTimes() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        func state(_ sampledAt: Date?, _ checkedAt: Date) -> QuotaSampleState {
+            QuotaSampleState(percent: 9, sampledAt: sampledAt, resetsAt: now.addingTimeInterval(3_600), now: checkedAt)
+        }
+        #expect(state(now, now).remaining == 91)
+        #expect(state(now, now.addingTimeInterval(899)).remaining == 91)
+        let old = state(now, now.addingTimeInterval(900))
+        #expect(old.remaining == nil)
+        #expect(old.lastRemaining == 91)
+        #expect(old.description.contains("旧采样"))
+        #expect(state(nil, now).remaining == nil)
+        #expect(state(now.addingTimeInterval(1), now).remaining == nil)
+        #expect(state(now, now.addingTimeInterval(3_600)).lastRemaining == nil)
+        #expect(QuotaSampleState.deadlines(sampledAt: now, resetsAt: now.addingTimeInterval(3_600), now: now).first == now.addingTimeInterval(900))
+        let widget = WidgetUsageData(todayTokens: 0, weekTokens: 0, monthTokens: 0, contextTokens: 0, contextLimit: 0,
+                                    ratePercent: 9, rateWindowMinutes: 10_080, updatedAt: now.addingTimeInterval(900), sampledAt: now,
+                                    rateResetsAt: now.addingTimeInterval(3_600))
+        #expect(widget.currentRatePercent(at: now.addingTimeInterval(900)) == nil)
+        #expect(widget.quotaSample(at: now.addingTimeInterval(900)).lastRemaining == 91)
+    }
+}
+
+struct QuotaCacheUpgradeRegressionTests {
+    @Test func oldSummaryCacheIsReparsedAndInvalidTokenDataDoesNotBlockQuota() async throws {
+        let root = TestFixtureDirectory.root.appendingPathComponent("quota-upgrade-\(UUID().uuidString)")
+        let sessions = root.appendingPathComponent("sessions")
+        let cache = root.appendingPathComponent("cache")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let quota = """
+        {"type":"event_msg","timestamp":"\(now.ISO8601Format())","payload":{"type":"token_count","info":null,"rate_limits":{"limit_id":"codex","secondary":{"used_percent":9,"window_minutes":10080,"resets_at":\(Int(now.timeIntervalSince1970)+86400)}}}}
+        """
+        let file = sessions.appendingPathComponent("synthetic.jsonl")
+        try quota.write(to: file, atomically: true, encoding: .utf8)
+        let first = CodexUsageReader(cacheDirectory: cache)
+        #expect(try await first.load(now: now, codexHome: root).sevenDayRate?.usedPercent == 9)
+        let enumerator = try #require(FileManager.default.enumerator(at: cache, includingPropertiesForKeys: nil))
+        var downgraded = 0
+        for url in enumerator.allObjects.compactMap({ $0 as? URL }) where url.pathExtension == "plist" {
+            var plist = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: url), format: nil) as? [String: Any])
+            plist["version"] = 4
+            try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0).write(to: url)
+            downgraded += 1
+        }
+        #expect(downgraded == 2)
+        let upgraded = CodexUsageReader(cacheDirectory: cache)
+        #expect(try await upgraded.load(now: now, codexHome: root).sevenDayRate?.usedPercent == 9)
+        #expect(await upgraded.parsedFileCount == 1)
+        #expect(try String(contentsOf: file, encoding: .utf8) == quota)
+        let malformed = quota.replacingOccurrences(of: "\"info\":null", with: "\"info\":{\"total_token_usage\":{\"total_tokens\":\"invalid\"}}")
+        try malformed.write(to: file, atomically: true, encoding: .utf8)
+        let result = try await upgraded.load(now: now, codexHome: root, force: true)
+        #expect(result.sevenDayRate?.usedPercent == 9)
+        #expect(result.allTime.total == 0)
+        #expect(result.readWarning != nil)
+    }
+}

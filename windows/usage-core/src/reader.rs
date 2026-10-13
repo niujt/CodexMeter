@@ -177,8 +177,40 @@ impl Parser {
                 self.turn = None;
             }
             "token_count" => {
+                let limits = &p["rate_limits"];
+                let id = limits["limit_id"].as_str().unwrap_or("").to_owned();
+                for key in ["primary", "secondary"] {
+                    let raw = &limits[key];
+                    if let (Some(percent), Some(minutes), Some(reset)) = (
+                        raw["used_percent"].as_f64(),
+                        raw["window_minutes"].as_u64(),
+                        raw["resets_at"].as_i64(),
+                    ) {
+                        if percent.is_finite() && (0.0..=100.0).contains(&percent) && minutes > 0 {
+                            if let Some(end) = DateTime::from_timestamp(reset, 0) {
+                                if minutes == 10080 && !is_spark(&self.model) {
+                                    self.cycles.insert(self.model.clone(), (id.clone(), end));
+                                }
+                                self.summary.quotas.push(Quota {
+                                    at,
+                                    canonical: id.eq_ignore_ascii_case("codex"),
+                                    model: self.model.clone(),
+                                    id: id.clone(),
+                                    rate: Rate {
+                                        used_percent: percent,
+                                        window_minutes: minutes,
+                                        resets_at: end,
+                                    },
+                                });
+                            }
+                        }
+                    }
+                }
                 let info = &p["info"];
                 let usage = &info["total_token_usage"];
+                if info.is_null() {
+                    return;
+                }
                 if !usage.is_object() || usage["total_tokens"].as_u64().is_none() {
                     self.summary.malformed += 1;
                     return;
@@ -210,35 +242,6 @@ impl Parser {
                 self.previous = Some(total);
                 self.has_output = has_output;
                 self.has_cache = has_cache;
-                let limits = &p["rate_limits"];
-                let id = limits["limit_id"].as_str().unwrap_or("").to_owned();
-                for key in ["primary", "secondary"] {
-                    let raw = &limits[key];
-                    if let (Some(percent), Some(minutes), Some(reset)) = (
-                        raw["used_percent"].as_f64(),
-                        raw["window_minutes"].as_u64(),
-                        raw["resets_at"].as_i64(),
-                    ) {
-                        if percent.is_finite() && (0.0..=100.0).contains(&percent) && minutes > 0 {
-                            if let Some(end) = DateTime::from_timestamp(reset, 0) {
-                                if minutes == 10080 && !is_spark(&self.model) {
-                                    self.cycles.insert(self.model.clone(), (id.clone(), end));
-                                }
-                                self.summary.quotas.push(Quota {
-                                    at,
-                                    canonical: id.eq_ignore_ascii_case("codex"),
-                                    model: self.model.clone(),
-                                    id: id.clone(),
-                                    rate: Rate {
-                                        used_percent: percent,
-                                        window_minutes: minutes,
-                                        resets_at: end,
-                                    },
-                                });
-                            }
-                        }
-                    }
-                }
                 self.summary.context_used = info["last_token_usage"]["total_tokens"]
                     .as_u64()
                     .unwrap_or(0);
@@ -395,7 +398,7 @@ impl Reader {
                         if let Ok(c) = fs::read(file).and_then(|bytes| {
                             serde_json::from_slice::<Cached>(&bytes).map_err(std::io::Error::other)
                         }) {
-                            if c.version == 1 && c.root == root.to_string_lossy() {
+                            if c.version == 2 && c.root == root.to_string_lossy() {
                                 self.cache.insert(path.clone(), c);
                             }
                         }
@@ -588,7 +591,7 @@ impl Reader {
         let tail = hash_part(&mut guard, fp.size - length, length)?;
         self.stats.bytes_read += length * 2;
         let cached = Cached {
-            version: 1,
+            version: 2,
             root: String::new(),
             fingerprint: fp.clone(),
             offset,
@@ -679,6 +682,8 @@ fn aggregate(
         last_updated: None,
         observed_at: now,
         main_rate_sampled_at: None,
+        primary_rate_sampled_at: None,
+        spark_rate_sampled_at: None,
         file_count: files,
         session_count: 0,
         data_path: root.to_string_lossy().into_owned(),
@@ -860,6 +865,14 @@ fn aggregate(
     snap.quota_samples
         .dedup_by(|a, b| a.date == b.date && a.resets_at == b.resets_at);
     snap.main_rate_sampled_at = chosen
+        .as_ref()
+        .filter(|q| q.rate.resets_at > now)
+        .map(|q| q.at);
+    snap.primary_rate_sampled_at = primary
+        .as_ref()
+        .filter(|q| q.rate.resets_at > now)
+        .map(|q| q.at);
+    snap.spark_rate_sampled_at = spark
         .as_ref()
         .filter(|q| q.rate.resets_at > now)
         .map(|q| q.at);

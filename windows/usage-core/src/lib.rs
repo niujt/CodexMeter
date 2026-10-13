@@ -169,6 +169,10 @@ pub struct Snapshot {
     pub last_updated: Option<DateTime<Utc>>,
     pub observed_at: DateTime<Utc>,
     pub main_rate_sampled_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub primary_rate_sampled_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub spark_rate_sampled_at: Option<DateTime<Utc>>,
     pub file_count: usize,
     pub session_count: usize,
     pub data_path: String,

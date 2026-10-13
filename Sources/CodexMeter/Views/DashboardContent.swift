@@ -8,13 +8,16 @@ struct DashboardContent: View {
     let quotaMessage: String
     let chooseFolder: () -> Void
 
-    private var rate: RateWindow? { snapshot.sevenDayRate }
-    private var remaining: Int? { rate.map { max(0, 100 - Int($0.usedPercent.rounded())) } }
+    private var rate: RateWindow? { snapshot.currentSevenDayRate() }
     private var health: QuotaHealth {
         .evaluate(rate: rate, percentPerHour: QuotaHealth.velocity(rate: rate, measured: measuredVelocity))
     }
 
     var body: some View {
+        TimelineView(.explicit([Date.now] + snapshot.quotaDisplayDeadlines)) { _ in content }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -30,7 +33,7 @@ struct DashboardContent: View {
             }
 
             HStack(alignment: .top, spacing: 20) {
-                QuotaSummary(snapshot: snapshot, rate: rate, remaining: remaining, color: health.color, quotaMessage: quotaMessage)
+                QuotaSummary(snapshot: snapshot, quotaMessage: quotaMessage)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 SummaryMetric(
                     title: "今日用量", value: UsageFormatters.tokens(snapshot.today.total),
@@ -74,23 +77,15 @@ struct DashboardContent: View {
 
 private struct QuotaSummary: View {
     let snapshot: UsageSnapshot
-    let rate: RateWindow?
-    let remaining: Int?
-    let color: Color
     let quotaMessage: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("7 天剩余额度").font(.caption).foregroundStyle(.secondary)
-            Text(remaining.map { "\($0)%" } ?? "—")
-                .font(.system(size: 28, weight: .medium)).monospacedDigit()
-            if let remaining { ProgressView(value: Double(remaining), total: 100).tint(color).frame(maxWidth: 180) }
-            Text(rate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? quotaMessage)
+            QuotaSampleView(title: "7 天剩余额度", window: snapshot.sevenDayRate, sampledAt: snapshot.mainRateSampledAt)
+            Text(snapshot.sevenDayRate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? quotaMessage)
                 .font(.caption).foregroundStyle(.secondary)
             if let spark = snapshot.sparkRate {
-                Text("Spark 剩余 \(max(0, 100 - Int(spark.usedPercent.rounded())))%")
-                    .font(.caption2).foregroundStyle(.secondary)
-                    .help(snapshot.sparkRateIsCached ? "Spark 额度来自本地有效缓存" : "Spark 最新额度")
+                QuotaSampleView(title: "Spark 剩余额度", window: spark, sampledAt: snapshot.sparkRateSampledAt, numberSize: 16)
             }
             if snapshot.mainRateIsCached || snapshot.sparkRateIsCached {
                 Label("缓存额度", systemImage: "clock.arrow.circlepath")

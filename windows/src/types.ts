@@ -68,6 +68,8 @@ export interface Snapshot {
   lastUpdated: string | null;
   observedAt: string;
   mainRateSampledAt: string | null;
+  primaryRateSampledAt?: string | null;
+  sparkRateSampledAt?: string | null;
   fileCount: number;
   sessionCount: number;
   dataPath: string;
@@ -170,6 +172,21 @@ export function remainingQuota(
     return null;
   return Math.round(Math.min(100, Math.max(0, 100 - rate.usedPercent)));
 }
+export const quotaSampleLifetime = 15 * 60_000;
+export function quotaDisplay(rate: Rate | null, sampledAt: string | null | undefined, now = Date.now()) {
+  const lastRemaining = remainingQuota(rate, now);
+  const sampled = sampledAt ? Date.parse(sampledAt) : NaN;
+  const validTime = Number.isFinite(sampled) && sampled <= now;
+  const stale = validTime && now - sampled >= quotaSampleLifetime;
+  const remaining = lastRemaining !== null && validTime && !stale ? lastRemaining : null;
+  const time = validTime ? `采样于 ${new Date(sampled).toLocaleString()}` : '采样时间未知';
+  return {
+    remaining,
+    lastRemaining,
+    stale,
+    label: `${stale ? '旧采样' : '本地采样'} · ${time} · 非实时`,
+  };
+}
 export function replySpeed(samples: ReplySample[], now = Date.now()) {
   const valid = samples.filter(
     (s) =>
@@ -213,6 +230,8 @@ export function nextDisplayDeadline(
     snapshot.primaryRate,
     snapshot.sparkRate,
   ].flatMap((r) => (r ? [Date.parse(r.resetsAt)] : []));
+  for (const at of [snapshot.mainRateSampledAt, snapshot.primaryRateSampledAt, snapshot.sparkRateSampledAt])
+    if (at) deadlines.push(Date.parse(at) + quotaSampleLifetime);
   for (const sample of snapshot.replySpeedSamples)
     deadlines.push(
       Math.ceil((Date.parse(sample.completedAt) + 900_000) / 60_000) * 60_000,

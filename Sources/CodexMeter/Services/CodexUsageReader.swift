@@ -112,7 +112,7 @@ actor CodexUsageReader {
         guard let url = cacheURL(for: root),
               let data = try? Data(contentsOf: url),
               let cache = try? PropertyListDecoder().decode(DiskCache.self, from: data),
-              cache.version == 4, cache.root == root,
+              cache.version == 5, cache.root == root,
               cache.calendarID == String(describing: calendar.identifier),
               cache.timeZoneID == calendar.timeZone.identifier else {
             cacheManifestChanged = true
@@ -123,7 +123,7 @@ actor CodexUsageReader {
             guard let fileURL = fileCacheURL(root: root, path: path),
                   let data = try? Data(contentsOf: fileURL),
                   let entry = try? PropertyListDecoder().decode(DiskFileCache.self, from: data),
-                  entry.version == 4, entry.root == root,
+                  entry.version == 5, entry.root == root,
                   entry.calendarID == cache.calendarID, entry.timeZoneID == cache.timeZoneID,
                   entry.file.fingerprint.path == path else { continue }
             restored[path] = entry.file
@@ -145,14 +145,14 @@ actor CodexUsageReader {
                     continue
                 }
                 try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                let payload = DiskFileCache(version: 4, root: root,
+                let payload = DiskFileCache(version: 5, root: root,
                     calendarID: String(describing: calendar.identifier), timeZoneID: calendar.timeZone.identifier, file: cached)
                 try encoder.encode(payload).write(to: fileURL, options: .atomic)
                 persistedSummaryCount += 1
                 dirtyCachePaths.remove(path)
             }
             if cacheManifestChanged {
-                let payload = DiskCache(version: 4, root: root,
+                let payload = DiskCache(version: 5, root: root,
                     calendarID: String(describing: calendar.identifier), timeZoneID: calendar.timeZone.identifier,
                     paths: fileCache.keys.sorted())
                 try encoder.encode(payload).write(to: url, options: .atomic)
@@ -243,7 +243,7 @@ actor CodexUsageReader {
         snapshot.dataPath = root.path
         snapshot.dataDirectoryExists = fileManager.fileExists(atPath: root.path)
         snapshot.fileCount = files.count
-        var latestRateEvent: (event: TokenEvent, isPreferred: Bool)?
+        var latestRateEvent: (event: QuotaEvent, isPreferred: Bool)?
         var latestPreferredMainMenuRate: (window: RateWindow, timestamp: Date, limitID: String?)?
         var latestFallbackMainMenuRate: (window: RateWindow, timestamp: Date, limitID: String?)?
         var hasCanonicalQuotaObservation = false
@@ -370,7 +370,7 @@ actor CodexUsageReader {
                 reusedFileCount += 1
             }
             malformedLines += summary.malformedLines
-            guard let event = summary.latestEvent else { continue }
+            guard summary.latestEvent != nil || summary.latestQuotaEvent != nil else { continue }
             snapshot.sessionCount += 1
             snapshot.allTime = snapshot.allTime + summary.total
             snapshot.replySpeedSamples += summary.replySpeedSamples.filter {
@@ -408,7 +408,7 @@ actor CodexUsageReader {
             if let weekDate { projects[projectPath, default: .empty].add(tokens: weekTokens, date: weekDate) }
             if let todayDate { todayProjects[projectPath, default: .empty].add(tokens: todayTokens, date: todayDate) }
             if let monthDate { monthProjects[projectPath, default: .empty].add(tokens: monthTokens, date: monthDate) }
-            if event.timestamp > latestContextTimestamp {
+            if let event = summary.latestEvent, event.timestamp > latestContextTimestamp {
                 latestContextTimestamp = event.timestamp
                 snapshot.currentContextUsed = event.currentContextUsed
                 snapshot.contextWindow = event.contextWindow
@@ -420,7 +420,7 @@ actor CodexUsageReader {
             // codex_bengalfox) can emit a newer event with a different reset
             // time; letting those events win makes the main percentage jump
             // back to 100% immediately after a weekly reset.
-            let eligibleEvents = (summary.quotaSamples.values.map(\.event) + [event] + [summary.preferredRateEvent].compactMap { $0 })
+            let eligibleEvents = (summary.quotaSamples.values.map(\.event) + [summary.latestQuotaEvent].compactMap { $0 } + [summary.preferredRateEvent].compactMap { $0 })
                 .filter { $0.timestamp >= quotaSince && $0.timestamp <= now }
             for rateEvent in eligibleEvents {
                 let eventIsPreferred = isCanonicalQuota(rateEvent.rateLimitID)
@@ -428,6 +428,7 @@ actor CodexUsageReader {
                 if shouldReplaceRateEvent(current: latestRateEvent, candidate: rateEvent, candidateIsPreferred: eventIsPreferred) {
                     latestRateEvent = (rateEvent, eventIsPreferred)
                     snapshot.primaryRate = activeRate(rateEvent.primaryRate, at: now)
+                    snapshot.primaryRateSampledAt = snapshot.primaryRate == nil ? nil : rateEvent.timestamp
                     snapshot.secondaryRate = activeRate(rateEvent.secondaryRate, at: now)
                     snapshot.selectedRateLimitID = rateEvent.rateLimitID
                 }
@@ -691,12 +692,26 @@ actor CodexUsageReader {
         }
         let hour = calendar.dateInterval(of: .hour, for: date)?.start ?? date
         if type == "event_msg", payloadType == "token_count" {
-            guard let event = TokenEvent(json: json, timestamp: date) else {
-                summary.malformedLines += 1
-                return
+            if let event = QuotaEvent(json: json, timestamp: date) {
+                if let window = [event.primaryRate, event.secondaryRate].compactMap({ $0 }).first(where: { $0.windowMinutes == 10_080 }) {
+                    summary.currentQuotaCycles[summary.model] = QuotaCycleKey(limitID: event.rateLimitID, resetsAt: window.resetsAt)
+                }
+                let preferred = isCanonicalQuota(event.rateLimitID)
+                if preferred { summary.hasCanonicalQuota = true }
+                if shouldReplaceRateEvent(current: summary.preferredRateEvent.map { ($0, isCanonicalQuota($0.rateLimitID)) }, candidate: event, candidateIsPreferred: preferred) {
+                    summary.preferredRateEvent = event
+                }
+                if let window = [event.primaryRate, event.secondaryRate].compactMap({ $0 }).first(where: { $0.windowMinutes == 10_080 }) {
+                    let quotaKey = QuotaSampleKey(model: summary.model, limitID: event.rateLimitID, resetsAt: window.resetsAt, date: date)
+                    if summary.quotaSamples[quotaKey].map({ $0.event.timestamp <= date }) ?? true {
+                        summary.quotaSamples[quotaKey] = QuotaSample(event: event, model: summary.model)
+                    }
+                }
+                if summary.latestQuotaEvent == nil || date >= summary.latestQuotaEvent!.timestamp { summary.latestQuotaEvent = event }
             }
-            if let window = [event.primaryRate, event.secondaryRate].compactMap({ $0 }).first(where: { $0.windowMinutes == 10_080 }) {
-                summary.currentQuotaCycles[summary.model] = QuotaCycleKey(limitID: event.rateLimitID, resetsAt: window.resetsAt)
+            guard let event = TokenEvent(json: json, timestamp: date) else {
+                if let info = payload["info"], !(info is NSNull) { summary.malformedLines += 1 }
+                return
             }
             let previous = summary.previousUsage
             // A lower cumulative total begins a new counter segment (e.g. reset).
@@ -729,17 +744,6 @@ actor CodexUsageReader {
                 summary.buckets[key, default: UsageBucket()].cachedInput += delta.cachedInput
             }
             summary.previousHasCacheUsage = event.hasCacheUsage
-            let preferred = isCanonicalQuota(event.rateLimitID)
-            if preferred { summary.hasCanonicalQuota = true }
-            if shouldReplaceRateEvent(current: summary.preferredRateEvent.map { ($0, isCanonicalQuota($0.rateLimitID)) }, candidate: event, candidateIsPreferred: preferred) {
-                summary.preferredRateEvent = event
-            }
-            if let window = [event.primaryRate, event.secondaryRate].compactMap({ $0 }).first(where: { $0.windowMinutes == 10_080 }) {
-                let quotaKey = QuotaSampleKey(model: summary.model, limitID: event.rateLimitID, resetsAt: window.resetsAt, date: date)
-                if summary.quotaSamples[quotaKey].map({ $0.event.timestamp <= date }) ?? true {
-                    summary.quotaSamples[quotaKey] = QuotaSample(event: event, model: summary.model)
-                }
-            }
         }
         if type == "response_item", payloadType == "message" {
             if payload["role"] as? String == "user" {
@@ -795,8 +799,8 @@ actor CodexUsageReader {
     }
 
     private func shouldReplaceRateEvent(
-        current: (event: TokenEvent, isPreferred: Bool)?,
-        candidate: TokenEvent,
+        current: (event: QuotaEvent, isPreferred: Bool)?,
+        candidate: QuotaEvent,
         candidateIsPreferred: Bool
     ) -> Bool {
         guard let current else { return true }
@@ -807,14 +811,30 @@ actor CodexUsageReader {
     }
 }
 
+private struct QuotaEvent: Codable {
+    let timestamp: Date
+    let primaryRate: RateWindow?
+    let secondaryRate: RateWindow?
+    let rateLimitID: String?
+
+    init?(json: [String: Any], timestamp: Date) {
+        guard json["type"] as? String == "event_msg",
+              let payload = json["payload"] as? [String: Any],
+              payload["type"] as? String == "token_count",
+              let limits = payload["rate_limits"] as? [String: Any] else { return nil }
+        primaryRate = RateWindow(json: limits["primary"] as? [String: Any])
+        secondaryRate = RateWindow(json: limits["secondary"] as? [String: Any])
+        guard primaryRate != nil || secondaryRate != nil else { return nil }
+        self.timestamp = timestamp
+        rateLimitID = limits["limit_id"] as? String
+    }
+}
+
 private struct TokenEvent: Codable {
     let timestamp: Date
     let total: TokenUsage
     let currentContextUsed: Int
     let contextWindow: Int
-    let primaryRate: RateWindow?
-    let secondaryRate: RateWindow?
-    let rateLimitID: String?
     let hasCacheUsage: Bool
     let hasOutputUsage: Bool
     let isFirstUsage: Bool
@@ -824,7 +844,9 @@ private struct TokenEvent: Codable {
               let payload = json["payload"] as? [String: Any],
               payload["type"] as? String == "token_count",
               let info = payload["info"] as? [String: Any],
-              let usage = info["total_token_usage"] as? [String: Any] else { return nil }
+              let usage = info["total_token_usage"] as? [String: Any],
+              let total = usage["total_tokens"] as? NSNumber, total.doubleValue.isFinite,
+              total.doubleValue >= 0 else { return nil }
 
         self.timestamp = timestamp
         self.total = TokenUsage(
@@ -843,11 +865,6 @@ private struct TokenEvent: Codable {
             && lastUsage?.int("total_tokens") == self.total.total
         self.currentContextUsed = lastUsage?.int("total_tokens") ?? 0
         self.contextWindow = info.int("model_context_window")
-
-        let limits = payload["rate_limits"] as? [String: Any]
-        self.rateLimitID = limits?["limit_id"] as? String
-        self.primaryRate = RateWindow(json: limits?["primary"] as? [String: Any])
-        self.secondaryRate = RateWindow(json: limits?["secondary"] as? [String: Any])
     }
 
 }
@@ -924,7 +941,7 @@ private struct QuotaSampleKey: Hashable, Codable {
 }
 
 private struct QuotaSample: Codable {
-    let event: TokenEvent
+    let event: QuotaEvent
     let model: String
 }
 
@@ -940,7 +957,8 @@ private struct SessionSummary: Codable {
     var previousHasCacheUsage = false
     var previousHasOutputUsage = false
     var latestEvent: TokenEvent?
-    var preferredRateEvent: TokenEvent?
+    var latestQuotaEvent: QuotaEvent?
+    var preferredRateEvent: QuotaEvent?
     var total = TokenUsage()
     var buckets: [UsageBucketKey: UsageBucket] = [:]
     var quotaSamples: [QuotaSampleKey: QuotaSample] = [:]

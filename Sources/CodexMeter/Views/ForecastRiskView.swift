@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ForecastRiskView: View {
     let store: UsageStore
-    private var rate: RateWindow? { store.snapshot.sevenDayRate }
+    private var rate: RateWindow? { store.snapshot.currentSevenDayRate() }
     private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
     private var resetHours: Double? { rate.map { max(0, $0.resetsAt.timeIntervalSinceNow / 3_600) } }
     private var hourlyRate: Double? {
@@ -17,15 +17,17 @@ struct ForecastRiskView: View {
     private var color: Color { health.color }
 
     var body: some View {
+        TimelineView(.explicit([Date.now] + store.snapshot.quotaDisplayDeadlines)) { _ in content }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 20) {
             PageHeader(title: "预测与风险", subtitle: "预测按 1 / 6 / 24 小时额度变化加权；没有足够样本时使用本周期平均速度。", store: store)
             if let rate {
                 HStack(spacing: 16) {
                     DashboardCard {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("7 天额度").font(.headline)
-                            Text("剩余 \(remaining)%").font(.system(size: 36, weight: .medium)).foregroundStyle(color)
-                            ProgressView(value: Double(remaining), total: 100).tint(color)
+                            QuotaSampleView(title: "7 天额度", window: rate, sampledAt: store.snapshot.mainRateSampledAt, numberSize: 36)
                             Text("约 \(UsageFormatters.countdown(to: rate.resetsAt)) 后重置").font(.caption).foregroundStyle(.secondary)
                         }
                     }.frame(maxWidth: .infinity)
@@ -49,7 +51,10 @@ struct ForecastRiskView: View {
                     }
                 }
             } else {
-                ContentUnavailableView(store.quotaWaitingMessage, systemImage: "scope", description: Text(store.accountStatus))
+                VStack(alignment: .leading, spacing: 12) {
+                    QuotaSampleView(title: "7 天额度", window: store.snapshot.sevenDayRate, sampledAt: store.snapshot.mainRateSampledAt)
+                    Text("等待新额度采样后恢复预测").foregroundStyle(.secondary)
+                }
                     .frame(maxWidth: .infinity, minHeight: 420)
             }
         }
