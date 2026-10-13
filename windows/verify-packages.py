@@ -14,7 +14,7 @@ parser.add_argument('--architecture', choices=['all', 'x64', 'arm64'], default='
 args = parser.parse_args()
 
 ROOT = Path(__file__).resolve().parent
-VERSION = json.loads((ROOT / 'src-tauri/tauri.conf.json').read_text())['version']
+VERSION = json.loads((ROOT / 'src-tauri/tauri.conf.json').read_text(encoding='utf-8'))['version']
 DEST = ROOT.parent / 'output' / 'windows' / VERSION
 TARGETS = [('x64', 'x86_64-pc-windows-msvc', 0x8664),
            ('arm64', 'aarch64-pc-windows-msvc', 0xaa64)]
@@ -62,16 +62,16 @@ for arch, target, expected in TARGETS:
                     'signed': False, 'updaterSigned': True, 'runtimeTestedOnWindows': False})
 suffix = '' if args.architecture == 'all' else f'-{args.architecture}'
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-(DEST / f'manifest{suffix}.json').write_text(json.dumps({'version': VERSION, 'sourceCommit': commit, 'packages': entries}, indent=2) + '\n')
-(DEST / f'SHA256SUMS{suffix}.txt').write_text(''.join(f"{e['installerSHA256']}  {e['installer']}\n" for e in entries))
+(DEST / f'manifest{suffix}.json').write_text(json.dumps({'version': VERSION, 'sourceCommit': commit, 'packages': entries}, indent=2) + '\n', encoding='utf-8')
+(DEST / f'SHA256SUMS{suffix}.txt').write_text(''.join(f"{e['installerSHA256']}  {e['installer']}\n" for e in entries), encoding='utf-8')
 platforms = {}
 for entry in entries:
     key = 'windows-x86_64' if entry['architecture'] == 'x64' else 'windows-aarch64'
-    platforms[key] = {'signature': (DEST / (entry['installer'] + '.sig')).read_text().strip(),
+    platforms[key] = {'signature': (DEST / (entry['installer'] + '.sig')).read_text(encoding='utf-8').strip(),
                       'url': f"https://github.com/niujt/CodexMeter/releases/download/windows-v{VERSION}/{entry['installer']}"}
 (DEST / f'latest{suffix}.json').write_text(json.dumps({'version': VERSION,
     'notes': '额度独立解析、采样时间与旧数据提示；设置 → 关于支持检查、下载并安装签名更新。',
     'pub_date': datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
-    'platforms': platforms}, ensure_ascii=False, indent=2) + '\n')
+    'platforms': platforms}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 for entry in entries:
     print(entry['architecture'], DEST / entry['installer'], entry['installerBytes'], 'bytes')
