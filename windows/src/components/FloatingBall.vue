@@ -8,12 +8,12 @@ import { quotaDisplay, tokens } from "../types";
 const desktop = useDesktop(true),
   state = desktop.state;
 const quota = computed(() => quotaDisplay(state.snapshot?.sevenDayRate ?? null, state.snapshot?.mainRateSampledAt, state.now));
-const remaining = computed(() => quota.value.remaining);
+const remaining = computed(() => quota.value.recordedRemaining);
 const summaryRate = computed(
   () => state.snapshot?.primaryRate ?? state.snapshot?.sevenDayRate ?? null,
 );
 const summaryQuota = computed(() => quotaDisplay(summaryRate.value, state.snapshot?.primaryRate ? state.snapshot.primaryRateSampledAt : state.snapshot?.mainRateSampledAt, state.now));
-const summaryRemaining = computed(() => summaryQuota.value.remaining);
+const summaryRemaining = computed(() => summaryQuota.value.recordedRemaining);
 let origin: { x: number; y: number } | null = null,
   dragging = false,
   disposed = false,
@@ -87,8 +87,8 @@ onUnmounted(() => {
       v-if="state.preferences.floatingStyle === 'ball'"
       class="quota-ball"
       :style="{ '--quota': `${remaining ?? 0}%` }"
-      :aria-label="`7 天剩余额度 ${remaining === null ? '暂无数据' : remaining + '%'}，双击打开健康报告`"
-      :title="`${quota.label}${remaining === null && quota.lastRemaining !== null ? ` · 上次剩余 ${quota.lastRemaining}%` : ''} · 双击打开健康报告 · 拖动调整位置`"
+      :aria-label="`7 天剩余额度 ${remaining === null ? '暂无数据' : remaining + '%'}${quota.stale && remaining !== null ? '，上次记录' : ''}，双击打开健康报告`"
+      :title="`${quota.label}${quota.stale && remaining !== null ? ` · 上次剩余 ${remaining}%` : ''} · 双击打开健康报告 · 拖动调整位置`"
       @pointerdown="down"
       @pointermove="move"
       @pointerup="origin = null"
@@ -129,13 +129,14 @@ onUnmounted(() => {
       </div>
       <div class="summary-quota">
         <span>{{
-          summaryRate?.windowMinutes === 300 ? "5 小时剩余额度" : "7 天剩余额度"
+          (summaryRate?.windowMinutes === 300 ? "5 小时剩余额度" : "7 天剩余额度") + (summaryQuota.stale && summaryRemaining !== null ? " · 上次记录" : "")
         }}</span
         ><strong>{{
           summaryRemaining === null ? "—" : summaryRemaining + "%"
         }}</strong>
       </div>
-      <small v-if="summaryRate">{{ summaryQuota.label }}<template v-if="summaryRemaining === null && summaryQuota.lastRemaining !== null"> · 上次剩余 {{ summaryQuota.lastRemaining }}%</template></small>
+      <small v-if="summaryRate">{{ summaryQuota.label }}</small>
+      <small v-if="summaryQuota.stale && summaryRemaining !== null">等待新采样</small>
       <progress
         v-if="summaryRemaining !== null"
         :value="summaryRemaining"

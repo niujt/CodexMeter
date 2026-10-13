@@ -67,16 +67,16 @@ const snapshot = computed(() => state.snapshot),
   quota = computed(() => quotaDisplay(snapshot.value?.sevenDayRate ?? null, snapshot.value?.mainRateSampledAt, state.now)),
   primaryQuota = computed(() => quotaDisplay(snapshot.value?.primaryRate ?? null, snapshot.value?.primaryRateSampledAt, state.now)),
   sparkQuota = computed(() => quotaDisplay(snapshot.value?.sparkRate ?? null, snapshot.value?.sparkRateSampledAt, state.now)),
-  remaining = computed(() => quota.value.remaining);
+  remaining = computed(() => quota.value.recordedRemaining);
 const speed = computed(() =>
   replySpeed(snapshot.value?.replySpeedSamples ?? [], state.now),
 );
 const prediction = computed(() =>
-  remaining.value === null ? null : snapshot.value?.prediction,
+  quota.value.remaining === null ? null : snapshot.value?.prediction,
 );
 const health = computed(() =>
-  remaining.value === null
-    ? "等待新周期数据"
+  quota.value.remaining === null
+    ? (remaining.value === null ? "等待新周期数据" : "等待新额度采样")
     : (prediction.value?.health ?? "样本不足"),
 );
 const subtitles: Record<string, string> = {
@@ -416,12 +416,12 @@ function resetTitle(kind: string) {
           <template v-if="section === '健康报告'"
             ><div class="metrics">
               <div>
-                <label>7 天剩余额度</label
+                <label>7 天剩余额度{{ quota.stale && remaining !== null ? ' · 上次记录' : '' }}</label
                 ><strong>{{
                   remaining === null ? "—" : `${remaining}%`
                 }}</strong
                 ><small v-if="snapshot.sevenDayRate">{{ quota.label }}</small
-                ><small v-if="remaining === null && quota.lastRemaining !== null">上次剩余 {{ quota.lastRemaining }}% · 等待新采样</small
+                ><small v-if="quota.stale && remaining !== null">等待新采样</small
                 ><progress
                   v-if="remaining !== null"
                   :value="remaining"
@@ -434,17 +434,17 @@ function resetTitle(kind: string) {
                 ><small v-if="snapshot.primaryRate?.windowMinutes === 300">
                   5 小时剩余
                   {{
-                    primaryQuota.remaining === null
+                    primaryQuota.recordedRemaining === null
                       ? "—"
-                      : `${primaryQuota.remaining}%`
+                      : `${primaryQuota.recordedRemaining}%`
                   }} </small
-                ><small v-if="snapshot.primaryRate?.windowMinutes === 300">{{ primaryQuota.label }}<template v-if="primaryQuota.remaining === null && primaryQuota.lastRemaining !== null"> · 上次剩余 {{ primaryQuota.lastRemaining }}%</template></small
+                ><small v-if="snapshot.primaryRate?.windowMinutes === 300">{{ primaryQuota.label }}</small
                 ><small v-if="snapshot.sparkRate"
                   >Spark 剩余
                   {{
-                    sparkQuota.remaining ?? "—"
+                    sparkQuota.recordedRemaining ?? "—"
                   }}%</small
-                ><small v-if="snapshot.sparkRate">{{ sparkQuota.label }}<template v-if="sparkQuota.remaining === null && sparkQuota.lastRemaining !== null"> · 上次剩余 {{ sparkQuota.lastRemaining }}%</template></small
+                ><small v-if="snapshot.sparkRate">{{ sparkQuota.label }}</small
                 >
               </div>
               <div>
@@ -707,7 +707,7 @@ function resetTitle(kind: string) {
             ><template v-if="remaining !== null"
               ><div class="metrics risk">
                 <div>
-                  <label>7 天额度</label><strong>剩余 {{ remaining }}%</strong
+                  <label>7 天额度{{ quota.stale ? ' · 上次记录' : '' }}</label><strong>剩余 {{ remaining }}%</strong
                   ><small>{{ quota.label }}</small
                   ><progress :value="remaining" max="100" /><small
                     >重置于
@@ -722,7 +722,7 @@ function resetTitle(kind: string) {
                     hours(prediction?.remainingHours ?? null)
                   }}</strong
                   ><span>{{
-                    prediction?.remainingHours == null
+                    quota.stale ? "等待新采样后更新预测" : prediction?.remainingHours == null
                       ? "继续使用后会形成预测"
                       : prediction.willExhaust
                         ? "可能在重置前耗尽"
@@ -748,7 +748,7 @@ function resetTitle(kind: string) {
                 </p>
                 <p>
                   {{
-                    prediction?.windowsUsed.length
+                    quota.stale ? "当前额度为上次记录，等待新采样后重新计算预测。" : prediction?.windowsUsed.length
                       ? `已使用近 ${prediction.windowsUsed.join(" / ")} 小时的额度变化样本。`
                       : "暂无连续变化样本，使用本周期平均速度。"
                   }}
@@ -757,8 +757,8 @@ function resetTitle(kind: string) {
             >
             <div v-else class="empty">
               <Crosshair :size="36" />
-              <h2>{{ quota.lastRemaining !== null ? "等待新额度采样" : snapshot.quotaWaitingMessage }}</h2>
-              <p v-if="quota.lastRemaining !== null">{{ quota.label }} · 上次剩余 {{ quota.lastRemaining }}%</p>
+              <h2>{{ snapshot.quotaWaitingMessage }}</h2>
+              <p v-if="snapshot.sevenDayRate">{{ quota.label }}</p>
               <p>{{ snapshot.accountStatus }}</p>
             </div></template
           >

@@ -70,7 +70,7 @@ for entry in entries:
     platforms[key] = {'signature': (DEST / (entry['installer'] + '.sig')).read_text(encoding='utf-8').strip(),
                       'url': f"https://github.com/niujt/CodexMeter/releases/download/windows-v{VERSION}/{entry['installer']}"}
 (DEST / f'latest{suffix}.json').write_text(json.dumps({'version': VERSION,
-    'notes': '额度独立解析、采样时间与旧数据提示；设置 → 关于支持检查、下载并安装签名更新。',
+    'notes': '修复旧采样额度变为横线：保留未到期的上次记录和采样时间；旧采样不用于当前预测。设置 → 关于可检查、下载并安装签名更新。',
     'pub_date': datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
     'platforms': platforms}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 for entry in entries:

@@ -179,9 +179,12 @@ export function quotaDisplay(rate: Rate | null, sampledAt: string | null | undef
   const validTime = Number.isFinite(sampled) && sampled <= now;
   const stale = validTime && now - sampled >= quotaSampleLifetime;
   const remaining = lastRemaining !== null && validTime && !stale ? lastRemaining : null;
+  // A valid observation stays visible until reset, even when it cannot support a current prediction.
+  const recordedRemaining = validTime ? lastRemaining : null;
   const time = validTime ? `采样于 ${new Date(sampled).toLocaleString()}` : '采样时间未知';
   return {
     remaining,
+    recordedRemaining,
     lastRemaining,
     stale,
     label: `${stale ? '旧采样' : '本地采样'} · ${time} · 非实时`,

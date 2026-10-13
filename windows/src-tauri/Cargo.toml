@@ -1,6 +1,6 @@
 [package]
 name = "codex-health-windows"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 [lib]
 name = "codex_health_windows"
