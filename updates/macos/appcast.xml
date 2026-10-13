@@ -2,12 +2,21 @@
 IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
+    <item>
+      <title>Codex Health 1.0.9</title>
+      <sparkle:version>18</sparkle:version>
+      <sparkle:shortVersionString>1.0.9</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Tue, 13 Oct 2026 15:53:05 +0000</pubDate>
+      <description>新增手动刷新结果反馈：区分新额度采样、暂无新采样、读取不完整和刷新失败。检查完成时间与额度采样时间分别显示，后台刷新不会覆盖手动检查结果。本次为 Apple Development 签名的更新验证包，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.9/CodexMeter-1.0.9-macos.dmg" length="6500270" type="application/octet-stream" sparkle:edSignature="5NajglZcdprWI5zU1MLnjajuFVHKevTkMNaBxJgt+QaFbseUkNBtfaJRL0nzBapZ09iNS6+Ch/qa/qM/KroYDw=="></enclosure>
+    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
-    <description>Signed macOS update feed. No newer package is published yet.</description>
+    <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: AwDB9G7jnhd3vjhpivlti93hSpCDNQYDj4luTO1tFeOqarxWU6stDw1EwgLOuxpP+oJnj4mXfZdLr5fD9zLTDw==
-length: 624
+edSignature: m/fgHWVsciOTlC34M6J4+o7ieMySmTUwl8bcd8lw0SMv8fy6DFNCal35lj1eVOTF2Ip9/RYUfSWcVOUgmaAHDA==
+length: 1506
 -->

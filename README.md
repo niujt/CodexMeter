@@ -12,7 +12,7 @@
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS 15+（Intel / Apple Silicon） | [1.0.8 DMG](https://github.com/niujt/CodexMeter/releases/tag/v1.0.8)，打开后将 `Codex Health.app` 拖入 Applications |
+| macOS 15+（Intel / Apple Silicon） | [1.0.9 更新验证包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.9)，打开后将 `Codex Health.app` 拖入 Applications |
 | Windows x64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-x64-setup.exe) |
 | Windows ARM64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-arm64-setup.exe) |
 
@@ -46,6 +46,8 @@
 </details>
 
 ## 菜单栏摘要
+
+Mac 1.0.9 的手动刷新会明确显示新额度采样、暂无新采样、读取不完整或失败，并区分检查时间与额度采样时间。已配置更新器的 1.0.8（17）可在「偏好设置 → 关于 → 检查更新」升级；本次发布为开发签名、未公证的升级验证包。
 
 菜单栏会显示当前 7 天额度剩余比例；点击后可快速查看额度、重置时间、平均回复速度、今日用量和权限提醒，并打开完整详情。
 

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Optional reviewed draft release tag (macos-vVERSION); empty exports public configuration only'
+        description: 'Optional reviewed published release tag (macos-vVERSION); empty exports public configuration only'
         type: string
         default: ''
       package_sha256:
@@ -65,6 +65,7 @@ jobs:
           git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
           test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
           mkdir "$RUNNER_TEMP/release-package"
+          # A contents:read token can download published releases, not drafts.
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern "CodexMeter-$VERSION-macos.dmg" --dir "$RUNNER_TEMP/release-package"
           PACKAGE="$RUNNER_TEMP/release-package/CodexMeter-$VERSION-macos.dmg"
