@@ -1,10 +1,10 @@
 # Codex Health
 
-一个从本机 Codex 会话记录中查看 Token 用量与 7 天额度的桌面工具：macOS 提供原生菜单栏应用和桌面小组件，Windows 提供 Dashboard 与额度悬浮球。
+一个从本机 Codex 会话记录中查看 Token 用量与 7 天额度的桌面工具：macOS 提供原生菜单栏应用和桌面小组件，Windows 提供 Dashboard、额度悬浮球与摘要卡片。
 
 界面采用「外围 Liquid Glass + 内部极简 Flat Content」：侧栏和工具栏使用系统材质，数据、图表和列表保持黑白灰扁平布局。支持浅色、深色和跟随系统外观；macOS 26 及以上使用 Liquid Glass，较早版本使用系统材质。
 
-在「设置 → 通用 → 外观 → 应用 Logo」中可选择黑白扁平版或玻璃黑白版。黑白扁平版作为默认，切换 Dock、应用内 Logo 和菜单栏标识无需重启；Finder 中的安装包图标使用黑白扁平版。
+在「设置 → 通用 → 外观 → 应用 Logo」中可选择黑白扁平版或玻璃黑白版。黑白扁平版作为默认，切换 Dock、应用内 Logo 和菜单栏标识无需重启；浅色外观使用白底黑字，深色外观使用黑底白字；Finder 中的安装包图标使用黑白扁平版。
 
 > 数据只在本机读取与计算，不上传会话内容或用量数据。
 
@@ -20,7 +20,7 @@
 
 当前发布包使用本机开发签名以确保 WidgetKit 扩展能被 macOS 识别；macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
 
-以下 macOS 截图由当前 SwiftUI 页面和虚构演示数据生成，不包含真实项目、会话、账户记录或 Token 用量。
+截图更新于 2026-10-13，基于当前源码（macOS `35a2825`、Windows 0.1.2）。macOS 截取独立演示应用中的真实 SwiftUI 页面，Windows 截取前端演示界面；全部使用虚构数据，不包含真实项目、会话、账户记录或 Token 用量。截图展示源码版本，下载区仍指向已发布安装包。
 
 ## 健康报告
 
@@ -38,9 +38,10 @@
 
 仅保留黑白扁平版与玻璃黑白版，默认使用黑白扁平版。
 
-| 黑白扁平版（默认） | 玻璃黑白版 |
-| --- | --- |
-| <img src="Resources/Assets.xcassets/FlatAppIcon.imageset/FlatAppIcon.png" width="128" alt="黑白扁平 Logo"> | <img src="Resources/Assets.xcassets/GlassAppIcon.imageset/GlassAppIcon.png" width="128" alt="玻璃黑白 Logo"> |
+| 外观 | 黑白扁平版（默认） | 玻璃黑白版 |
+| --- | --- | --- |
+| 浅色 | <img src="Resources/Assets.xcassets/FlatAppIconLight.imageset/FlatAppIconLight.png" width="128" alt="白底黑字扁平 Logo"> | <img src="Resources/Assets.xcassets/GlassAppIcon.imageset/GlassAppIcon.png" width="128" alt="浅色玻璃 Logo"> |
+| 深色 | <img src="Resources/Assets.xcassets/FlatAppIcon.imageset/FlatAppIcon.png" width="128" alt="黑底白字扁平 Logo"> | <img src="Resources/Assets.xcassets/GlassAppIconDark.imageset/GlassAppIconDark.png" width="128" alt="深色玻璃 Logo"> |
 
 </details>
 
@@ -48,39 +49,49 @@
 
 菜单栏会显示当前 7 天额度剩余比例；点击后可快速查看额度、重置时间、平均回复速度、今日用量和权限提醒，并打开完整详情。
 
-![Codex Health 菜单栏弹窗（匿名演示数据）](docs/screenshots/menu-popover.png)
+<img src="docs/screenshots/menu-popover.png" width="320" alt="当前菜单栏摘要（演示数据）">
 
-## 桌面小组件
+## 桌面小组件（WidgetKit）
 
-在 macOS 桌面编辑模式中添加“Codex Health”小组件。小号展示额度概览，中号同时展示三段 Token 用量、7 天额度与当前上下文。
+在 macOS 桌面编辑模式中添加“Codex Health”小组件。小号展示额度概览，中号同时展示今天、近 7 天、本月用量、7 天额度与当前上下文。
 
-![Codex Health 桌面小组件（匿名演示数据）](docs/screenshots/desktop-widget.png)
+![当前 WidgetKit 小号与中号视图（演示数据）](docs/screenshots/widgetkit-widgets.png)
+
+上图是当前 WidgetKit 内容视图的独立预览；桌面上的外框、背景材质和尺寸由 macOS 控制，会随系统版本与小组件样式变化。
 
 如果之前安装过旧版临时签名包，请先退出并移除 `/Applications/Codex Health.app`，再安装最新版并启动一次，然后重新打开桌面小组件编辑器搜索“Codex Health”。
 
+### 悬浮摘要组件预览
+
+项目中的 `DesktopWidgetView` 是另一套 300 × 245 的悬浮摘要视图，目前未接入主应用入口。它展示三段用量、上下文及短周期额度；示例中的 16% 表示 5 小时额度已用比例。
+
+| 浅色 | 深色 |
+| --- | --- |
+| <img src="docs/screenshots/desktop-widget.png" width="300" alt="浅色悬浮摘要组件预览"> | <img src="docs/screenshots/desktop-widget-dark.png" width="300" alt="深色悬浮摘要组件预览"> |
+
 ## 使用趋势
 
-![Codex Health 使用趋势（匿名演示数据）](docs/screenshots/usage-trends.png)
+![Codex Health 使用趋势（演示数据）](docs/screenshots/usage-trends.png)
 
 ## 模型与效率
 
-![Codex Health 模型与效率（匿名演示数据）](docs/screenshots/model-efficiency.png)
+![Codex Health 模型与效率（演示数据）](docs/screenshots/model-efficiency.png)
 
 ## 项目与用量
 
-![Codex Health 项目与用量（已脱敏）](docs/screenshots/projects-usage.png)
+![Codex Health 项目与用量（演示数据）](docs/screenshots/projects-usage.png)
 
 ## 预测与风险
 
-![Codex Health 预测与风险（匿名演示数据）](docs/screenshots/forecast-risk.png)
+![Codex Health 预测与风险（演示数据）](docs/screenshots/forecast-risk.png)
 
 ## 历史记录
 
-![Codex Health 历史记录（已脱敏）](docs/screenshots/history.png)
+![Codex Health 历史记录（演示数据）](docs/screenshots/history.png)
 
-## Windows 界面与悬浮球
+## Windows 界面与悬浮摘要
 
-Windows 版沿用黑白灰 Dashboard，提供 x64 和 ARM64 安装包。
+Windows 版沿用黑白灰 Dashboard，支持悬浮球和摘要卡片两种样式。当前源码版本为 0.1.2，下载区的已发布安装包仍为 0.1.1。
 
 以下 Windows 截图来自前端界面与虚构演示数据，悬浮球截图为原尺寸；截图不代表 Windows 原生安装、置顶或 DPI 实测结果。
 
@@ -99,7 +110,15 @@ Windows 版沿用黑白灰 Dashboard，提供 x64 和 ARM64 安装包。
 
 | 浅色悬浮球 | 深色悬浮球 |
 | --- | --- |
-| <img src="docs/screenshots/windows-floating-light.png" width="88" alt="Windows 浅色悬浮球，剩余额度 58%（演示数据）"> | <img src="docs/screenshots/windows-floating-dark.png" width="88" alt="Windows 深色悬浮球，剩余额度 58%（演示数据）"> |
+| <img src="docs/screenshots/windows-floating-light.png" width="88" alt="Windows 浅色悬浮球，剩余额度 72%（演示数据）"> | <img src="docs/screenshots/windows-floating-dark.png" width="88" alt="Windows 深色悬浮球，剩余额度 72%（演示数据）"> |
+
+### 摘要卡片
+
+在悬浮样式中选择摘要卡片，查看今日用量、近 7 天用量、上下文与短周期剩余额度；示例中的 84% 是 5 小时额度剩余比例。
+
+| 浅色 | 深色 |
+| --- | --- |
+| <img src="docs/screenshots/windows-summary-light.png" width="300" alt="Windows 浅色摘要卡片（演示数据）"> | <img src="docs/screenshots/windows-summary-dark.png" width="300" alt="Windows 深色摘要卡片（演示数据）"> |
 
 ### 周用量小票
 
@@ -109,7 +128,7 @@ Windows 版沿用黑白灰 Dashboard，提供 x64 和 ARM64 安装包。
 
 ## 功能
 
-- 菜单栏以白色图标和文字显示 7 天额度剩余百分比
+- 菜单栏显示 7 天额度剩余百分比，图标和文字对比度由系统随外观自动调整
 - 今日、近 7 天、本月 Token 用量，以及输入、输出、缓存和推理 Token 分类
 - 当前会话上下文进度与 7 天额度重置倒计时
 - 用量预测：按近 1 / 6 / 24 小时额度变化加权估算
@@ -163,7 +182,7 @@ cd CodexMeter
 python3 script/preview_screenshots.py
 ```
 
-脚本打开独立演示应用，使用真实页面组件和内存中的演示数据，不读取 Codex 会话、登录凭据或真实重置历史。通过侧栏切换页面，通过“演示预览”菜单切换明暗模式、菜单栏摘要和小组件，再截取窗口。临时构建保留在系统临时目录，便于检查。
+脚本打开独立演示应用，使用真实页面组件和内存中的演示数据，不读取 Codex 会话、登录凭据或真实重置历史。通过侧栏切换页面，通过“演示预览”菜单切换明暗模式、菜单栏摘要、悬浮摘要组件和 WidgetKit 内容视图，再截取窗口。使用 `script/DocumentationSnapshotApp.swift` 提供演示入口与一致的用量数据。默认保留临时构建，可用 `--work-dir /path/to/fresh-directory` 指定新的目录；清理前按项目约定确认精确范围。
 
 ## 数据与限制
 

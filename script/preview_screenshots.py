@@ -12,10 +12,15 @@ import plistlib
 import subprocess
 import tempfile
 import uuid
+import argparse
 
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-WORK = pathlib.Path(tempfile.mkdtemp(prefix="codex-health-screenshots-"))
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--work-dir', type=pathlib.Path, help='Fresh directory for the retained preview build')
+args = parser.parse_args()
+WORK = args.work_dir.resolve() if args.work_dir else pathlib.Path(tempfile.mkdtemp(prefix="codex-health-screenshots-"))
+WORK.mkdir(parents=True, exist_ok=True)
 APP = WORK / "Codex Health Preview.app"
 SOURCES = WORK / "Sources"
 SOURCES.mkdir()
@@ -41,6 +46,12 @@ extension Notification.Name {
     var reusedFiles = 0
     var loadingMessage: String { "" }
     var selectedCodexPath: String { "/demo/codex" }
+    var context: CodexDataContext? { CodexDataContext(source: CodexDataSource(root: URL(fileURLWithPath: "/demo/.codex")), accountIdentity: "demo", since: ScreenshotFixture.now) }
+    var dataSourceDescription: String { "演示数据" }
+    var accountStatus: String { "演示账户" }
+    var quotaWaitingMessage: String { "等待演示采样" }
+    var measuredVelocity: RateVelocity? { RateVelocity(percentPerHour: 0.35, windowsUsed: [1, 6, 24]) }
+    @discardableResult func synchronizeContext() -> Bool { false }
     func refresh(force: Bool = false) async {}
     func refreshIfNeeded() async {}
     func chooseCodexFolder() {}
@@ -75,7 +86,7 @@ for path in sorted((ROOT / "Sources/CodexMeter").rglob("*.swift")):
 """
     elif path.name == "ResetHistoryClient.swift":
         source = source[:source.index("actor ResetHistoryClient {")] + """actor ResetHistoryClient {
-    func load(codexPath: String) async throws -> [ResetHistoryEvent] {
+    func load(context: CodexDataContext) async throws -> [ResetHistoryEvent] {
         [ResetHistoryEvent(id: "demo-used", kind: "used", occurredAt: ScreenshotFixture.now.addingTimeInterval(-86400)),
          ResetHistoryEvent(id: "demo-granted", kind: "granted", occurredAt: ScreenshotFixture.now.addingTimeInterval(-3 * 86400))]
     }
@@ -108,7 +119,8 @@ struct DocumentationWidgetPreview: View {
 }
 """
 (SOURCES / "CodexMeterWidget.swift").write_text(widget)
-(SOURCES / "ScreenshotApp.swift").write_text((ROOT / "script/ScreenshotApp.swift").read_text())
+entry = 'DocumentationSnapshotApp.swift'
+(SOURCES / "ScreenshotApp.swift").write_text((ROOT / 'script' / entry).read_text())
 
 with (ROOT / "Resources/Info.plist").open("rb") as handle:
     app_info = plistlib.load(handle)
@@ -137,6 +149,7 @@ subprocess.run([
     *map(str, sorted(SOURCES.glob("*.swift"))),
     "-o", str(APP / "Contents/MacOS/ScreenshotPreview"),
 ], check=True)
-subprocess.run(["/usr/bin/open", "-n", str(APP)], check=True)
-print("Preview ready. Use the sidebar for analysis pages and the 演示预览 menu for appearance, menu, widget and settings previews.")
+command = ["/usr/bin/open", "-n", str(APP)]
+subprocess.run(command, check=True)
+print("Preview ready. Use the sidebar for analysis pages and the 演示预览 menu for appearance, menu and widget previews.")
 print("Take screenshots of the window, then quit the preview app when finished.")
