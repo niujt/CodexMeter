@@ -29,7 +29,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
+          # Icon Composer in Xcode 26 crashes against the macOS 15 ARM runtime.
+          - runner: macos-26
             architecture: arm64
           - runner: macos-15-intel
             architecture: x86_64
