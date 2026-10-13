@@ -5,7 +5,7 @@ name: macOS updater validation (unsigned)
 # updater development branch. Never run credentialed jobs from this workflow.
 on:
   push:
-    branches: [codex/macos-about-updater]
+    branches: [codex/macos-about-updater, codex/macos-release-preparation]
   workflow_dispatch:
     inputs:
       upload_diagnostic_archive:
@@ -23,7 +23,9 @@ jobs:
       github.repository == 'niujt/CodexMeter' &&
       ((github.event_name == 'workflow_dispatch' &&
         github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) ||
-       (github.event_name == 'push' && github.ref == 'refs/heads/codex/macos-about-updater'))
+       (github.event_name == 'push' &&
+        (github.ref == 'refs/heads/codex/macos-about-updater' ||
+         github.ref == 'refs/heads/codex/macos-release-preparation')))
     name: Unsigned validation (${{ matrix.architecture }})
     strategy:
       fail-fast: false
@@ -65,6 +67,13 @@ jobs:
 
       - name: Test public updater configuration using synthetic data
         run: python3 -m unittest discover -s script -p 'test_update_config.py'
+
+      - name: Test candidate signing parsers and public-only verifier without secrets
+        run: |
+          python3 script/sign_macos_candidate.py --self-test
+          bash -n script/build_macos_candidate.sh
+          xcrun swiftc script/VerifySparkleCandidate.swift -o "$RUNNER_TEMP/verify-sparkle-candidate"
+          "$RUNNER_TEMP/verify-sparkle-candidate" --self-test
 
       - name: Run native Swift tests using synthetic fixtures
         env:

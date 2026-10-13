@@ -1,0 +1,4 @@
+// Public Codex Health update identity. Contains no private key.
+// The feed must be signed and published before calling a release updater-ready.
+CODEX_HEALTH_UPDATE_FEED_URL = https:/$()/raw.githubusercontent.com/niujt/CodexMeter/main/updates/macos/appcast.xml
+CODEX_HEALTH_UPDATE_PUBLIC_KEY = txWavHI0vv7xM5j0CrtW8pkoRWmChw8hHjUxa1BL1So=
