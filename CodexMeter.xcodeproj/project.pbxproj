@@ -411,6 +411,8 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				EXECUTABLE_NAME = CodexMeter;
 				INFOPLIST_FILE = Resources/Info.plist;
+				CODEX_HEALTH_UPDATE_FEED_URL = "https://raw.githubusercontent.com/niujt/CodexMeter/main/updates/macos/appcast.xml";
+				CODEX_HEALTH_UPDATE_PUBLIC_KEY = "txWavHI0vv7xM5j0CrtW8pkoRWmChw8hHjUxa1BL1So=";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.codexmeter.CodexMeter;
@@ -548,6 +550,8 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				EXECUTABLE_NAME = CodexMeter;
 				INFOPLIST_FILE = Resources/Info.plist;
+				CODEX_HEALTH_UPDATE_FEED_URL = "https://raw.githubusercontent.com/niujt/CodexMeter/main/updates/macos/appcast.xml";
+				CODEX_HEALTH_UPDATE_PUBLIC_KEY = "txWavHI0vv7xM5j0CrtW8pkoRWmChw8hHjUxa1BL1So=";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.codexmeter.CodexMeter;

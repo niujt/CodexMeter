@@ -1,0 +1,100 @@
+name: macOS release candidate (ad-hoc, test only)
+
+# No release or feed publication. Only trusted main can receive the repository
+# SPARKLE_PRIVATE_KEY secret. Review main before manually dispatching this job.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_test_candidate:
+        description: 'Build and Sparkle-sign an ad-hoc TEST candidate; Widget/migration remain unverified'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    if: >-
+      github.repository == 'niujt/CodexMeter' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' && inputs.confirm_test_candidate
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+      PYTHONDONTWRITEBYTECODE: '1'
+      CODEX_HEALTH_TEST_CLEANUP: '0'
+      CANDIDATE_ROOT: ${{ runner.temp }}/macos-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+      SPARKLE_TOOLS: ${{ runner.temp }}/sparkle-tools-2.10.0
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify toolchain and test without credentials
+        env:
+          TEST_WORK_DIR: ${{ runner.temp }}/candidate-synthetic-tests
+        run: |
+          test -d "$DEVELOPER_DIR"
+          xcodebuild -version
+          python3 -m unittest discover -s script -p 'test_update_config.py'
+          python3 script/sign_macos_candidate.py --self-test
+          xcrun swiftc script/VerifySparkleCandidate.swift -o "$RUNNER_TEMP/verify-sparkle-candidate"
+          "$RUNNER_TEMP/verify-sparkle-candidate" --self-test
+          bash script/test_usage.sh
+
+      - name: Fetch checksum-pinned official Sparkle signing tools
+        run: |
+          mkdir "$SPARKLE_TOOLS"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            'https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-2.10.0.tar.xz' \
+            --output "$RUNNER_TEMP/Sparkle-2.10.0.tar.xz"
+          # Digest from the official 2.10.0 release asset (562081725).
+          printf '%s  %s\n' \
+            c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c \
+            "$RUNNER_TEMP/Sparkle-2.10.0.tar.xz" | shasum -a 256 --check
+          tar -xJf "$RUNNER_TEMP/Sparkle-2.10.0.tar.xz" -C "$SPARKLE_TOOLS"
+          test -x "$SPARKLE_TOOLS/bin/generate_appcast"
+
+      - name: Build and package the universal ad-hoc candidate
+        run: bash script/build_macos_candidate.sh "$CANDIDATE_ROOT"
+
+      - name: Sign candidate feed and archive using stdin only
+        env:
+          # The secret exists ONLY in this step, never in build/test environments.
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set +x
+          ulimit -c 0
+          python3 script/sign_macos_candidate.py sign "$CANDIDATE_ROOT" "$SPARKLE_TOOLS/bin/generate_appcast"
+
+      - name: Verify signatures using the fixed public key only
+        run: |
+          python3 script/sign_macos_candidate.py verify \
+            "$CANDIDATE_ROOT" "$RUNNER_TEMP/verify-sparkle-candidate"
+          cat "$CANDIDATE_ROOT/output/VALIDATION.txt" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain only verified candidate files for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: macos-ADHOC-TEST-CANDIDATE-${{ github.sha }}
+          path: |
+            ${{ env.CANDIDATE_ROOT }}/output/*.dmg
+            ${{ env.CANDIDATE_ROOT }}/output/appcast.xml
+            ${{ env.CANDIDATE_ROOT }}/output/SHA256SUMS.txt
+            ${{ env.CANDIDATE_ROOT }}/output/VALIDATION.txt
+          if-no-files-found: error
+          retention-days: 3
+
+# Sparkle authenticity is not Apple Developer ID trust or notarization. This
+# pipeline does not establish Gatekeeper acceptance, Widget registration, App
+# Group data migration, or old-to-new installation/restart. A signed ci-candidate
+# feed must not be promoted to the stable feed without reviewing/re-signing it.
+# No key generation/import/export, Keychain access, Release API, push, installation,
+# security-setting changes, or feed upload is performed by this workflow.

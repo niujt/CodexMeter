@@ -2,6 +2,8 @@
 """Synthetic checks for the release configuration gate; no secrets/network/user data."""
 import base64
 import unittest
+import plistlib
+from pathlib import Path
 from validate_update_config import FEED, validate
 
 
@@ -11,6 +13,25 @@ class UpdateConfigurationTests(unittest.TestCase):
                     SUPublicEDKey=base64.b64encode(bytes([1]) * 32).decode(),
                     SURequireSignedFeed=True, SUVerifyUpdateBeforeExtraction=True,
                     SUSignedFeedFailureExpirationInterval=0, CFBundleVersion="17")
+
+    def test_release_public_identity_is_consistent(self):
+        root = Path(__file__).resolve().parents[1]
+        key = "txWavHI0vv7xM5j0CrtW8pkoRWmChw8hHjUxa1BL1So="
+        self.assertEqual(len(base64.b64decode(key, validate=True)), 32)
+        config = (root / "Resources/Updates.xcconfig").read_text()
+        project = (root / "CodexMeter.xcodeproj/project.pbxproj").read_text()
+        self.assertIn("CODEX_HEALTH_UPDATE_PUBLIC_KEY = " + key, config)
+        self.assertEqual(project.count('CODEX_HEALTH_UPDATE_PUBLIC_KEY = "' + key + '";'), 2)
+        self.assertEqual(project.count('CODEX_HEALTH_UPDATE_FEED_URL = "' + FEED + '";'), 2)
+        app = plistlib.loads((root / "Resources/Info.plist").read_bytes())
+        widget = plistlib.loads((root / "Resources/WidgetInfo.plist").read_bytes())
+        for field in ("CFBundleVersion", "CFBundleShortVersionString"):
+            self.assertEqual(app[field], widget[field])
+        self.assertGreater(int(app["CFBundleVersion"]), 16)
+        info = self.info()
+        info["SUPublicEDKey"] = key
+        info["CFBundleVersion"] = app["CFBundleVersion"]
+        self.assertEqual(validate(info), [])
 
     def test_valid_configuration(self):
         self.assertEqual(validate(self.info()), [])
