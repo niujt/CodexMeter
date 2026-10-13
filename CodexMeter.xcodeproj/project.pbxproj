@@ -66,6 +66,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C0DECF000000000000000023 /* Updates.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Updates.xcconfig; sourceTree = "<group>"; };
 		C0DECF000000000000000012 /* AppUpdateSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppUpdateSection.swift; path = Views/AppUpdateSection.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000011 /* AppUpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppUpdateChecker.swift; path = Services/AppUpdateChecker.swift; sourceTree = "<group>"; };
 		C0DECE000000000000000002 /* WeeklyReceiptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/CodexMeter/Views/WeeklyReceiptView.swift; sourceTree = SOURCE_ROOT; };
@@ -223,6 +224,7 @@
 		D1EC0E82BB06DFED0A7DE89C /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				C0DECF000000000000000023 /* Updates.xcconfig */,
 				4A361FC002D72C790C39C382 /* Info.plist */,
 				F8060034B7326B85098D331C /* WidgetInfo.plist */,
 				571075B30C712B7BBC5BFDBA /* CodexMeter.entitlements */,
@@ -402,6 +404,7 @@
 		};
 		6C642810257DE3AD819E0F14 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0DECF000000000000000023 /* Updates.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = CodexHealth;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -539,6 +542,7 @@
 		};
 		BFCEC68B9C5C442DB5D3561D /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0DECF000000000000000023 /* Updates.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = CodexHealth;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

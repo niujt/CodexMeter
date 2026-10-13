@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import xml.etree.ElementTree as ET
 
 FEED = 'https://raw.githubusercontent.com/niujt/CodexMeter/main/updates/macos/appcast.xml'
 
@@ -41,13 +42,19 @@ def main():
         raise SystemExit('Public key tool returned an invalid Ed25519 public key.')
     args.output.mkdir(parents=True, exist_ok=False)
     feed = args.output / 'appcast.xml'
-    # A bootstrap feed advertises no unreleased installation packages.
-    feed.write_text('<?xml version="1.0" encoding="utf-8"?>\n'
+    # Re-exporting configuration must preserve any already published update items.
+    template = Path('updates/macos/appcast.xml')
+    if template.is_file():
+        feed.write_bytes(template.read_bytes())
+    else:
+        # A bootstrap feed advertises no unreleased installation packages.
+        feed.write_text('<?xml version="1.0" encoding="utf-8"?>\n'
                     '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">\n'
                     '  <channel>\n    <title>Codex Health macOS</title>\n'
                     '    <link>https://github.com/niujt/CodexMeter</link>\n'
                     '    <description>Signed macOS update feed. No newer package is published yet.</description>\n'
-                    '    <language>zh-cn</language>\n  </channel>\n</rss>\n', encoding='utf-8')
+                        '    <language>zh-cn</language>\n  </channel>\n</rss>\n', encoding='utf-8')
+    update_count = len(ET.fromstring(feed.read_bytes()).findall('./channel/item'))
 
     def invoke(path, verify=False):
         command = [args.sign_tool, '--ed-key-file', '-']
@@ -73,7 +80,7 @@ def main():
         'CODEX_HEALTH_UPDATE_PUBLIC_KEY = ' + public_key + '\n', encoding='utf-8')
     (args.output / 'verification.json').write_text(json.dumps({
         'feedURL': FEED, 'publicKey': public_key, 'signingToolVersion': '2.10.0',
-        'feedVerified': True, 'tamperingRejected': True, 'publishedUpdateCount': 0,
+        'feedVerified': True, 'tamperingRejected': True, 'publishedUpdateCount': update_count,
         'appcastSHA256': hashlib.sha256(signed).hexdigest(),
     }, indent=2) + '\n', encoding='utf-8')
     print('Existing Secret reused; public configuration and signed feed verified; tampering rejected.')

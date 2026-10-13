@@ -2,20 +2,37 @@
 set -euo pipefail
 
 MODE="${1:-run}"
+case "$MODE" in
+  run|--debug|debug|--logs|logs|--telemetry|telemetry|--verify|verify|--build-only) ;;
+  *) echo "usage: $0 [run|--debug|--logs|--telemetry|--verify|--build-only]" >&2; exit 2 ;;
+esac
 TARGET_NAME="CodexMeter"
 APP_NAME="Codex Health"
 EXECUTABLE_NAME="CodexMeter"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DERIVED_DATA="$ROOT_DIR/build"
+mkdir -p "$ROOT_DIR/dist"
+OUTPUT_DIR="${OUTPUT_DIR:-$(mktemp -d "$ROOT_DIR/dist/debug.XXXXXX")}"
+mkdir -p "$OUTPUT_DIR"
+OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
+DERIVED_DATA="${BUILD_DIR:-$OUTPUT_DIR/build}"
+SOURCE_PACKAGES_DIR="${SOURCE_PACKAGES_DIR:-$ROOT_DIR/output/macos/source-packages}"
+mkdir -p "$SOURCE_PACKAGES_DIR"
 BUILT_APP="$DERIVED_DATA/Build/Products/Debug/$APP_NAME.app"
-APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
+APP_BUNDLE="$OUTPUT_DIR/$APP_NAME.app"
+if [[ -e "$APP_BUNDLE" || -L "$APP_BUNDLE" ]]; then
+  echo "Refusing to replace $APP_BUNDLE. Choose a fresh OUTPUT_DIR." >&2
+  exit 2
+fi
 SIGNING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/codexmeter-signing.XXXXXX")"
-trap 'rm -rf "$SIGNING_DIR"' EXIT
+echo "Signing scratch retained: $SIGNING_DIR"
 
 source "$ROOT_DIR/script/signing.sh"
 codexmeter_select_signing
 
 UPDATE_BUILD_ARGS=(-project "$ROOT_DIR/CodexMeter.xcodeproj")
+if [[ -z "${UPDATE_XCCONFIG:-}" && -f "$ROOT_DIR/Resources/Updates.xcconfig" ]]; then
+  UPDATE_XCCONFIG="$ROOT_DIR/Resources/Updates.xcconfig"
+fi
 if [[ -n "${UPDATE_XCCONFIG:-}" ]]; then
   [[ -f "$UPDATE_XCCONFIG" ]] || { echo "Missing UPDATE_XCCONFIG: $UPDATE_XCCONFIG" >&2; exit 1; }
   UPDATE_BUILD_ARGS+=(-xcconfig "$UPDATE_XCCONFIG")
@@ -27,6 +44,7 @@ xcodebuild "${UPDATE_BUILD_ARGS[@]}" \
   -scheme "$TARGET_NAME" \
   -configuration Debug \
   -derivedDataPath "$DERIVED_DATA" \
+  -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
   build "${CODEX_XCODE_SIGNING_ARGS[@]}"
 
 WIDGET_BUNDLE="$BUILT_APP/Contents/PlugIns/CodexMeterWidget.appex"
@@ -44,9 +62,11 @@ if [[ "$CODEX_SIGNING_MODE" == "adhoc" ]]; then
 fi
 codesign --verify --deep --strict "$BUILT_APP"
 
-rm -rf "$APP_BUNDLE"
-mkdir -p "$ROOT_DIR/dist"
 ditto "$BUILT_APP" "$APP_BUNDLE"
+"$ROOT_DIR/script/validate_distribution.sh" --app "$APP_BUNDLE"
+if [[ -n "${UPDATE_XCCONFIG:-}" || "${REQUIRE_APP_UPDATES:-0}" == "1" ]]; then
+  python3 "$ROOT_DIR/script/validate_update_config.py" "$APP_BUNDLE"
+fi
 
 open_app() {
   /usr/bin/open -n "$APP_BUNDLE"
@@ -67,6 +87,7 @@ stop_existing_instances() {
 }
 
 case "$MODE" in
+  --build-only) echo "Built and validated $APP_BUNDLE" ;;
   run) stop_existing_instances; open_app ;;
   --debug|debug) lldb -- "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME" ;;
   --logs|logs)
