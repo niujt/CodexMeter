@@ -15,10 +15,15 @@ trap 'rm -rf "$SIGNING_DIR"' EXIT
 source "$ROOT_DIR/script/signing.sh"
 codexmeter_select_signing
 
+UPDATE_BUILD_ARGS=(-project "$ROOT_DIR/CodexMeter.xcodeproj")
+if [[ -n "${UPDATE_XCCONFIG:-}" ]]; then
+  [[ -f "$UPDATE_XCCONFIG" ]] || { echo "Missing UPDATE_XCCONFIG: $UPDATE_XCCONFIG" >&2; exit 1; }
+  UPDATE_BUILD_ARGS+=(-xcconfig "$UPDATE_XCCONFIG")
+fi
+
 # When launching from Xcode, the debugger owns the process. Avoid terminating it
 # here; quitting the existing menu-bar instance before running is sufficient.
-xcodebuild \
-  -project "$ROOT_DIR/CodexMeter.xcodeproj" \
+xcodebuild "${UPDATE_BUILD_ARGS[@]}" \
   -scheme "$TARGET_NAME" \
   -configuration Debug \
   -derivedDataPath "$DERIVED_DATA" \

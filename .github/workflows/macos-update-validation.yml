@@ -1,0 +1,147 @@
+name: macOS updater validation (unsigned)
+
+# Preparation only: this workflow has no signing credentials or release step.
+# Run manually from the reviewed default branch, or on the specifically authorized
+# updater development branch. Never run credentialed jobs from this workflow.
+on:
+  push:
+    branches: [codex/macos-about-updater]
+  workflow_dispatch:
+    inputs:
+      upload_diagnostic_archive:
+        description: 'Retain an UNSIGNED diagnostic archive for 3 days (not distributable)'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: >-
+      github.repository == 'niujt/CodexMeter' &&
+      ((github.event_name == 'workflow_dispatch' &&
+        github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) ||
+       (github.event_name == 'push' && github.ref == 'refs/heads/codex/macos-about-updater'))
+    name: Unsigned validation (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Icon Composer in Xcode 26 crashes against the macOS 15 ARM runtime.
+          - runner: macos-26
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      # The project includes Icon Composer resources and a macOS 26.0 SDK path.
+      # Fail visibly if the runner image removes this toolchain; do not silently
+      # switch to a different Xcode/SDK or weaken validation.
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+      CODEX_HEALTH_TEST_CLEANUP: '0'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out the reviewed workflow commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Check the selected macOS toolchain and host architecture
+        env:
+          EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          test -d "$DEVELOPER_DIR"
+          test "$(uname -m)" = "$EXPECTED_ARCHITECTURE"
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
+          xcrun swift --version
+
+      - name: Test public updater configuration using synthetic data
+        run: python3 -m unittest discover -s script -p 'test_update_config.py'
+
+      - name: Run native Swift tests using synthetic fixtures
+        env:
+          TEST_WORK_DIR: ${{ runner.temp }}/codex-health-tests
+        run: bash script/test_usage.sh
+
+      - name: Archive the universal app and Widget without signing
+        run: |
+          xcodebuild \
+            -project CodexMeter.xcodeproj \
+            -scheme CodexMeter \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/codex-health-derived-data" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/codex-health-packages" \
+            -archivePath "$RUNNER_TEMP/CodexHealth-UNSIGNED.xcarchive" \
+            ARCHS='arm64 x86_64' \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY= \
+            DEVELOPMENT_TEAM= \
+            CODEX_HEALTH_UPDATE_FEED_URL= \
+            CODEX_HEALTH_UPDATE_PUBLIC_KEY= \
+            archive
+
+      - name: Validate bundle structure, updater policy and universal binaries
+        run: |
+          bash script/ci_validate_macos_bundle.sh \
+            "$RUNNER_TEMP/CodexHealth-UNSIGNED.xcarchive/Products/Applications/Codex Health.app"
+
+      - name: Record the limits of this validation
+        run: |
+          cat > "$RUNNER_TEMP/macos-validation-summary.txt" <<'SUMMARY'
+          ## Unsigned macOS validation
+          - Synthetic configuration tests and native Swift tests passed on this host.
+          - The universal app, Widget and embedded Sparkle 2.10.0 binaries were checked.
+          - Feed and public key are intentionally empty; the updater remains unconfigured.
+          - No Developer ID signing, notarization, Sparkle signing or publication was performed.
+          - This is not a distributable build. UI, Gatekeeper and real old-to-new update tests remain.
+          SUMMARY
+          cat "$RUNNER_TEMP/macos-validation-summary.txt" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Package only the unsigned diagnostic archive
+        if: ${{ inputs.upload_diagnostic_archive }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/macos-validation-artifact"
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$RUNNER_TEMP/CodexHealth-UNSIGNED.xcarchive" \
+            "$RUNNER_TEMP/macos-validation-artifact/CodexHealth-UNSIGNED-NOT-FOR-DISTRIBUTION.xcarchive.zip"
+          cp "$RUNNER_TEMP/macos-validation-summary.txt" "$RUNNER_TEMP/macos-validation-artifact/VALIDATION.txt"
+          (
+            cd "$RUNNER_TEMP/macos-validation-artifact"
+            shasum -a 256 CodexHealth-UNSIGNED-NOT-FOR-DISTRIBUTION.xcarchive.zip > SHA256SUMS.txt
+          )
+
+      - name: Retain the requested diagnostic archive, never a release
+        if: ${{ inputs.upload_diagnostic_archive }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: macos-UNSIGNED-NOT-FOR-DISTRIBUTION-${{ matrix.architecture }}-${{ github.sha }}
+          path: ${{ runner.temp }}/macos-validation-artifact/*
+          if-no-files-found: error
+          retention-days: 3
+
+# Production signing, notarization and signed appcast generation remain TODO;
+# see docs/macos-updates.md. None of those operations run in this workflow.
+# A future signed job must require a separate dispatch opt-in, the reviewed default
+# branch, and an EXISTING macos-release Environment with required reviewers and
+# branch restrictions. Merely naming an environment does not enforce approvals.
+# Apple Developer ID/notarization credentials and Sparkle's Ed25519 private key
+# serve different purposes; do not put either in this secret-free validation job.
+# Use Xcode archive/export for distribution, not the current development/ad-hoc
+# build_distribution.sh path. Never sign nested code using codesign --deep.
+# No release, appcast upload, commit, push or credential creation is wired here.
+# References:
+# https://sparkle-project.org/documentation/
+# https://sparkle-project.org/documentation/sandboxing/
+# https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
+# https://docs.github.com/en/actions/reference/runners/github-hosted-runners

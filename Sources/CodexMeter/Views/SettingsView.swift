@@ -133,6 +133,8 @@ struct SettingsView: View {
                 Text("Codex Health").font(.title2.weight(.bold))
                 Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · 本地优先的 Codex 用量健康中心")
                     .foregroundStyle(.secondary)
+                AppUpdateSection()
+                    .padding(.top, 12)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .tabItem { Label("关于", systemImage: "info.circle") }
