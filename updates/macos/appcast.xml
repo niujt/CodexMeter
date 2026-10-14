@@ -3,6 +3,18 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.10</title>
+      <sparkle:version>19</sparkle:version>
+      <sparkle:shortVersionString>1.0.10</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Wed, 14 Oct 2026 05:39:55 +0000</pubDate>
+      <description>修复桌面小组件更新不及时：后台按节能间隔定时检查，系统唤醒后补刷新，手动刷新会重新请求小组件时间线。
+修复应用更新后旧 Widget 扩展进程残留导致的旧画面或白屏：仅回收本安装路径下、早于当前扩展文件更新时间的旧进程，并请求系统重新加载。
+补齐空数据展示与重试时间线，压缩小组件布局，保留额度采样时间与非实时标识。
+本次为 Apple Development 签名版本，尚未公证。系统小组件的实际展示时间仍由 WidgetKit 调度。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.10/CodexMeter-1.0.10-macos.dmg" length="6524168" type="application/octet-stream" sparkle:edSignature="rzLjepGUpGtymWcTLqnuQ+ecjMThWudzgFLEOReJa8/dVj/l7R2+lou8w71DPFpTPuS4QdUfILP9ZERwGARvDw=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.9</title>
       <sparkle:version>18</sparkle:version>
       <sparkle:shortVersionString>1.0.9</sparkle:shortVersionString>
@@ -17,6 +29,6 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: m/fgHWVsciOTlC34M6J4+o7ieMySmTUwl8bcd8lw0SMv8fy6DFNCal35lj1eVOTF2Ip9/RYUfSWcVOUgmaAHDA==
-length: 1506
+edSignature: 56nirH1s744DJnGZp+znHmXvbD8jrvNIBndWebpp1eoCjV3hl9FeQ4+E3HG9WTQcPzA//tYQNYTtEbhl5xzLAQ==
+length: 2716
 -->
