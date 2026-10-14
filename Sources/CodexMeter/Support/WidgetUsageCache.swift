@@ -63,6 +63,7 @@ struct WidgetUsageData: Codable, Sendable, Equatable {
 }
 
 enum WidgetUsageCache {
+    static let kind = "CodexMeterWidgetV4"
     @discardableResult
     static func save(_ usage: WidgetUsageData, to destination: URL? = nil) throws -> Bool {
         guard let url = destination ?? cacheURL() else {
@@ -75,6 +76,7 @@ enum WidgetUsageCache {
     @discardableResult
     static func saveIfChanged(_ usage: WidgetUsageData, to destination: URL? = nil) throws -> Bool {
         if let existing = load(from: destination), sameDisplayedContent(existing, usage),
+           usage.updatedAt >= existing.updatedAt,
            usage.updatedAt.timeIntervalSince(existing.updatedAt) < 15 * 60 {
             return false
         }
@@ -107,5 +109,20 @@ enum WidgetUsageCache {
             && lhs.rateResetsAt == rhs.rateResetsAt
             && lhs.sourceIncomplete == rhs.sourceIncomplete
             && lhs.contextID == rhs.contextID
+    }
+}
+
+/// Future entries are only freshness/expiry transitions, never invented usage.
+struct WidgetTimelineSchedule {
+    let reloadAt: Date
+    let dates: [Date]
+
+    init(usage: WidgetUsageData?, now: Date) {
+        let nextCheck = now.addingTimeInterval(usage == nil ? 300 : 1_800)
+        let deadlines = [usage?.rateResetsAt, usage?.sampledAt?.addingTimeInterval(QuotaSampleState.lifetime),
+                         usage?.updatedAt.addingTimeInterval(1_801)]
+            .compactMap { $0 }.filter { $0 > now && $0 < nextCheck }
+        reloadAt = nextCheck
+        dates = [now] + Array(Set(deadlines + [nextCheck])).sorted()
     }
 }

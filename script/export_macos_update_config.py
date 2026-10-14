@@ -26,9 +26,14 @@ def main():
     parser.add_argument('--version')
     parser.add_argument('--build', type=int)
     parser.add_argument('--expected-sha256')
+    parser.add_argument('--release-notes', type=Path)
     args = parser.parse_args()
     package_metadata = None
     if args.package:
+        notes = (args.release_notes.read_text(encoding='utf-8').strip() if args.release_notes
+                 else f'Codex Health {args.version} macOS update. Apple Development signed; not notarized.')
+        if not notes or len(notes) > 10_000:
+            raise SystemExit('Release notes must contain between 1 and 10000 characters.')
         if (not args.version or not re.fullmatch(r'\d+\.\d+\.\d+', args.version)
                 or args.release_tag != 'macos-v' + args.version or not args.build or args.build <= 0
                 or args.package.name != f'CodexMeter-{args.version}-macos.dmg'
@@ -113,10 +118,7 @@ def main():
         ET.SubElement(item, f'{{{sparkle}}}shortVersionString').text = args.version
         ET.SubElement(item, f'{{{sparkle}}}minimumSystemVersion').text = '15.0.0'
         ET.SubElement(item, 'pubDate').text = format_datetime(datetime.now(timezone.utc))
-        ET.SubElement(item, 'description').text = (
-            '新增手动刷新结果反馈：区分新额度采样、暂无新采样、读取不完整和刷新失败。'
-            '检查完成时间与额度采样时间分别显示，后台刷新不会覆盖手动检查结果。'
-            '本次为 Apple Development 签名的更新验证包，尚未公证。')
+        ET.SubElement(item, 'description').text = notes
         download_url = f'https://github.com/niujt/CodexMeter/releases/download/{args.release_tag}/{args.package.name}'
         ET.SubElement(item, 'enclosure', {'url': download_url, 'length': length.group(1),
             'type': 'application/octet-stream', f'{{{sparkle}}}edSignature': signature.group(1)})

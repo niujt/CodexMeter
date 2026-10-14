@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0DECF000000000000000030 /* WidgetExtensionRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000031 /* WidgetExtensionRecovery.swift */; };
 		C0DECF000000000000000020 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C0DECF000000000000000021 /* Sparkle */; };
 		C0DECF000000000000000002 /* AppUpdateSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000012 /* AppUpdateSection.swift */; };
 		C0DECF000000000000000001 /* AppUpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000011 /* AppUpdateChecker.swift */; };
@@ -66,6 +67,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C0DECF000000000000000031 /* WidgetExtensionRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetExtensionRecovery.swift; path = Services/WidgetExtensionRecovery.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000023 /* Updates.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Updates.xcconfig; sourceTree = "<group>"; };
 		C0DECF000000000000000012 /* AppUpdateSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppUpdateSection.swift; path = Views/AppUpdateSection.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000011 /* AppUpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppUpdateChecker.swift; path = Services/AppUpdateChecker.swift; sourceTree = "<group>"; };
@@ -193,6 +195,7 @@
 				9C0DE000000000000000000B /* ResetHistoryView.swift */,
 				0D08383147571548BA77F3B4 /* CodexUsageReader.swift */,
 				09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */,
+				C0DECF000000000000000031 /* WidgetExtensionRecovery.swift */,
 				CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */,
 				A31FA0DE0369933150A7BFC4 /* UsageStore.swift */,
 				03CDAFA5A0D64A3BB44D0012 /* PermissionStore.swift */,
@@ -350,6 +353,7 @@
 				9C0DE100000000000000000B /* ResetHistoryView.swift in Sources */,
 				72C8AE23FD2E354DF0747D89 /* CodexUsageReader.swift in Sources */,
 				A1AF8676F4ED910B3A596482 /* DesktopWidgetController.swift in Sources */,
+				C0DECF000000000000000030 /* WidgetExtensionRecovery.swift in Sources */,
 				FEBADF776B5F64FA07883229 /* ProjectPathStore.swift in Sources */,
 				9250A303AE0DDCDBCD82C40C /* UsageStore.swift in Sources */,
 				03CDAFA5A0D64A3BB44D0022 /* PermissionStore.swift in Sources */,

@@ -36,6 +36,12 @@ enum RefreshPolicy {
         }
         return result
     }
+
+    /// Changing visibility must not restart the entire countdown on every switch.
+    static func nextRefreshDate(lastAttempt: Date?, interval: TimeInterval, now: Date) -> Date {
+        guard let lastAttempt, lastAttempt <= now else { return now }
+        return max(now, lastAttempt.addingTimeInterval(interval))
+    }
 }
 
 enum AppAppearance: String, CaseIterable, Identifiable {
@@ -128,10 +134,9 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     )
     private weak var store: UsageStore?
     private var refreshTimer: Timer?
-    private var backgroundRefresh: NSBackgroundActivityScheduler?
     private var scheduledRefreshInterval: TimeInterval?
     private var scheduledInBackground: Bool?
-    private var refreshGeneration = UUID()
+    private var lastRefreshAttempt: Date?
     private var energyObservers: [NSObjectProtocol] = []
     private var workspaceObservers: [NSObjectProtocol] = []
     private var isSleeping = false
@@ -164,6 +169,9 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         popoverController.sizingOptions = [.preferredContentSize]
         popover.contentSize = NSSize(width: 320, height: 340)
         UNUserNotificationCenter.current().delegate = self
+        // Sparkle replaces the bundle, but WidgetKit can retain an extension
+        // process from the previous installation. Retire only that old binary.
+        WidgetExtensionRecovery.recoverAfterUpdate()
         sharedStore.synchronizeContext()
         PermissionAttentionService.shared.start()
         permissionObserver = NotificationCenter.default.addObserver(
@@ -231,42 +239,20 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         guard isSleeping || scheduledRefreshInterval != interval || scheduledInBackground != background else { return }
         refreshTimer?.invalidate()
         refreshTimer = nil
-        backgroundRefresh?.invalidate()
-        backgroundRefresh = nil
-        refreshGeneration = UUID()
         scheduledRefreshInterval = nil
         scheduledInBackground = nil
         guard !isSleeping else { return }
         scheduledRefreshInterval = interval
         scheduledInBackground = background
-        if background {
-            let activity = NSBackgroundActivityScheduler(identifier: "com.codexmeter.usage-refresh")
-            activity.interval = interval
-            activity.tolerance = min(300, interval * 0.2)
-            activity.repeats = true
-            activity.qualityOfService = .background
-            backgroundRefresh = activity
-            let generation = refreshGeneration
-            activity.schedule { [weak self] completion in
-                Task(priority: .background) { @MainActor [weak self] in
-                    guard let self, !self.isSleeping, self.refreshGeneration == generation else {
-                        completion(.finished)
-                        return
-                    }
-                    guard self.backgroundRefresh?.shouldDefer == false else {
-                        completion(.deferred)
-                        return
-                    }
-                    await self.store?.refresh()
-                    completion(.finished)
-                }
-            }
-        } else {
-            let timer = Timer.scheduledTimer(timeInterval: interval, target: self,
-                                            selector: #selector(refreshTimerFired(_:)), userInfo: nil, repeats: true)
-            timer.tolerance = interval * 0.2
-            refreshTimer = timer
-        }
+        // A background activity is discretionary and may be postponed beyond
+        // the widget's freshness window. Keep the energy-aware cadence while
+        // using the same timer in the foreground and background.
+        let nextDate = RefreshPolicy.nextRefreshDate(lastAttempt: lastRefreshAttempt, interval: interval, now: .now)
+        let timer = Timer(fireAt: nextDate, interval: interval, target: self,
+                          selector: #selector(refreshTimerFired(_:)), userInfo: nil, repeats: true)
+        timer.tolerance = min(60, interval * 0.1)
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
     }
 
     private var hasVisibleInterface: Bool {
@@ -296,8 +282,9 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.isSleeping = false
+                // Desktop widgets remain visible even when the app has no window.
+                self.refreshStatus()
                 self.scheduleRefreshTimer()
-                if self.hasVisibleInterface { self.refreshStatus() }
             }
         })
     }
@@ -331,7 +318,8 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     }
 
     private func refreshStatus() {
-        guard let store else { return }
+        guard let store, !store.isRefreshing else { return }
+        lastRefreshAttempt = .now
         Task { [weak self, weak store] in
             guard let self, let store else { return }
             // The scheduler owns the cadence. Applying the window-open throttle

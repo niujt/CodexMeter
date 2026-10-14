@@ -93,6 +93,7 @@ jobs:
           if [[ -n "$RELEASE_TAG" ]]; then
             RELEASE_ARGS=(--package "$RUNNER_TEMP/release-package/CodexMeter-$RELEASE_VERSION-macos.dmg"
               --release-tag "$RELEASE_TAG" --version "$RELEASE_VERSION" --build "$RELEASE_BUILD"
+              --release-notes updates/macos/release-notes.txt
               --expected-sha256 "$PACKAGE_SHA256")
           fi
           python3 script/export_macos_update_config.py \

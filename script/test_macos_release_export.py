@@ -30,12 +30,14 @@ def main():
     package = root / 'CodexMeter-1.0.9-macos.dmg'
     package.write_bytes(b'Synthetic archive bytes, not an installable package.\n')
     digest = hashlib.sha256(package.read_bytes()).hexdigest()
+    notes = root / 'notes.txt'
+    notes.write_text('修复 Widget 刷新 & <白屏>，保留采样时间。', encoding='utf-8')
 
     def invoke(name, expected_digest=digest, build='18'):
         result = subprocess.run(['python3', str(export), '--public-key-tool', args.public_key_tool,
             '--sign-tool', args.sign_tool, '--output', str(root / name), '--package', str(package),
             '--release-tag', 'macos-v1.0.9', '--version', '1.0.9', '--build', build,
-            '--expected-sha256', expected_digest], cwd=root, env=env, capture_output=True)
+            '--expected-sha256', expected_digest, '--release-notes', str(notes)], cwd=root, env=env, capture_output=True)
         # Never forward tool stdout/stderr; assert only safe outcomes.
         return result.returncode
 
@@ -48,6 +50,7 @@ def main():
     sparkle = '{http://www.andymatuschak.org/xml-namespaces/sparkle}'
     item = ET.parse(root / 'first/appcast.xml').find('./channel/item')
     assert item.findtext(sparkle + 'version') == '18'
+    assert item.findtext('description') == notes.read_text(encoding='utf-8')
     assert item.find('enclosure').get('url').endswith('/macos-v1.0.9/CodexMeter-1.0.9-macos.dmg')
     assert invoke('bad-digest', expected_digest='0' * 64) != 0, 'Incorrect digest accepted'
     assert not (root / 'bad-digest').exists()

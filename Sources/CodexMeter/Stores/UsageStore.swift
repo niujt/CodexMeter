@@ -206,7 +206,7 @@ final class UsageStore {
             errorMessage = [snapshot.readWarning, cacheWarning].compactMap { $0 }.joined(separator: "\n")
             if errorMessage?.isEmpty == true { errorMessage = nil }
             if effectsEnabled {
-                publishWidget()
+                publishWidget(forceReload: userInitiated)
                 if snapshot != previous { NotificationCenter.default.post(name: .codexHealthUsageDidRefresh, object: self) }
             }
             if userInitiated {
@@ -225,7 +225,7 @@ final class UsageStore {
         }
     }
 
-    private func publishWidget() {
+    private func publishWidget(forceReload: Bool = false) {
         let usage = WidgetUsageData(todayTokens: snapshot.today.total, weekTokens: snapshot.lastSevenDays.total,
             monthTokens: snapshot.thisMonth.total, contextTokens: snapshot.currentContextUsed,
             contextLimit: snapshot.contextWindow, ratePercent: snapshot.sevenDayRate?.usedPercent,
@@ -233,7 +233,8 @@ final class UsageStore {
             sampledAt: snapshot.mainRateSampledAt, rateResetsAt: snapshot.sevenDayRate?.resetsAt,
             sourceIncomplete: !hasCompleteSnapshot || snapshot.readWarning != nil, contextID: context?.id)
         do {
-            if try WidgetUsageCache.saveIfChanged(usage) { WidgetCenter.shared.reloadTimelines(ofKind: "CodexMeterWidgetV4") }
+            let changed = try WidgetUsageCache.saveIfChanged(usage)
+            if changed || forceReload { WidgetCenter.shared.reloadTimelines(ofKind: WidgetUsageCache.kind) }
         } catch { errorMessage = [errorMessage, "小组件缓存写入失败：\(error.localizedDescription)"].compactMap { $0 }.joined(separator: "\n") }
     }
 

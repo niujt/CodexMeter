@@ -1,15 +1,17 @@
 import SwiftUI
 import WidgetKit
 
+#if !CODEX_HEALTH_WIDGET_PREVIEW
 @main
 struct CodexMeterWidgetBundle: WidgetBundle {
     var body: some Widget {
         CodexMeterWidget()
     }
 }
+#endif
 
 struct CodexMeterWidget: Widget {
-    let kind = "CodexMeterWidgetV4"
+    let kind = WidgetUsageCache.kind
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: UsageProvider()) { entry in
@@ -21,7 +23,7 @@ struct CodexMeterWidget: Widget {
     }
 }
 
-private struct UsageEntry: TimelineEntry {
+struct UsageEntry: TimelineEntry {
     let date: Date
     let usage: WidgetUsageData?
 }
@@ -41,43 +43,51 @@ private struct UsageProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (UsageEntry) -> Void) {
-        completion(UsageEntry(date: .now, usage: WidgetUsageCache.load()))
+        completion(context.isPreview ? placeholder(in: context) : UsageEntry(date: .now, usage: WidgetUsageCache.load()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<UsageEntry>) -> Void) {
         let entry = UsageEntry(date: .now, usage: WidgetUsageCache.load())
-        // Include expiry entries so cached quota disappears even with the main app closed.
-        let nextCheck = Date.now.addingTimeInterval(1_800)
-        let deadlines = [entry.usage?.rateResetsAt, entry.usage?.sampledAt?.addingTimeInterval(QuotaSampleState.lifetime), entry.usage?.updatedAt.addingTimeInterval(1_801)]
-            .compactMap { $0 }.filter { $0 > entry.date }
-        let dates = Array(Set(deadlines + [nextCheck])).sorted()
-        let entries = [entry] + dates.map { UsageEntry(date: $0, usage: entry.usage) }
-        completion(Timeline(entries: entries, policy: .after(nextCheck)))
+        let schedule = WidgetTimelineSchedule(usage: entry.usage, now: entry.date)
+        let entries = schedule.dates.map { UsageEntry(date: $0, usage: entry.usage) }
+        completion(Timeline(entries: entries, policy: .after(schedule.reloadAt)))
     }
 }
 
-private struct CodexMeterWidgetView: View {
-    @Environment(\.widgetFamily) private var family
+struct CodexMeterWidgetView: View {
+    @Environment(\.widgetFamily) private var widgetFamily
     let entry: UsageEntry
+    private let familyOverride: WidgetFamily?
+    private var family: WidgetFamily { familyOverride ?? widgetFamily }
+
+    init(entry: UsageEntry, family: WidgetFamily? = nil) {
+        self.entry = entry
+        familyOverride = family
+    }
 
     var body: some View {
-        if let usage = entry.usage {
-            content(usage)
-                .tint(.primary)
-                .progressViewStyle(WidgetGrayProgressStyle())
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
-                    .font(.headline)
-                Spacer()
-                Text("打开 Codex Health\n以读取本机用量")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        Group {
+            if let usage = entry.usage {
+                content(usage)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
+                        .font(.caption.weight(.semibold))
+                    Spacer(minLength: 0)
+                    Text("等待用量数据")
+                        .font(.headline)
+                    Text("打开主应用后自动同步")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .foregroundStyle(.primary)
-            .containerBackground(for: .widget) {
-                Color(nsColor: .windowBackgroundColor)
-            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .foregroundStyle(.primary)
+        .tint(.primary)
+        .progressViewStyle(WidgetGrayProgressStyle())
+        .containerBackground(for: .widget) {
+            Color(nsColor: .windowBackgroundColor)
         }
     }
 
@@ -85,16 +95,16 @@ private struct CodexMeterWidgetView: View {
     private func content(_ usage: WidgetUsageData) -> some View {
         switch family {
         case .systemSmall:
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 5) {
                 Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                     .font(.caption.weight(.semibold))
                 if usage.isStale(at: entry.date) {
                     Text("数据可能已过期").font(.caption2).foregroundStyle(.secondary)
                 }
-                Text(usage.quotaSample(at: entry.date).description).font(.caption2).foregroundStyle(.secondary)
-                Spacer()
+                sampleTime(usage)
+                Spacer(minLength: 0)
                 Text(remainingText(usage))
-                    .font(.system(size: 30, weight: .medium))
+                    .font(.system(size: 28, weight: .medium))
                     .minimumScaleFactor(0.65)
                 Text(usage.recordedRatePercent(at: entry.date) == nil ? "等待新周期数据" : (usage.quotaSample(at: entry.date).isStale ? "上次记录的剩余额度" : "额度剩余"))
                     .font(.caption)
@@ -107,24 +117,20 @@ private struct CodexMeterWidgetView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .foregroundStyle(.primary)
-            .containerBackground(for: .widget) {
-                Color(nsColor: .windowBackgroundColor)
-            }
         default:
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 5) {
                 HStack {
                     Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
                     Spacer()
                     Text(usage.recordedRatePercent(at: entry.date) == nil ? "额度待更新" : "\(usage.quotaSample(at: entry.date).isStale ? "上次剩余" : "剩余") \(remainingText(usage))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 if usage.isStale(at: entry.date) {
-                    Text("数据可能已过期 · 请打开主应用更新").font(.caption2).foregroundStyle(.secondary)
+                    Text("数据可能已过期 · 打开主应用更新").font(.caption2).foregroundStyle(.secondary)
                 }
-                Text(usage.quotaSample(at: entry.date).description).font(.caption2).foregroundStyle(.secondary)
+                sampleTime(usage)
                 HStack(spacing: 10) {
                     metric("今天", usage.todayTokens)
                     metric("近 7 天", usage.weekTokens)
@@ -138,26 +144,45 @@ private struct CodexMeterWidgetView: View {
                     }
                     .font(.caption)
                     ProgressView(value: max(0, 100 - percent), total: 100)
-                    if let resetsAt = usage.rateResetsAt {
-                        Text("本周期到期 \(resetsAt, format: .dateTime.month().day().hour().minute())")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
                 }
                 Spacer(minLength: 0)
-                if usage.contextLimit > 0 {
-                    Text("上下文 \(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("更新于 \(usage.updatedAt, style: .time)")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        expiryTime(usage)
+                        Spacer(minLength: 4)
+                        if usage.contextLimit > 0 {
+                            Text("上下文 \(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
+                        }
+                    }
+                    expiryTime(usage)
                 }
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
             }
-            .containerBackground(for: .widget) {
-                Color.clear
+        }
+    }
+
+    private func sampleTime(_ usage: WidgetUsageData) -> some View {
+        let sample = usage.quotaSample(at: entry.date)
+        return Group {
+            if let date = sample.sampledAt, sample.hasValidTime {
+                Text("\(sample.isStale ? "旧采样" : "本地采样") \(date, format: .dateTime.month().day().hour().minute()) · 非实时")
+            } else {
+                Text("等待额度采样 · 非实时")
             }
+        }
+        .font(.system(size: 10))
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+    }
+
+    @ViewBuilder
+    private func expiryTime(_ usage: WidgetUsageData) -> some View {
+        if let resetsAt = usage.rateResetsAt, usage.recordedRatePercent(at: entry.date) != nil {
+            Text("到期 \(resetsAt, format: .dateTime.month().day().hour().minute())")
+        } else {
+            Text("更新于 \(usage.updatedAt, style: .time)")
         }
     }
 
