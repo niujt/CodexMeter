@@ -3,6 +3,17 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.11</title>
+      <sparkle:version>20</sparkle:version>
+      <sparkle:shortVersionString>1.0.11</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Thu, 15 Oct 2026 03:58:27 +0000</pubDate>
+      <description>调整 macOS 界面配色：主文字 #242426、次要文字 #86868B、柱状图 #555558、进度条 #636366、分割线 #E8E8ED。
+主窗口、菜单栏摘要、桌面悬浮摘要及系统小组件共用配色，深色模式自动适配。
+本次为 Apple Development 签名版本，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.11/CodexMeter-1.0.11-macos.dmg" length="6539817" type="application/octet-stream" sparkle:edSignature="F4ayrutMsc8PlTQykCu6DIblqgI8cxA8U4HlRLYNaIA3e5SNgASmSfEYAc9Ci467gbNDeLdCRpeOb89BhtiKAg=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.10</title>
       <sparkle:version>19</sparkle:version>
       <sparkle:shortVersionString>1.0.10</sparkle:shortVersionString>
@@ -29,6 +40,6 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: 56nirH1s744DJnGZp+znHmXvbD8jrvNIBndWebpp1eoCjV3hl9FeQ4+E3HG9WTQcPzA//tYQNYTtEbhl5xzLAQ==
-length: 2716
+edSignature: wZv/aN67mR9Ti2bYvLeUiBnNVH87jDyA840t4tEuYbzqZltKhvJ95RDf9oFRFgMd4vf6k4R4xmGatxtwRUw9Cw==
+length: 3650
 -->
