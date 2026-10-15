@@ -6,18 +6,18 @@ struct AppUpdateSection: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Divider()
+            FlatDivider()
             Button("检查更新…", systemImage: "arrow.triangle.2.circlepath") {
                 updater.checkForUpdates()
             }
             .disabled(!updater.canCheckForUpdates)
             if let error = updater.errorMessage {
-                Text(error).foregroundStyle(.secondary)
+                Text(error).foregroundStyle(DashboardPalette.secondaryInk)
             } else {
                 Text("发现新版后可直接下载，并安装与重启应用。")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
                 Text("更新包与更新信息均经过签名验证；可在更新窗口取消。")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
             }
         }
         .font(.caption)

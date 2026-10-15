@@ -52,7 +52,7 @@ private struct WeeklyReceiptPreview: View {
             }.background(.quaternary)
             HStack {
                 Text(saved ? "小票已保存" : "PNG 图片 · 高清导出")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 Spacer()
                 Button("保存 PNG…", action: save)
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)

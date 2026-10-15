@@ -14,7 +14,7 @@ struct ResetHistoryView: View {
             HStack {
                 Label("使用限额重置", systemImage: "clock.arrow.circlepath").font(.headline)
                 Spacer()
-                Text("过去 30 天 · 账户记录").font(.caption).foregroundStyle(.secondary)
+                Text("过去 30 天 · 账户记录").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 Button(isLoading ? "读取中…" : (hasLoaded ? "刷新重置历史" : "读取重置历史")) {
                     Task { await refresh() }
                 }
@@ -23,28 +23,28 @@ struct ResetHistoryView: View {
             if isLoading {
                 ProgressView("正在读取重置历史…").controlSize(.small)
             } else if let error {
-                Text(error).font(.callout).foregroundStyle(.secondary)
+                Text(error).font(.callout).foregroundStyle(DashboardPalette.secondaryInk)
             } else if hasLoaded && events.isEmpty {
                 Text("过去 30 天没有获得或使用重置次数的记录。")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(DashboardPalette.secondaryInk)
             } else if !hasLoaded {
                 Text(store.context?.quotaScope == nil ? store.accountStatus : "点击后使用所选目录的当前登录向 ChatGPT 查询，仅查询，不消耗重置次数。")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(DashboardPalette.secondaryInk)
             }
             ForEach(Array(events.prefix(showsAllEvents ? events.count : 10))) { event in
                 HStack {
                     Text(event.title).font(.callout)
                     Spacer()
                     Text(event.occurredAt.formatted(.dateTime.year().month().day().hour().minute().timeZone()))
-                        .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+                        .font(.callout.monospacedDigit()).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 .padding(.vertical, 5)
-                Divider()
+                FlatDivider()
             }
             if events.count > 10 {
                 Button(showsAllEvents ? "收起" : "更多（剩余 \(events.count - 10) 条）") {
                     showsAllEvents.toggle()
-                }.buttonStyle(.plain).foregroundStyle(.secondary)
+                }.buttonStyle(.plain).foregroundStyle(DashboardPalette.secondaryInk)
             }
         }
         .task(id: store.context?.id) {

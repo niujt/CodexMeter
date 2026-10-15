@@ -78,13 +78,13 @@ struct CodexMeterWidgetView: View {
                         .font(.headline)
                     Text("打开主应用后自动同步")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(DashboardPalette.secondaryInk)
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .foregroundStyle(.primary)
-        .tint(.primary)
+        .foregroundStyle(DashboardPalette.ink)
+        .tint(DashboardPalette.ink)
         .progressViewStyle(WidgetGrayProgressStyle())
         .containerBackground(for: .widget) {
             Color(nsColor: .windowBackgroundColor)
@@ -99,7 +99,7 @@ struct CodexMeterWidgetView: View {
                 Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                     .font(.caption.weight(.semibold))
                 if usage.isStale(at: entry.date) {
-                    Text("数据可能已过期").font(.caption2).foregroundStyle(.secondary)
+                    Text("数据可能已过期").font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 sampleTime(usage)
                 Spacer(minLength: 0)
@@ -108,13 +108,13 @@ struct CodexMeterWidgetView: View {
                     .minimumScaleFactor(0.65)
                 Text(usage.recordedRatePercent(at: entry.date) == nil ? "等待新周期数据" : (usage.quotaSample(at: entry.date).isStale ? "上次记录的剩余额度" : "额度剩余"))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
                 if let percent = usage.recordedRatePercent(at: entry.date),
                    let resetsAt = usage.rateResetsAt {
                     ProgressView(value: max(0, 100 - percent), total: 100)
                     Text("本周期到期 \(resetsAt, format: .dateTime.month().day().hour().minute())")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(DashboardPalette.secondaryInk)
                 }
             }
         default:
@@ -125,10 +125,10 @@ struct CodexMeterWidgetView: View {
                     Spacer()
                     Text(usage.recordedRatePercent(at: entry.date) == nil ? "额度待更新" : "\(usage.quotaSample(at: entry.date).isStale ? "上次剩余" : "剩余") \(remainingText(usage))")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 if usage.isStale(at: entry.date) {
-                    Text("数据可能已过期 · 打开主应用更新").font(.caption2).foregroundStyle(.secondary)
+                    Text("数据可能已过期 · 打开主应用更新").font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 sampleTime(usage)
                 HStack(spacing: 10) {
@@ -157,7 +157,7 @@ struct CodexMeterWidgetView: View {
                     expiryTime(usage)
                 }
                 .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DashboardPalette.secondaryInk)
             }
         }
     }
@@ -172,7 +172,7 @@ struct CodexMeterWidgetView: View {
             }
         }
         .font(.system(size: 10))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(DashboardPalette.secondaryInk)
         .lineLimit(1)
         .minimumScaleFactor(0.8)
     }
@@ -188,7 +188,7 @@ struct CodexMeterWidgetView: View {
 
     private func metric(_ label: String, _ value: Int) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Text(label).font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
             Text(compact(value)).font(.headline).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -213,8 +213,8 @@ private struct WidgetGrayProgressStyle: ProgressViewStyle {
     func makeBody(configuration: Configuration) -> some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Rectangle().fill(.primary.opacity(0.1))
-                Rectangle().fill(.primary.opacity(0.75))
+                Rectangle().fill(DashboardPalette.divider)
+                Rectangle().fill(DashboardPalette.progress)
                     .frame(width: proxy.size.width * min(1, max(0, configuration.fractionCompleted ?? 0)))
             }
         }

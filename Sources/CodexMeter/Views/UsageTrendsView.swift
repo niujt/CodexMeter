@@ -31,14 +31,14 @@ struct UsageTrendsView: View {
                 .pickerStyle(.segmented).labelsHidden().frame(width: 200)
                 Spacer()
                 Text("总计 \(UsageFormatters.tokens(total)) Token")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
             }
             DashboardCard {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack {
                         Text(granularity == .daily ? "近 7 天 Token 趋势" : "近 24 小时 Token 趋势").font(.headline)
                         Spacer()
-                        Text("峰值 \(UsageFormatters.tokens(peak))").font(.caption).foregroundStyle(.secondary)
+                        Text("峰值 \(UsageFormatters.tokens(peak))").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                     }
                     if points.isEmpty {
                         ContentUnavailableView("暂无趋势样本", systemImage: "chart.bar.xaxis")
@@ -76,13 +76,13 @@ struct TrendBars: View {
                     VStack(spacing: 7) {
                         Spacer(minLength: 0)
                         Text(UsageFormatters.tokens(point.1))
-                            .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            .font(.caption2).foregroundStyle(DashboardPalette.secondaryInk).lineLimit(1)
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(DashboardPalette.ink.opacity(0.8))
+                            .fill(DashboardPalette.chart)
                             .frame(width: min(32, proxy.size.width / CGFloat(max(1, points.count)) * 0.5),
                                    height: max(3, proxy.size.height * 0.65 * CGFloat(point.1) / CGFloat(maxValue)))
                         Text(point.0.formatted(hourly ? .dateTime.hour() : .dateTime.month().day()))
-                            .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            .font(.caption2).foregroundStyle(DashboardPalette.secondaryInk).lineLimit(1)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .help("\(point.0.formatted(date: .abbreviated, time: .shortened))：\(UsageFormatters.tokens(point.1)) Token")
@@ -97,9 +97,9 @@ private struct TrendMetric: View {
     var body: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 7) {
-                Text(title).font(.caption).foregroundStyle(.secondary)
-                Text(value).font(.title2.weight(.medium)).foregroundStyle(.primary).monospacedDigit()
-                Text("Token 消耗").font(.caption2).foregroundStyle(.secondary)
+                Text(title).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                Text(value).font(.title2.weight(.medium)).foregroundStyle(DashboardPalette.ink).monospacedDigit()
+                Text("Token 消耗").font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
             }
         }.frame(maxWidth: .infinity)
     }

@@ -46,7 +46,7 @@ struct HistoryRecordsView: View {
                 }.frame(maxWidth: 220)
                 Spacer()
                 Text("\(records.count) 条 · \(UsageFormatters.tokens(total)) Token")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
             }
             if !rateTimeline.isEmpty {
                 DashboardCard {
@@ -57,7 +57,7 @@ struct HistoryRecordsView: View {
                             Spacer()
                             Text("按重置周期合并 · 仅本机记录")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(DashboardPalette.secondaryInk)
                         }
                         ForEach(Array(rateTimeline.prefix(showsAllCycles ? rateTimeline.count : 10).enumerated()), id: \.offset) { index, event in
                             ResetTimelineRow(event: event, isLatest: index == 0 && event.resetsAt > .now)
@@ -66,7 +66,7 @@ struct HistoryRecordsView: View {
                             Button(showsAllCycles ? "收起" : "更多（剩余 \(rateTimeline.count - 10) 个）") {
                                 showsAllCycles.toggle()
                             }
-                            .buttonStyle(.plain).foregroundStyle(.secondary)
+                            .buttonStyle(.plain).foregroundStyle(DashboardPalette.secondaryInk)
                         }
                     }
                 }
@@ -81,7 +81,7 @@ struct HistoryRecordsView: View {
                             HStack {
                                 Text(day.formatted(.dateTime.year().month().day().weekday())).font(.headline)
                                 Spacer()
-                                Text(UsageFormatters.tokens(dayRecords.reduce(0) { $0 + $1.tokens })).font(.caption).foregroundStyle(.secondary)
+                                Text(UsageFormatters.tokens(dayRecords.reduce(0) { $0 + $1.tokens })).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                             }
                             ForEach(Array(dayRecords.enumerated()), id: \.offset) { _, record in
                                 HistoryRecordRow(record: record)
@@ -108,7 +108,7 @@ private struct ResetTimelineRow: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: isLatest ? "clock.arrow.circlepath" : "circle.fill")
                 .font(.callout)
-                .foregroundStyle(isLatest ? DashboardPalette.ink : .secondary)
+                .foregroundStyle(isLatest ? DashboardPalette.ink : DashboardPalette.secondaryInk)
                 .frame(width: 20, height: 20)
             VStack(alignment: .leading, spacing: 3) {
                 Text(isLatest ? "当前额度周期" : "已观察到的额度周期")
@@ -118,20 +118,20 @@ private struct ResetTimelineRow: View {
                     .help("按本地 Token 增量统计；重置时间改变后单独累计，不包含其他设备或未记录的使用量。")
                 Text("最近采样 \(event.date.formatted(.dateTime.month().day().hour().minute())) · 已用 \(used)% · 剩余 \(remaining)%")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
                 Text("重置时间")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
                 Text(event.resetsAt.formatted(.dateTime.month().day().hour().minute()))
                     .font(.caption.monospacedDigit().weight(.semibold))
             }
         }
         .padding(.vertical, 7)
         .overlay(alignment: .bottom) {
-            if !isLatest { FlatDivider().opacity(0.45) }
+            if !isLatest { FlatDivider() }
         }
     }
 }
@@ -153,7 +153,7 @@ private struct HistoryRecordRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(record.model).font(.callout.weight(.semibold)).lineLimit(1)
                 Text(record.project.isEmpty ? "未归属工作目录" : record.project)
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled)
+                    .font(.caption).foregroundStyle(DashboardPalette.secondaryInk).lineLimit(1).textSelection(.enabled)
             }
             Spacer()
             Text(UsageFormatters.tokens(record.tokens))

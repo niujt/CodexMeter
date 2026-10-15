@@ -22,7 +22,7 @@ struct ModelEfficiencyView: View {
                                     Text("\(Int(Double(model.tokens) / Double(max(1, total)) * 100))% 占比")
                                         .font(.callout.weight(.semibold)).foregroundStyle(DashboardPalette.ink)
                                 }
-                                ProgressView(value: Double(model.tokens), total: Double(max(1, total))).tint(DashboardPalette.ink)
+                                ProgressView(value: Double(model.tokens), total: Double(max(1, total))).tint(DashboardPalette.progress)
                                 HStack {
                                     ModelMetric(label: "Token", value: UsageFormatters.tokens(model.tokens))
                                     ModelMetric(label: "有效轮次", value: "\(model.requests) 次")
@@ -44,7 +44,7 @@ private struct ModelMetric: View {
     let label: String; let value: String
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(label).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             Text(value).font(.callout.weight(.semibold)).monospacedDigit()
         }.frame(maxWidth: .infinity, alignment: .leading)
     }

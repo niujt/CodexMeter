@@ -29,7 +29,7 @@ struct ProjectsUsageView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("项目与用量").font(.system(size: 24, weight: .semibold))
                     Text("按 Codex 会话记录中的本地工作目录归类；不会读取项目源码。")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 Spacer()
                 Button("添加项目目录", systemImage: "folder.badge.plus") { pathStore.addFolder() }
@@ -50,7 +50,7 @@ struct ProjectsUsageView: View {
                     .controlSize(.small)
                 Spacer()
                 Text("\(projects.count) 个项目 · \(UsageFormatters.tokens(totalTokens)) Token")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(DashboardPalette.secondaryInk)
             }
 
             if projects.isEmpty {
@@ -77,7 +77,7 @@ struct ProjectsUsageView: View {
             }
         }
         .padding(28)
-        .tint(.primary)
+        .tint(DashboardPalette.ink)
         .progressViewStyle(FlatProgressStyle())
         .frame(maxWidth: 1_100, alignment: .leading)
         .sheet(item: Binding(
@@ -114,17 +114,17 @@ private struct ProjectUsageRow: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 14) {
                 Image(systemName: isFollowed ? "folder.fill.badge.checkmark" : "folder.fill")
-                    .font(.title3).foregroundStyle(.secondary).frame(width: 28)
+                    .font(.title3).foregroundStyle(DashboardPalette.secondaryInk).frame(width: 28)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(project.name).font(.headline)
                     Text(showFullPath ? (project.path.isEmpty ? "会话未提供工作目录" : project.path) : project.name)
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1).textSelection(.enabled)
+                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk).lineLimit(1).textSelection(.enabled)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 5) {
                     Text(UsageFormatters.tokens(project.tokens)).font(.headline).monospacedDigit()
                     Text("\(project.sessions) 个会话" + (project.lastActive.map { " · \($0.formatted(.dateTime.month().day().hour().minute()))" } ?? ""))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 if isFollowed {
                     Button(role: .destructive, action: remove) { Image(systemName: "xmark.circle") }
@@ -132,7 +132,7 @@ private struct ProjectUsageRow: View {
                 }
             }
             ProgressView(value: Double(project.tokens), total: Double(max(1, total)))
-                .tint(.primary)
+                .tint(DashboardPalette.progress)
         }
         .padding(.vertical, 18)
         .overlay(alignment: .bottom) { FlatDivider() }
@@ -148,15 +148,15 @@ private struct ProjectDetailSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack { Text(project.name).font(.title2.bold()); Spacer(); Button("完成") { dismiss() } }
             Text(project.path.isEmpty ? "会话未提供工作目录" : project.path)
-                .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk).textSelection(.enabled)
             HStack(spacing: 18) {
                 Label(UsageFormatters.tokens(project.tokens), systemImage: "number")
                 Label("\(project.sessions) 个会话", systemImage: "bubble.left.and.bubble.right")
             }.font(.callout.weight(.medium))
-            Divider()
+            FlatDivider()
             Text("最近会话").font(.headline)
             List(records.sorted { $0.date > $1.date }.prefix(12), id: \.date) { record in
-                HStack { Text(record.model).lineLimit(1); Spacer(); Text(UsageFormatters.tokens(record.tokens)); Text(record.date, style: .date).foregroundStyle(.secondary) }
+                HStack { Text(record.model).lineLimit(1); Spacer(); Text(UsageFormatters.tokens(record.tokens)); Text(record.date, style: .date).foregroundStyle(DashboardPalette.secondaryInk) }
             }
         }
         .padding(22)

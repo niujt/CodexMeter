@@ -6,19 +6,15 @@ struct PageHeader: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.title2.weight(.semibold))
-                Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+                Text(subtitle).font(.subheadline).foregroundStyle(DashboardPalette.secondaryInk)
                 if let error = store.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
             }
             Spacer()
         }
     }
-}
-
-enum DashboardPalette {
-    static let ink = Color.primary
 }
 
 struct DashboardSidebar: View {
@@ -39,10 +35,10 @@ struct DashboardSidebar: View {
                     Button { selection = item.0 } label: {
                         Label(item.0, systemImage: item.1)
                             .font(.callout.weight(selection == item.0 ? .semibold : .regular))
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(DashboardPalette.ink)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10).padding(.vertical, 9)
-                            .background(.primary.opacity(selection == item.0 ? 0.08 : 0),
+                            .background(DashboardPalette.ink.opacity(selection == item.0 ? 0.08 : 0),
                                         in: RoundedRectangle(cornerRadius: 6))
                             .contentShape(Rectangle())
                     }
@@ -57,7 +53,7 @@ struct DashboardSidebar: View {
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
             Label("本机统计", systemImage: "lock.shield")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
         }
@@ -100,9 +96,9 @@ struct SummaryMetric: View {
     let detail: String
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(title).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             Text(value).font(.system(size: 28, weight: .medium)).monospacedDigit()
-            Text(detail).font(.caption).foregroundStyle(.secondary)
+            Text(detail).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
         }
     }
 }
@@ -113,7 +109,7 @@ struct MetricRow: View {
     init(_ title: String, _ value: String) { self.title = title; self.value = value }
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(title).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             Text(value).font(.callout.weight(.medium)).monospacedDigit().lineLimit(1)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -122,9 +118,9 @@ struct MetricRow: View {
 extension QuotaHealth {
     var color: Color {
         switch self {
-        case .waiting, .insufficient: .secondary
-        case .critical: .primary
-        case .watch: .secondary
+        case .waiting, .insufficient: DashboardPalette.secondaryInk
+        case .critical: DashboardPalette.ink
+        case .watch: DashboardPalette.secondaryInk
         case .healthy: DashboardPalette.ink
         }
     }
@@ -145,8 +141,8 @@ struct FlatProgressStyle: ProgressViewStyle {
                 configuration.label
                 GeometryReader { proxy in
                     ZStack(alignment: .leading) {
-                        Rectangle().fill(.primary.opacity(0.1))
-                        Rectangle().fill(.primary.opacity(0.75))
+                        Rectangle().fill(DashboardPalette.divider)
+                        Rectangle().fill(DashboardPalette.progress)
                             .frame(width: proxy.size.width * min(1, max(0, fraction)))
                     }
                 }
@@ -166,6 +162,6 @@ struct FlatProgressStyle: ProgressViewStyle {
 
 struct FlatDivider: View {
     var body: some View {
-        Rectangle().fill(.primary.opacity(0.12)).frame(height: 1)
+        Rectangle().fill(DashboardPalette.divider).frame(height: 1)
     }
 }

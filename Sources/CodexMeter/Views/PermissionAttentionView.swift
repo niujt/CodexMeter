@@ -22,7 +22,7 @@ struct PermissionCenterView: View {
             if events.isEmpty {
                 Text("暂无权限请求记录")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
             } else {
                 ForEach(events) { event in
                     PermissionEventRow(event: event, store: store)
@@ -30,7 +30,7 @@ struct PermissionCenterView: View {
                 if store.events.count > maximumItems {
                     Text("另有 \(store.events.count - maximumItems) 条记录，可在清除历史前保留最多 24 小时。")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(DashboardPalette.secondaryInk)
                 }
             }
 
@@ -56,7 +56,7 @@ private struct PermissionEventRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 9) {
             Circle()
-                .fill(event.status == .new ? Color.orange : Color.secondary.opacity(0.45))
+                .fill(event.status == .new ? Color.orange : DashboardPalette.secondaryInk.opacity(0.45))
                 .frame(width: 7, height: 7)
                 .padding(.top, 5)
             VStack(alignment: .leading, spacing: 2) {
@@ -66,15 +66,15 @@ private struct PermissionEventRow: View {
                         .lineLimit(1)
                     Text(event.permission.toolName)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(DashboardPalette.secondaryInk)
                     Spacer()
                     Text(event.receivedAt, style: .relative)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 Text(event.actionSummary)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DashboardPalette.secondaryInk)
             }
             Button {
                 store.dismiss(event.eventId)
@@ -111,7 +111,7 @@ struct PermissionSettingsSection: View {
                 .disabled(!service.canInstallHook)
             if !service.canInstallHook {
                 Text("权限 Hook 需要选择 Codex 主目录；会话目录只用于本地统计。")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
 
             LabeledContent("Codex Hook") {
@@ -138,12 +138,12 @@ struct PermissionSettingsSection: View {
 
             Text("PermissionRequest 只表示 Codex 进入权限流程，可能由 Auto Review 继续处理；本应用不会自动允许或拒绝。")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DashboardPalette.secondaryInk)
 
             if let message = service.integrationMessage {
                 Text(message)
                     .font(.caption)
-                    .foregroundStyle(service.hookStatus.isHealthy ? Color.secondary : Color.orange)
+                    .foregroundStyle(service.hookStatus.isHealthy ? DashboardPalette.secondaryInk : Color.orange)
             }
 
             HStack {

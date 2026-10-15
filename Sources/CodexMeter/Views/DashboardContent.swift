@@ -22,9 +22,9 @@ struct DashboardContent: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("健康报告").font(.system(size: 24, weight: .semibold))
-                    Text("Token 按所选目录统计").font(.caption).foregroundStyle(.secondary)
+                    Text("Token 按所选目录统计").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                     Text(snapshot.lastUpdated.map { "更新于 \($0.formatted(.relative(presentation: .named)))" } ?? "等待本机用量")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 Spacer()
                 Label(health.title, systemImage: health.icon)
@@ -50,9 +50,9 @@ struct DashboardContent: View {
             }
             .padding(.vertical, 4)
 
-            Divider()
+            FlatDivider()
             UsageTrendCard(snapshot: snapshot)
-            Divider()
+            FlatDivider()
 
             HStack(alignment: .top, spacing: 32) {
                 ModelCard(models: snapshot.topModels, weeklyTotal: snapshot.lastSevenDays.total)
@@ -60,12 +60,12 @@ struct DashboardContent: View {
             }
             .fixedSize(horizontal: false, vertical: true)
 
-            Divider()
+            FlatDivider()
             MetricsCard(snapshot: snapshot)
 
             if let error = errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
             if snapshot.fileCount == 0 && !isRefreshing {
                 Button("选择 Codex 数据目录…", action: chooseFolder)
@@ -83,13 +83,13 @@ private struct QuotaSummary: View {
         VStack(alignment: .leading, spacing: 8) {
             QuotaSampleView(title: "7 天剩余额度", window: snapshot.sevenDayRate, sampledAt: snapshot.mainRateSampledAt)
             Text(snapshot.sevenDayRate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? quotaMessage)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             if let spark = snapshot.sparkRate {
                 QuotaSampleView(title: "Spark 剩余额度", window: spark, sampledAt: snapshot.sparkRateSampledAt, numberSize: 16)
             }
             if snapshot.mainRateIsCached || snapshot.sparkRateIsCached {
                 Label("缓存额度", systemImage: "clock.arrow.circlepath")
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
                     .help("部分额度来自本地有效缓存，获取到新采样后会自动替换")
             }
         }
@@ -105,7 +105,7 @@ private struct UsageTrendCard: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("使用趋势").font(.callout.weight(.semibold))
                 Spacer()
-                Text("近 7 天 · Token").font(.caption).foregroundStyle(.secondary)
+                Text("近 7 天 · Token").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
             if days.isEmpty {
                 ContentUnavailableView("暂无趋势样本", systemImage: "chart.bar.xaxis")
@@ -127,9 +127,9 @@ private struct ModelCard: View {
             HStack {
                 Text("模型与效率").font(.callout.weight(.semibold))
                 Spacer()
-                Text("近 7 天").font(.caption).foregroundStyle(.secondary)
+                Text("近 7 天").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
-            if models.isEmpty { Text("暂无模型记录").font(.caption).foregroundStyle(.secondary) }
+            if models.isEmpty { Text("暂无模型记录").font(.caption).foregroundStyle(DashboardPalette.secondaryInk) }
             ForEach(models.prefix(3), id: \.name) { model in
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {
@@ -137,9 +137,9 @@ private struct ModelCard: View {
                         Spacer()
                         Text(UsageFormatters.tokens(model.tokens)).monospacedDigit()
                     }.font(.callout)
-                    ProgressView(value: Double(model.tokens), total: Double(max(1, weeklyTotal))).tint(DashboardPalette.ink)
+                    ProgressView(value: Double(model.tokens), total: Double(max(1, weeklyTotal))).tint(DashboardPalette.progress)
                     Text("\(model.requests) 个有效轮次 · \(model.averageTurnSeconds.map { "平均 \(UsageFormatters.turnDuration(seconds: $0))" } ?? "暂无耗时样本")")
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
                 }
             }
         }.frame(maxWidth: .infinity, alignment: .topLeading)
@@ -166,16 +166,16 @@ private struct ProjectCard: View {
             HStack {
                 Text("活跃项目").font(.callout.weight(.semibold))
                 Spacer()
-                Text("近 7 天").font(.caption).foregroundStyle(.secondary)
+                Text("近 7 天").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
-            if projects.isEmpty { Text("暂无项目记录").font(.caption).foregroundStyle(.secondary) }
+            if projects.isEmpty { Text("暂无项目记录").font(.caption).foregroundStyle(DashboardPalette.secondaryInk) }
             ForEach(projects.prefix(4), id: \.path) { item in
                 HStack(spacing: 8) {
-                    Image(systemName: "folder").foregroundStyle(.secondary)
+                    Image(systemName: "folder").foregroundStyle(DashboardPalette.secondaryInk)
                     Text(item.name).lineLimit(1)
                     Spacer()
                     Text("\(Int(Double(item.tokens) / Double(max(1, total)) * 100))%")
-                        .monospacedDigit().foregroundStyle(.secondary)
+                        .monospacedDigit().foregroundStyle(DashboardPalette.secondaryInk)
                 }.font(.callout)
             }
         }.frame(maxWidth: .infinity, alignment: .topLeading)

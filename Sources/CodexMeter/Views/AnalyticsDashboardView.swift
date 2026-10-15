@@ -60,7 +60,8 @@ struct AnalyticsDashboardView: View {
                 .background(.bar)
             }
         }
-        .tint(.primary)
+        .foregroundStyle(DashboardPalette.ink)
+        .tint(DashboardPalette.ink)
         .progressViewStyle(FlatProgressStyle())
         .preferredColorScheme(appearanceMode.colorScheme)
         .onChange(of: appearance) { _, _ in AppIconStyle.applyDockIcon() }
@@ -109,6 +110,6 @@ private struct FeaturePlaceholderView: View {
             systemImage: "hammer.fill",
             description: Text("此页面不再展示模拟数据。下一步将按功能计划接入本机 Codex 记录。")
         )
-        .foregroundStyle(.secondary)
+        .foregroundStyle(DashboardPalette.secondaryInk)
     }
 }

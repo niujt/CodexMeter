@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0DECF000000000000000040 /* DashboardPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000042 /* DashboardPalette.swift */; };
+		C0DECF000000000000000041 /* DashboardPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000042 /* DashboardPalette.swift */; };
 		C0DECF000000000000000030 /* WidgetExtensionRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000031 /* WidgetExtensionRecovery.swift */; };
 		C0DECF000000000000000020 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C0DECF000000000000000021 /* Sparkle */; };
 		C0DECF000000000000000002 /* AppUpdateSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000012 /* AppUpdateSection.swift */; };
@@ -67,6 +69,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C0DECF000000000000000042 /* DashboardPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DashboardPalette.swift; path = Views/DashboardPalette.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000031 /* WidgetExtensionRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetExtensionRecovery.swift; path = Services/WidgetExtensionRecovery.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000023 /* Updates.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Updates.xcconfig; sourceTree = "<group>"; };
 		C0DECF000000000000000012 /* AppUpdateSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppUpdateSection.swift; path = Views/AppUpdateSection.swift; sourceTree = "<group>"; };
@@ -206,6 +209,7 @@
 				F5CFCBAD6DC3C71D1A3144DA /* AnalyticsDashboardView.swift */,
 				50513A86B4D3B2CF549F68D1 /* DashboardContent.swift */,
 				9E1F92290E78D8BE4B708964 /* DashboardComponents.swift */,
+				C0DECF000000000000000042 /* DashboardPalette.swift */,
 				403F2024120E5BDBD50143D3 /* ForecastRiskView.swift */,
 				11BFA321E80938EEEB156C09 /* ModelEfficiencyView.swift */,
 				A32572A57C5D55FD099EA869 /* UsageTrendsView.swift */,
@@ -364,6 +368,7 @@
 				7AE1469C2B21BA2C8B7CC90D /* AnalyticsDashboardView.swift in Sources */,
 				08E3BC9988E1498AB15D1696 /* DashboardContent.swift in Sources */,
 				702166D7CA40429566050A51 /* DashboardComponents.swift in Sources */,
+				C0DECF000000000000000040 /* DashboardPalette.swift in Sources */,
 				3141C1578432818E4531087B /* ForecastRiskView.swift in Sources */,
 				335BD5B9F6FD0EF350E640A1 /* ModelEfficiencyView.swift in Sources */,
 				C14D1948084E01B228412CD0 /* UsageTrendsView.swift in Sources */,
@@ -385,6 +390,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA4DCBEF6B1127316E94106A /* CodexMeterWidget.swift in Sources */,
+				C0DECF000000000000000041 /* DashboardPalette.swift in Sources */,
 				38D055E160C4163D14A30C4F /* WidgetUsageCache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -14,7 +14,7 @@ struct DesktopWidgetView: View {
                     Image(systemName: "xmark")
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DashboardPalette.secondaryInk)
                 .help("隐藏桌面小组件")
             }
 
@@ -43,7 +43,7 @@ struct DesktopWidgetView: View {
             if let window = store.snapshot.primaryRate {
                 QuotaSampleView(title: rateTitle(window), window: window, sampledAt: store.snapshot.primaryRateSampledAt, numberSize: 20)
             } else {
-                Text("等待新周期数据").font(.caption).foregroundStyle(.secondary)
+                Text("等待新周期数据").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
 
             Spacer(minLength: 0)
@@ -59,11 +59,12 @@ struct DesktopWidgetView: View {
                 .disabled(store.isRefreshing)
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(DashboardPalette.secondaryInk)
         }
         .padding(16)
         .frame(width: 300, height: 245, alignment: .topLeading)
-        .tint(.primary)
+        .foregroundStyle(DashboardPalette.ink)
+        .tint(DashboardPalette.ink)
         .progressViewStyle(FlatProgressStyle())
         .modifier(PeripheralGlass(cornerRadius: 20))
     }
@@ -81,7 +82,7 @@ private struct Metric: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DashboardPalette.secondaryInk)
             Text(value)
                 .font(.headline)
                 .monospacedDigit()
