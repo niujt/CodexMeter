@@ -73,22 +73,39 @@ struct WidgetRefreshTests {
         #expect(data.recordedRatePercent(at: expired.dates[0]) == nil)
     }
 
-    @Test func recoveryRejectsCurrentOtherInstallationsOtherUsersAndInvalidPIDs() {
+    @Test func recoveryRequiresDifferentCodeFromTheSameInstallationUserAndSigningIdentity() {
         let path = "/synthetic/Codex Health.app/Contents/PlugIns/CodexMeterWidget.appex/Contents/MacOS/CodexMeterWidget"
-        func matches(pid: pid_t = 123, path candidate: String? = nil, start: Date? = nil, uid: uid_t = 501) -> Bool {
+        let installed = WidgetExtensionRecovery.CodeIdentity(identifier: "test.widget", teamID: "TESTTEAM", hash: Data([2]))
+        let old = WidgetExtensionRecovery.CodeIdentity(identifier: "test.widget", teamID: "TESTTEAM", hash: Data([1]))
+        func matches(pid: pid_t = 123, path candidate: String? = nil, start: Date? = nil,
+                     uid: uid_t = 501, code: WidgetExtensionRecovery.CodeIdentity? = nil) -> Bool {
             WidgetExtensionRecovery.ProcessIdentity(pid: pid, executablePath: candidate ?? path,
-                startedAt: start ?? now.addingTimeInterval(-86_400), userID: uid)
-                .predatesInstalledBinary(at: path, modifiedAt: now, userID: 501)
+                startedAt: start ?? now.addingTimeInterval(-86_400), userID: uid, code: code ?? old)
+                .requiresReplacement(at: path, installedCode: installed, userID: 501)
         }
         #expect(matches())
-        #expect(!matches(start: now))
-        #expect(!matches(start: now.addingTimeInterval(1)))
+        // Package timestamps are preserved by installers; the code identity is authoritative.
+        #expect(matches(start: now.addingTimeInterval(1)))
+        #expect(!matches(code: installed))
+        #expect(!matches(code: .init(identifier: "other.widget", teamID: "TESTTEAM", hash: Data([1]))))
+        #expect(!matches(code: .init(identifier: "test.widget", teamID: "OTHERTEAM", hash: Data([1]))))
         #expect(!matches(path: "/other/CodexMeterWidget"))
         #expect(!matches(path: path + "-other"))
         #expect(!matches(uid: 502))
         #expect(!matches(pid: 0))
         #expect(!matches(pid: 1))
         #expect(!matches(pid: -1))
+    }
+
+    @Test func originalExecPathIsReadBeforeArgumentsAndRejectsMalformedKernelData() {
+        let path = "/synthetic/Widget"
+        let data: [UInt8] = [2, 0, 0, 0] + Array(path.utf8) + [0, 0] + Array("/forged/argv-zero".utf8) + [0]
+        #expect(WidgetExtensionRecovery.originalExecutablePath(from: data) == path)
+        #expect(WidgetExtensionRecovery.originalExecutablePath(from: []) == nil)
+        #expect(WidgetExtensionRecovery.originalExecutablePath(from: [1, 0, 0, 0, 0]) == nil)
+        #expect(WidgetExtensionRecovery.originalExecutablePath(from: [1, 0, 0, 0] + Array(path.utf8)) == nil)
+        #expect(WidgetExtensionRecovery.originalExecutablePath(from: [1, 0, 0, 0] + Array("relative".utf8) + [0]) == nil)
+        #expect(WidgetExtensionRecovery.originalExecutablePath(from: [1, 0, 0, 0, 47, 255, 0]) == nil)
     }
 
     @Test func recoveryRetiresOnlyAnOutdatedSyntheticExtensionProcess() async throws {
@@ -103,20 +120,24 @@ struct WidgetRefreshTests {
         }
         let old = try launch(executable)
         defer { if old.isRunning { old.terminate() } }
-        try await Task.sleep(for: .milliseconds(20))
-        let updateDate = Date.now
-        try await Task.sleep(for: .milliseconds(20))
-        let current = try launch(executable)
-        defer { if current.isRunning { current.terminate() } }
         let unrelated = try launch(URL(fileURLWithPath: "/bin/sleep"))
         defer { if unrelated.isRunning { unrelated.terminate() } }
-        let retired = WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path, modifiedAt: updateDate)
+        let code = try #require(WidgetExtensionRecovery.installedCode(at: executable.path, processID: old.processIdentifier))
+        let process = try #require(WidgetExtensionRecovery.identity(old.processIdentifier))
+        #expect(process.code == code)
+        // Exercise the fallback reader without deleting a fixture executable.
+        #expect(WidgetExtensionRecovery.originalExecutablePath(old.processIdentifier) == executable.path)
+        #expect(WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path).isEmpty)
+        #expect(old.isRunning)
+        var futureHash = code.hash
+        futureHash[0] ^= 1
+        let futureCode = WidgetExtensionRecovery.CodeIdentity(identifier: code.identifier, teamID: code.teamID, hash: futureHash)
+        let retired = WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path, installedCode: futureCode)
         #expect(retired == [old.processIdentifier])
         old.waitUntilExit()
         #expect(!old.isRunning)
-        #expect(current.isRunning)
         #expect(unrelated.isRunning)
-        #expect(WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path, modifiedAt: updateDate).isEmpty)
+        #expect(WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path, installedCode: futureCode).isEmpty)
     }
 
     private func usage(tokens: Int = 3_731_923) -> WidgetUsageData {

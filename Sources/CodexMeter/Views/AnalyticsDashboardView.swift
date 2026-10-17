@@ -72,12 +72,12 @@ struct AnalyticsDashboardView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("刷新本机用量") { Task { await store.refresh() } }
-                    Button("重新读取全部记录") { Task { await store.refresh(force: true) } }
+                    Button("刷新本机用量") { Task { await store.refresh(userInitiated: true) } }
+                    Button("重新读取全部记录") { Task { await store.refresh(force: true, userInitiated: true) } }
                 } label: {
                     Label("刷新", systemImage: "arrow.clockwise")
                 } primaryAction: {
-                    Task { await store.refresh() }
+                    Task { await store.refresh(userInitiated: true) }
                 }
                 .disabled(store.isRefreshing)
                 .help("刷新本机用量；展开菜单可重新读取全部记录")

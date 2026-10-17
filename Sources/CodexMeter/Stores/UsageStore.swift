@@ -234,7 +234,7 @@ final class UsageStore {
             sourceIncomplete: !hasCompleteSnapshot || snapshot.readWarning != nil, contextID: context?.id)
         do {
             let changed = try WidgetUsageCache.saveIfChanged(usage)
-            if changed || forceReload { WidgetCenter.shared.reloadTimelines(ofKind: WidgetUsageCache.kind) }
+            if changed || forceReload { WidgetExtensionRecovery.recoverAfterUpdate() }
         } catch { errorMessage = [errorMessage, "小组件缓存写入失败：\(error.localizedDescription)"].compactMap { $0 }.joined(separator: "\n") }
     }
 
