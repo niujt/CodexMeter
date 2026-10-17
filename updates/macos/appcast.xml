@@ -3,6 +3,18 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.12</title>
+      <sparkle:version>21</sparkle:version>
+      <sparkle:shortVersionString>1.0.12</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Sat, 17 Oct 2026 08:07:28 +0000</pubDate>
+      <description>修复应用内更新后旧小组件进程残留：兼容旧可执行文件已被替换、系统路径查询失败的情况，按原始安装路径、用户、签名身份和代码摘要识别旧扩展。
+主应用和小组件同步升级至 1.0.12（21）；启动及发布用量快照时检查扩展代码版本，仅回收本安装下的旧扩展并重新请求时间线。
+统一 Dashboard 和菜单栏手动刷新行为；手动刷新与重新读取全部记录都会强制请求小组件更新。
+本次为 Apple Development 签名版本，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.12/CodexMeter-1.0.12-macos.dmg" length="6550791" type="application/octet-stream" sparkle:edSignature="6FIK4TE7nIq6xv2+UXk5T/GTC83IIChvITpsBEOb22ZQJxjQFqhlX6rx6hKmnVvQwT05Sto3N14S3FCINOwRCg=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.11</title>
       <sparkle:version>20</sparkle:version>
       <sparkle:shortVersionString>1.0.11</sparkle:shortVersionString>
@@ -40,6 +52,6 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: wZv/aN67mR9Ti2bYvLeUiBnNVH87jDyA840t4tEuYbzqZltKhvJ95RDf9oFRFgMd4vf6k4R4xmGatxtwRUw9Cw==
-length: 3650
+edSignature: d+CgCGa7V8h7HnU6H37Oc/RvE4iu5Ev/x+7vdLnVMhDn6FEeRTXIeSC1FBbbz6TIWNTIkU7pQuu1K8F/T12aBA==
+length: 4846
 -->

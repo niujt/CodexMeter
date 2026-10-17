@@ -103,3 +103,11 @@ GitHub-hosted macOS runner 可以构建、测试、打包与签名。现有无�
 - [实际签名 CI](https://github.com/niujt/CodexMeter/actions/runs/38425047834) 已通过。包 SHA-256：`d7e391a5451e3a9cf9dd6dab7f4a761ca72cc100a1ff0de82c143d98be08effd`。CI 复用已有 Secret，验证签名并拒绝篡改包和篡改 feed。
 - 本机用已安装 App 的公开公钥独立验证公开下载的 DMG 与 CI appcast，并再次验证篡改拒绝。发布签名 appcast 后，才提供应用内更新。
 - 97 项 Swift 测试、7 项公开更新配置测试、最终 22 项刷新/账户回归通过。安装、重启、设置与 Widget 保留仍由用户执行真实 17 → 18 升级验收；本次未手动替换本机应用，未做 Developer ID 公证。
+
+## 1.0.12（21）发布与验收边界
+
+- 源码提交：`d03e6c416cea7bb148313df65d2c1ff68fedc283`；[发布包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.12) 标签为 `macos-v1.0.12`，主应用和小组件均为 1.0.12（21），支持 arm64 / x86_64。
+- 105 项 Swift 测试（含 8 项小组件刷新回归）、7 项更新配置测试、本地 Release 构建、嵌套签名、App Group、DMG 完整性和 Applications 快捷方式均通过。
+- [签名 CI](https://github.com/niujt/CodexMeter/actions/runs/39016134589) 复用原有 Secret，对公开包再次验证后生成包签名和签名 appcast。独立使用已安装应用的公钥验证公开下载包与 appcast，篡改包和篡改 feed 均被拒绝；保留原有 3 个更新条目。
+- DMG SHA-256：`986b5b858d0f20aaa5beb306baef3027bac976c00ab850e4f86a05040692c194`。
+- 本机只回收已确认过期的小组件进程，系统重启的扩展签名已与当前安装包一致，且新扩展生成时间线成功；主应用进程和已安装文件保持原状。桌面实际显示及用户点击更新后的 1.0.12 启动、功能和设置保留尚待验收。本次沿用 Apple Development 签名，未做 Developer ID 公证；本地构建产物保留，未执行清理。
