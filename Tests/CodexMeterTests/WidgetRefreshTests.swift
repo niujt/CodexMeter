@@ -109,8 +109,13 @@ struct WidgetRefreshTests {
     }
 
     @Test func recoveryRetiresOnlyAnOutdatedSyntheticExtensionProcess() async throws {
-        let executable = try fixture().appendingPathComponent("SyntheticWidget")
-        try FileManager.default.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: executable)
+        let location = try fixture().appendingPathComponent("SyntheticWidget")
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: location)
+        // proc_pidpath uses /private/var; Foundation's URL resolver preserves
+        // the /var alias for temporary directories. Match the kernel via realpath.
+        let physicalPath = try #require(realpath(location.path, nil))
+        defer { free(physicalPath) }
+        let executable = URL(fileURLWithPath: String(cString: physicalPath))
         func launch(_ url: URL) throws -> Process {
             let process = Process()
             process.executableURL = url
@@ -124,9 +129,11 @@ struct WidgetRefreshTests {
         defer { if unrelated.isRunning { unrelated.terminate() } }
         let code = try #require(WidgetExtensionRecovery.installedCode(at: executable.path, processID: old.processIdentifier))
         let process = try #require(WidgetExtensionRecovery.identity(old.processIdentifier))
+        #expect(process.executablePath == executable.path)
         #expect(process.code == code)
         // Exercise the fallback reader without deleting a fixture executable.
-        #expect(WidgetExtensionRecovery.originalExecutablePath(old.processIdentifier) == executable.path)
+        let originalPath = try #require(WidgetExtensionRecovery.originalExecutablePath(old.processIdentifier))
+        #expect(originalPath == location.path || originalPath == executable.path)
         #expect(WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path).isEmpty)
         #expect(old.isRunning)
         var futureHash = code.hash
