@@ -18,50 +18,64 @@ struct DashboardContent: View {
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 28) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("健康报告").font(.system(size: 24, weight: .semibold))
-                    Text("Token 按所选目录统计").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                    Text("健康报告").font(.system(size: 26, weight: .semibold))
+                    Text("本机 Token 记录与账户额度")
+                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                     Text(snapshot.lastUpdated.map { "更新于 \($0.formatted(.relative(presentation: .named)))" } ?? "等待本机用量")
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 Spacer()
                 Label(health.title, systemImage: health.icon)
                     .font(.caption).foregroundStyle(health.color)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(DashboardPalette.surface, in: Capsule())
                     .help(health.detail)
             }
 
-            HStack(alignment: .top, spacing: 20) {
-                QuotaSummary(snapshot: snapshot, quotaMessage: quotaMessage)
+            DashboardPanel {
+                HStack(alignment: .top, spacing: 32) {
+                    QuotaSummary(snapshot: snapshot, quotaMessage: quotaMessage)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 28) {
+                        HStack(alignment: .top, spacing: 24) {
+                            SummaryMetric(
+                                title: "本机今日 Token", value: UsageFormatters.tokens(snapshot.today.total),
+                                detail: "输入 \(UsageFormatters.tokens(snapshot.today.input)) · 输出 \(UsageFormatters.tokens(snapshot.today.output))"
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            SummaryMetric(
+                                title: "本机近 7 天 Token", value: UsageFormatters.tokens(snapshot.lastSevenDays.total),
+                                detail: "所选目录累计"
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        ReplySpeedView(samples: snapshot.replySpeedSamples, layout: .row,
+                                       secondaryInk: DashboardPalette.secondaryInk)
+                    }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                SummaryMetric(
-                    title: "今日用量", value: UsageFormatters.tokens(snapshot.today.total),
-                    detail: "输入 \(UsageFormatters.tokens(snapshot.today.input)) · 输出 \(UsageFormatters.tokens(snapshot.today.output))"
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                SummaryMetric(
-                    title: "近 7 天用量", value: UsageFormatters.tokens(snapshot.lastSevenDays.total),
-                    detail: "Token 累计消耗"
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                ReplySpeedView(samples: snapshot.replySpeedSamples, layout: .metric)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            .padding(.vertical, 4)
 
-            FlatDivider()
-            UsageTrendCard(snapshot: snapshot)
-            FlatDivider()
+            DashboardPanel { DeviceUsageSummary(snapshot: snapshot) }
+            DashboardPanel { UsageTrendCard(snapshot: snapshot) }
 
-            HStack(alignment: .top, spacing: 32) {
-                ModelCard(models: snapshot.topModels, weeklyTotal: snapshot.lastSevenDays.total)
-                ProjectCard(projects: snapshot.topProjects, total: snapshot.lastSevenDays.total)
+            HStack(alignment: .top, spacing: 20) {
+                DashboardPanel {
+                    ModelCard(models: snapshot.topModels, weeklyTotal: snapshot.lastSevenDays.total)
+                        .frame(maxHeight: .infinity, alignment: .topLeading)
+                }
+                DashboardPanel {
+                    ProjectCard(projects: snapshot.topProjects, total: snapshot.lastSevenDays.total)
+                        .frame(maxHeight: .infinity, alignment: .topLeading)
+                }
             }
             .fixedSize(horizontal: false, vertical: true)
 
-            FlatDivider()
             MetricsCard(snapshot: snapshot)
+                .padding(.horizontal, 4)
 
             if let error = errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
@@ -75,15 +89,58 @@ struct DashboardContent: View {
     }
 }
 
+/// Local token records and account quota have different units and coverage.
+/// No per-device token total is present in the current data source.
+private struct DeviceUsageSummary: View {
+    let snapshot: UsageSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("跨设备用量").font(.callout.weight(.semibold))
+            HStack(alignment: .top, spacing: 32) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("其他电脑 Token", systemImage: "desktopcomputer")
+                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                    Text("未同步").font(.title3.weight(.medium))
+                    Text("尚未接入其他电脑的用量记录")
+                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("账户 7 天已用额度").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                    if let rate = snapshot.currentSevenDayRate(), rate.windowMinutes == 10_080 {
+                        Text("\(rate.usedPercent.formatted(.number.precision(.fractionLength(0...1))))%")
+                            .font(.title3.weight(.medium)).monospacedDigit()
+                        Text(snapshot.mainRateIsCached ? "含其他设备 · 有效缓存采样 · 非实时" : "含其他设备 · 本地采样 · 非实时")
+                            .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                    } else {
+                        Text("等待有效采样").font(.title3.weight(.medium))
+                        Text("当前没有可用的账户 7 天额度")
+                            .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Text("未同步不代表用量为 0。账户额度与本机 Token 口径不同，无法相减推算其他电脑的 Token 消耗。")
+                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 private struct QuotaSummary: View {
     let snapshot: UsageSnapshot
     let quotaMessage: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            QuotaSampleView(title: "7 天剩余额度", window: snapshot.sevenDayRate, sampledAt: snapshot.mainRateSampledAt)
-            Text(snapshot.sevenDayRate.map { "\(UsageFormatters.countdown(to: $0.resetsAt))后重置" } ?? quotaMessage)
-                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+            QuotaSampleView(title: "7 天剩余额度", window: snapshot.sevenDayRate,
+                            sampledAt: snapshot.mainRateSampledAt, numberSize: 56,
+                            showsResetTime: true, compactMetadata: true)
+            if snapshot.sevenDayRate == nil {
+                Text(quotaMessage).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+            }
             if let spark = snapshot.sparkRate {
                 QuotaSampleView(title: "Spark 剩余额度", window: spark, sampledAt: snapshot.sparkRateSampledAt, numberSize: 16)
             }
@@ -151,7 +208,7 @@ private struct MetricsCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 24) {
             MetricRow("本机记录", "\(snapshot.fileCount) 个文件")
-            MetricRow("本月用量", UsageFormatters.tokens(snapshot.thisMonth.total))
+            MetricRow("本机本月 Token", UsageFormatters.tokens(snapshot.thisMonth.total))
             MetricRow("当前上下文", snapshot.contextWindow > 0 ? "\(UsageFormatters.tokens(snapshot.currentContextUsed)) / \(UsageFormatters.tokens(snapshot.contextWindow))" : "暂无")
             MetricRow("会话", "\(snapshot.sessionCount) 个")
         }

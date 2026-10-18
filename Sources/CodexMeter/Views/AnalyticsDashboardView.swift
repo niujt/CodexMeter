@@ -4,6 +4,7 @@ import SwiftUI
 struct AnalyticsDashboardView: View {
     let store: UsageStore
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedSection: String? = "健康报告"
     @State private var projectPathStore = ProjectPathStore()
     @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
@@ -18,35 +19,40 @@ struct AnalyticsDashboardView: View {
                 .navigationSplitViewColumnWidth(min: 180, ideal: 190, max: 220)
         } detail: {
             ScrollView {
-                switch selectedSection ?? "健康报告" {
-                case "健康报告":
-                    DashboardContent(
-                        snapshot: store.snapshot,
-                        errorMessage: store.errorMessage,
-                        isRefreshing: store.isRefreshing,
-                        measuredVelocity: store.measuredVelocity?.percentPerHour,
-                        quotaMessage: store.quotaWaitingMessage,
-                        chooseFolder: { store.chooseCodexFolder() }
-                    )
-                        .padding(28)
-                        .frame(maxWidth: 1_100, alignment: .leading)
-                case "项目与用量":
-                    ProjectsUsageView(store: store, pathStore: projectPathStore)
-                case "使用趋势":
-                    UsageTrendsView(store: store)
-                case "模型与效率":
-                    ModelEfficiencyView(store: store)
-                case "预测与风险":
-                    ForecastRiskView(store: store)
-                case "历史记录":
-                    HistoryRecordsView(store: store)
-                default:
-                    FeaturePlaceholderView(section: selectedSection ?? "健康报告")
-                        .frame(minHeight: 500)
+                Group {
+                    switch selectedSection ?? "健康报告" {
+                    case "健康报告":
+                        DashboardContent(
+                            snapshot: store.snapshot,
+                            errorMessage: store.errorMessage,
+                            isRefreshing: store.isRefreshing,
+                            measuredVelocity: store.measuredVelocity?.percentPerHour,
+                            quotaMessage: store.quotaWaitingMessage,
+                            chooseFolder: { store.chooseCodexFolder() }
+                        )
+                            .padding(28)
+                            .frame(maxWidth: 1_100, alignment: .leading)
+                    case "项目与用量":
+                        ProjectsUsageView(store: store, pathStore: projectPathStore)
+                    case "使用趋势":
+                        UsageTrendsView(store: store)
+                    case "模型与效率":
+                        ModelEfficiencyView(store: store)
+                    case "预测与风险":
+                        ForecastRiskView(store: store)
+                    case "历史记录":
+                        HistoryRecordsView(store: store)
+                    default:
+                        FeaturePlaceholderView(section: selectedSection ?? "健康报告")
+                            .frame(minHeight: 500)
+                    }
                 }
+                .id(selectedSection)
+                .transition(.opacity)
             }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: selectedSection)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(nsColor: .textBackgroundColor))
+            .background(DashboardPalette.canvas)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if store.isRefreshing {

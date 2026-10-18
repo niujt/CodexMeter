@@ -38,11 +38,9 @@ struct DashboardSidebar: View {
                             .foregroundStyle(DashboardPalette.ink)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10).padding(.vertical, 9)
-                            .background(DashboardPalette.ink.opacity(selection == item.0 ? 0.08 : 0),
-                                        in: RoundedRectangle(cornerRadius: 6))
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(DashboardNavigationButtonStyle(selected: selection == item.0))
                     .listItemTint(.monochrome)
                     .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
                     .help("\(item.0) · ⌘\(index + 1)")
@@ -57,6 +55,46 @@ struct DashboardSidebar: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
         }
+    }
+}
+
+private struct DashboardNavigationButtonStyle: ButtonStyle {
+    let selected: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(selected ? DashboardPalette.ink.opacity(0.09)
+                          : hovered || configuration.isPressed ? DashboardPalette.hover : .clear)
+            }
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+            .onHover { hovered = $0 }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: hovered)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+/// Quiet, opaque data surfaces; system glass remains on the window controls.
+struct DashboardPanel<Content: View>: View {
+    let content: Content
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(24)
+            .background(DashboardPalette.surface, in: RoundedRectangle(cornerRadius: 18))
+            .overlay {
+                if contrast == .increased {
+                    RoundedRectangle(cornerRadius: 18)
+                        .strokeBorder(DashboardPalette.secondaryInk, lineWidth: 1)
+                }
+            }
     }
 }
 
@@ -97,7 +135,8 @@ struct SummaryMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
-            Text(value).font(.system(size: 28, weight: .medium)).monospacedDigit()
+            Text(value).font(.system(size: 26, weight: .medium)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.75)
             Text(detail).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
         }
     }

@@ -11,6 +11,7 @@ struct UsagePopoverView: View {
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
     @AppStorage("codexMeter.deduplicateAlerts") private var deduplicateAlerts = true
     @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.flat.rawValue
+    @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
 
     var body: some View {
         TimelineView(.explicit([Date.now] + store.snapshot.quotaDisplayDeadlines)) { _ in content }
@@ -34,6 +35,10 @@ struct UsagePopoverView: View {
         .foregroundStyle(DashboardPalette.ink)
         .tint(DashboardPalette.ink)
         .progressViewStyle(FlatProgressStyle())
+        .background {
+            if compact { DashboardPalette.popoverBackground }
+        }
+        .preferredColorScheme((AppAppearance(rawValue: appearance) ?? .system).colorScheme)
         .task(id: isVisible) {
             guard isVisible else { return }
             await store.refreshIfNeeded()
@@ -239,21 +244,34 @@ private struct HealthMenuPopover: View {
                 controls
             }
 
-            QuotaSampleView(title: "7 天剩余额度", window: store.snapshot.sevenDayRate, sampledAt: store.snapshot.mainRateSampledAt, numberSize: 32)
+            QuotaSampleView(
+                title: "7 天剩余额度", window: store.snapshot.sevenDayRate,
+                sampledAt: store.snapshot.mainRateSampledAt, numberSize: 32,
+                secondaryInk: DashboardPalette.popoverSecondaryInk, showsResetTime: true, compactMetadata: true
+            )
             if let spark = store.snapshot.sparkRate {
-                QuotaSampleView(title: "Spark 剩余额度", window: spark, sampledAt: store.snapshot.sparkRateSampledAt, numberSize: 16)
+                QuotaSampleView(
+                    title: "Spark 剩余额度", window: spark,
+                    sampledAt: store.snapshot.sparkRateSampledAt, numberSize: 16,
+                    secondaryInk: DashboardPalette.popoverSecondaryInk, showsResetTime: true, compactMetadata: true
+                )
             }
             if let feedback = store.refreshFeedback {
-                UsageRefreshFeedbackView(feedback: feedback)
+                UsageRefreshFeedbackView(feedback: feedback, secondaryInk: DashboardPalette.popoverSecondaryInk)
             }
 
             FlatDivider()
-            ReplySpeedView(samples: store.snapshot.replySpeedSamples, layout: .row, isVisible: isVisible)
+            ReplySpeedView(
+                samples: store.snapshot.replySpeedSamples, layout: .row, isVisible: isVisible,
+                secondaryInk: DashboardPalette.popoverSecondaryInk
+            )
             HStack {
-                Text("今日用量").foregroundStyle(DashboardPalette.secondaryInk)
+                Text("今日 Token").foregroundStyle(DashboardPalette.popoverSecondaryInk)
                 Spacer()
                 Text(UsageFormatters.tokens(store.snapshot.today.total)).monospacedDigit()
-            }.font(.callout)
+            }
+            .font(.callout)
+            .help("本机今日记录 · 输入 \(UsageFormatters.tokens(store.snapshot.today.input)) · 输出 \(UsageFormatters.tokens(store.snapshot.today.output)) · 缓存输入 \(UsageFormatters.tokens(store.snapshot.today.cachedInput))。缓存输入是输入的一部分，不重复相加。")
 
             if permissionStore.newCount > 0 || showPermissionHistory {
                 FlatDivider()
@@ -266,12 +284,12 @@ private struct HealthMenuPopover: View {
                 } label: {
                     Label(permissionStore.newCount > 0 ? "\(permissionStore.newCount) 条请求需要关注" : "权限请求记录",
                           systemImage: "exclamationmark.shield")
-                        .font(.caption).foregroundStyle(permissionStore.newCount > 0 ? DashboardPalette.ink : DashboardPalette.secondaryInk)
+                        .font(.caption).foregroundStyle(permissionStore.newCount > 0 ? DashboardPalette.ink : DashboardPalette.popoverSecondaryInk)
                 }
             }
             if let error = store.errorMessage, error != store.refreshFeedback?.detail {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption2).foregroundStyle(DashboardPalette.secondaryInk).lineLimit(2).help(error)
+                    .font(.caption2).foregroundStyle(DashboardPalette.popoverSecondaryInk).lineLimit(2).help(error)
             }
             FlatDivider()
             HStack {
@@ -279,13 +297,12 @@ private struct HealthMenuPopover: View {
                     .buttonStyle(.plain).foregroundStyle(.tint)
                 Spacer()
                 Text(store.isRefreshing ? "刷新中…" : "本机统计")
-                    .font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
+                    .font(.caption2).foregroundStyle(DashboardPalette.popoverSecondaryInk)
             }.font(.callout)
         }
         .padding(16)
         .frame(width: 320, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
-        .preferredColorScheme((AppAppearance(rawValue: appearance) ?? .system).colorScheme)
         .onAppear { permissionsExpanded = permissionStore.newCount > 0 }
         .onChange(of: permissionStore.newCount) { _, count in
             if count > 0 { permissionsExpanded = true }
@@ -340,6 +357,7 @@ private struct HealthMenuPopover: View {
 
 private struct UsageRefreshFeedbackView: View {
     let feedback: UsageRefreshFeedback
+    var secondaryInk: Color = DashboardPalette.secondaryInk
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -349,7 +367,7 @@ private struct UsageRefreshFeedbackView: View {
                 Text(detail).lineLimit(2).help(detail)
             }
         }
-        .font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
+        .font(.caption2).foregroundStyle(secondaryInk)
         .fixedSize(horizontal: false, vertical: true)
         .help("\(feedback.message)。检查时间仅表示本机读取完成时间，额度采样时间以原始记录为准。")
     }
@@ -368,6 +386,7 @@ struct ReplySpeedView: View {
     let samples: [ReplySpeedSample]
     var layout: Layout = .detail
     var isVisible = true
+    var secondaryInk: Color = DashboardPalette.secondaryInk
 
     var body: some View {
         Group {
@@ -387,32 +406,32 @@ struct ReplySpeedView: View {
             switch layout {
             case .metric:
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("平均回复速度").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                    Text("平均回复速度").font(.caption).foregroundStyle(secondaryInk)
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(speed.map { $0.tokensPerSecond.formatted(.number.precision(.fractionLength(1))) } ?? "—")
                             .font(.system(size: 28, weight: .medium)).monospacedDigit()
-                        Text("tokens/s").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                        Text("tokens/s").font(.caption).foregroundStyle(secondaryInk)
                     }
                     Text(speed.map { "近 15 分钟 · \($0.sampleCount) 个有效轮次" } ?? "近 15 分钟暂无样本")
-                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                        .font(.caption).foregroundStyle(secondaryInk)
                 }
             case .row:
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text("平均回复速度").foregroundStyle(DashboardPalette.secondaryInk)
+                        Text("平均回复速度").foregroundStyle(secondaryInk)
                         Spacer()
                         Text(speed.map { UsageFormatters.replySpeed($0.tokensPerSecond) } ?? "暂无样本")
                             .monospacedDigit()
                     }.font(.callout)
-                    Text(speed.map { "近 15 分钟 · \($0.sampleCount) 个有效轮次" } ?? "近 15 分钟无有效完成轮次")
-                        .font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
+                    Text(speed.map { "近 15 分钟 · \($0.sampleCount) 个有效轮次" + ($0.sampleCount == 1 ? " · 样本较少" : "") } ?? "近 15 分钟无有效完成轮次")
+                        .font(.caption2).foregroundStyle(secondaryInk)
                 }
             case .detail:
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("近 15 分钟平均回复速度").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                    Text("近 15 分钟平均回复速度").font(.caption).foregroundStyle(secondaryInk)
                     Text(speed.map { UsageFormatters.replySpeed($0.tokensPerSecond) } ?? "暂无样本")
                         .font(.callout.weight(.semibold)).monospacedDigit()
-                    Text("含思考、工具执行与等待").font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
+                    Text("含思考、工具执行与等待").font(.caption2).foregroundStyle(secondaryInk)
                 }
             }
         }

@@ -6,25 +6,45 @@ struct QuotaSampleView: View {
     let window: RateWindow?
     let sampledAt: Date?
     var numberSize: CGFloat = 28
+    var secondaryInk: Color = DashboardPalette.secondaryInk
+    var showsResetTime = false
+    var compactMetadata = false
 
     var body: some View {
         TimelineView(.explicit([Date.now] + QuotaSampleState.deadlines(sampledAt: sampledAt, resetsAt: window?.resetsAt))) { context in
             let sample = QuotaSampleState(percent: window?.usedPercent, sampledAt: sampledAt, resetsAt: window?.resetsAt, now: context.date)
             VStack(alignment: .leading, spacing: 6) {
                 Text(sample.isStale && sample.recordedRemaining != nil ? "\(title) · 上次记录" : title)
-                    .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                    .font(.caption).foregroundStyle(secondaryInk)
                 Text(sample.recordedRemaining.map { "\($0)%" } ?? "—")
                     .font(.system(size: numberSize, weight: .medium)).monospacedDigit()
                 if let remaining = sample.recordedRemaining {
                     ProgressView(value: Double(remaining), total: 100)
                         .tint(DashboardPalette.progress)
                     if sample.isStale {
-                        Text("等待新采样").font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
+                        Text("等待新采样").font(.caption2).foregroundStyle(secondaryInk)
                     }
                 }
-                Text(sample.description).font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
+                Text(sampleDescription(sample, at: context.date))
+                    .font(.caption2).foregroundStyle(secondaryInk)
+                    .help(sample.description)
+                if showsResetTime, let window, window.resetsAt > context.date,
+                   sample.recordedRemaining != nil {
+                    Text("重置于 \(window.resetsAt.formatted(.dateTime.month().day().hour().minute()))")
+                        .font(.caption2).foregroundStyle(secondaryInk)
+                        .help("本地采样记录的重置时间：\(window.resetsAt.formatted(date: .complete, time: .standard))")
+                }
             }
         }
+    }
+
+    private func sampleDescription(_ sample: QuotaSampleState, at now: Date) -> String {
+        guard compactMetadata, !sample.isStale, sample.recordedRemaining != nil,
+              let sampledAt, sampledAt <= now else { return sample.description }
+        let timestamp = Calendar.current.isDate(sampledAt, inSameDayAs: now)
+            ? sampledAt.formatted(.dateTime.hour().minute())
+            : sampledAt.formatted(.dateTime.month().day().hour().minute())
+        return "本地采样 · \(timestamp) · 非实时"
     }
 }
 

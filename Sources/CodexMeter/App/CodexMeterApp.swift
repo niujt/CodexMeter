@@ -77,6 +77,19 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     func resolvedColorScheme(for systemAppearance: NSAppearance) -> ColorScheme {
         colorScheme ?? (systemAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .dark : .light)
     }
+
+    func resolvedPopoverAppearance(for systemAppearance: NSAppearance) -> NSAppearance {
+        // A status item's appearance can follow the wallpaper independently of
+        // the app. Resolve the popover from the app preference and system theme.
+        let dark = resolvedColorScheme(for: systemAppearance) == .dark
+        let highContrast = systemAppearance.name
+        let increasedContrast = highContrast == .accessibilityHighContrastAqua
+            || highContrast == .accessibilityHighContrastDarkAqua
+        let name: NSAppearance.Name = increasedContrast
+            ? (dark ? .accessibilityHighContrastDarkAqua : .accessibilityHighContrastAqua)
+            : (dark ? .darkAqua : .aqua)
+        return NSAppearance(named: name) ?? systemAppearance
+    }
 }
 
 extension Notification.Name {
@@ -154,8 +167,11 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         // regular Dock application when it is explicitly opened.
         _ = NSApp.setActivationPolicy(.accessory)
         AppIconStyle.applyDockIcon()
-        dockAppearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.new]) { _, _ in
-            Task { @MainActor in AppIconStyle.applyDockIcon() }
+        dockAppearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                AppIconStyle.applyDockIcon()
+                self?.applyPopoverAppearance()
+            }
         }
         guard let button = statusItem.button else { return }
         button.imagePosition = .imageOnly
@@ -166,6 +182,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         popover.behavior = .transient
         popover.delegate = self
         popover.contentViewController = popoverController
+        applyPopoverAppearance()
         popoverController.sizingOptions = [.preferredContentSize]
         popover.contentSize = NSSize(width: 320, height: 340)
         UNUserNotificationCenter.current().delegate = self
@@ -226,6 +243,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
                     self?.scheduleRefreshTimer()
                     AppIconStyle.applyDockIcon()
                     self?.applyStatusAppearance()
+                    self?.applyPopoverAppearance()
                 }
             }
         }
@@ -304,6 +322,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         if popover.isShown {
             popover.performClose(sender)
         } else {
+            applyPopoverAppearance()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             if let store {
                 popoverController.rootView = UsagePopoverView(store: store, permissionStore: permissionStore, compact: true, isVisible: true)
@@ -363,6 +382,13 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         button.image = Self.menuBarMark(title: title, style: style)
         button.title = ""
         button.contentTintColor = nil
+    }
+
+    private func applyPopoverAppearance() {
+        let mode = AppAppearance(rawValue: UserDefaults.standard.string(forKey: AppAppearance.preferenceKey) ?? "") ?? .system
+        let appearance = mode.resolvedPopoverAppearance(for: NSApp.effectiveAppearance)
+        popover.appearance = appearance
+        popoverController.view.appearance = appearance
     }
 
     private static func menuBarMark(title: String, style: AppIconStyle) -> NSImage {
