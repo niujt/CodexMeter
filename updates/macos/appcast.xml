@@ -3,6 +3,19 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.14</title>
+      <sparkle:version>23</sparkle:version>
+      <sparkle:shortVersionString>1.0.14</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Thu, 22 Oct 2026 14:20:19 +0000</pubDate>
+      <description>进入历史页后自动查询使用限额重置历史，无需每次点击读取。
+同一账户与目录的查询结果在内存中缓存 5 分钟，切换栏目后可复用；保留手动刷新，点击后立即重新查询。
+切换账户、切换目录或退出登录时清空缓存，并阻止旧请求覆盖当前账户的结果。
+主应用和小组件同步升级至 1.0.14（23）。
+本次为 Apple Development 签名版本，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.14/CodexMeter-1.0.14-macos.dmg" length="6661226" type="application/octet-stream" sparkle:edSignature="cXpUaAym3obPnZS1QOO1f8DNSjGNuNfz9yOc65p2f+SAve4OR2Q0+i7NC/mbN6gCqkuBvcLvyXiJ52K5+T57Bg=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.13</title>
       <sparkle:version>22</sparkle:version>
       <sparkle:shortVersionString>1.0.13</sparkle:shortVersionString>
@@ -66,6 +79,6 @@ Dashboard 单列跨设备用量，区分本机 Token 与包含其他设备的账
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: ubTAms2fQryYQWFRprLIIwN1E/TAjAkxkeKMoz33IG5p7mQQCltEd3dxGXs6i8IbiNK30SkGJfCRTih0RwSYBA==
-length: 6257
+edSignature: LgKLTiPB2a0SRVXlftjDlLOFrw1d0iKh3TZhcSp2UmVFUMOj2eczE2OeQthyExiVGRxw9ufyuaSZqAjPEJdjDw==
+length: 7344
 -->
