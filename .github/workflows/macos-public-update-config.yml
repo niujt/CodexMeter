@@ -47,6 +47,7 @@ jobs:
             --output "$RUNNER_TEMP/synthetic-public-config"
       - name: Verify package signing and release guards using synthetic data
         run: |
+          python3 script/test_macos_update_workflow.py
           python3 script/test_macos_release_export.py \
             --public-key-tool "$RUNNER_TEMP/sparkle-public-key" \
             --sign-tool "$RUNNER_TEMP/sparkle/bin/sign_update"
@@ -89,17 +90,16 @@ jobs:
           PACKAGE_SHA256: ${{ inputs.package_sha256 }}
         run: |
           set -euo pipefail
-          RELEASE_ARGS=()
+          EXPORT_ARGS=(--public-key-tool "$RUNNER_TEMP/sparkle-public-key"
+            --sign-tool "$RUNNER_TEMP/sparkle/bin/sign_update"
+            --output "$RUNNER_TEMP/macos-update-public")
           if [[ -n "$RELEASE_TAG" ]]; then
-            RELEASE_ARGS=(--package "$RUNNER_TEMP/release-package/CodexMeter-$RELEASE_VERSION-macos.dmg"
+            EXPORT_ARGS+=(--package "$RUNNER_TEMP/release-package/CodexMeter-$RELEASE_VERSION-macos.dmg"
               --release-tag "$RELEASE_TAG" --version "$RELEASE_VERSION" --build "$RELEASE_BUILD"
               --release-notes updates/macos/release-notes.txt
               --expected-sha256 "$PACKAGE_SHA256")
           fi
-          python3 script/export_macos_update_config.py \
-            --public-key-tool "$RUNNER_TEMP/sparkle-public-key" \
-            --sign-tool "$RUNNER_TEMP/sparkle/bin/sign_update" \
-            --output "$RUNNER_TEMP/macos-update-public" "${RELEASE_ARGS[@]}"
+          python3 script/export_macos_update_config.py "${EXPORT_ARGS[@]}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: macos-update-public
