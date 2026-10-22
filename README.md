@@ -12,7 +12,7 @@
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS 15+（Intel / Apple Silicon） | [1.0.9 更新验证包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.9)，打开后将 `Codex Health.app` 拖入 Applications |
+| macOS 15+（Intel / Apple Silicon） | [1.0.14 安装包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.14)，打开后将 `Codex Health.app` 拖入 Applications |
 | Windows x64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-x64-setup.exe) |
 | Windows ARM64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-arm64-setup.exe) |
 

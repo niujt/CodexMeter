@@ -16,6 +16,29 @@ from email.utils import format_datetime
 FEED = 'https://raw.githubusercontent.com/niujt/CodexMeter/main/updates/macos/appcast.xml'
 
 
+def retain_latest_updates(feed, limit=2):
+    """Prune only the staged feed, before signing; published feeds stay valid until replaced."""
+    sparkle = 'http://www.andymatuschak.org/xml-namespaces/sparkle'
+    tree = ET.fromstring(feed.read_bytes())
+    channel = tree.find('channel')
+    if channel is None:
+        raise SystemExit('Published feed has no channel.')
+    items = channel.findall('item')
+    builds = [item.findtext(f'{{{sparkle}}}version') for item in items]
+    if (any(not build or not build.isdecimal() or int(build) <= 0 for build in builds)
+            or len(set(builds)) != len(builds)):
+        raise SystemExit('Published feed has invalid or duplicate builds.')
+    if len(items) <= limit:
+        return
+    retained = set(sorted(items, key=lambda item: int(item.findtext(f'{{{sparkle}}}version')), reverse=True)[:limit])
+    for item in items:
+        if item not in retained:
+            channel.remove(item)
+    ET.register_namespace('sparkle', sparkle)
+    ET.indent(tree)
+    feed.write_bytes(ET.tostring(tree, encoding='utf-8', xml_declaration=True) + b'\n')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--public-key-tool', required=True)
@@ -131,6 +154,7 @@ def main():
             'edSignature': signature.group(1), 'packageVerified': True, 'packageTamperingRejected': True}
         (args.output / (args.package.name + '.sig')).write_text(signature.group(1) + '\n', encoding='ascii')
 
+    retain_latest_updates(feed)
     update_count = len(ET.fromstring(feed.read_bytes()).findall('./channel/item'))
 
     if invoke(feed).returncode or invoke(feed, verify=True).returncode:

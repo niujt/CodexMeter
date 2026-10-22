@@ -63,7 +63,21 @@ def main():
     assert invoke('duplicate-build') != 0, 'Duplicate published build accepted'
     assert invoke('next', build='19') == 0, 'Next build could not preserve the previous item'
     assert json.loads((root / 'next/verification.json').read_text())['publishedUpdateCount'] == 2
-    print('PASS: synthetic package/feed signatures, tampering rejection, digest and trust guards, monotonic builds and existing-item preservation.')
+    (root / 'updates/macos/appcast.xml').write_bytes((root / 'next/appcast.xml').read_bytes())
+    assert invoke('third', build='20') == 0, 'Third build could not prune the oldest signed update'
+    third = root / 'third/appcast.xml'
+    assert json.loads((root / 'third/verification.json').read_text())['publishedUpdateCount'] == 2
+    assert [item.findtext(sparkle + 'version') for item in ET.parse(third).findall('./channel/item')] == ['20', '19']
+    # Configuration-only re-signing also prunes an existing feed before publication.
+    feed = ET.parse(third)
+    feed.find('channel').append(ET.parse(root / 'first/appcast.xml').find('./channel/item'))
+    feed.write(root / 'updates/macos/appcast.xml', encoding='utf-8', xml_declaration=True)
+    result = subprocess.run(['python3', str(export), '--public-key-tool', args.public_key_tool,
+        '--sign-tool', args.sign_tool, '--output', str(root / 'retained-config')], cwd=root, env=env, capture_output=True)
+    assert result.returncode == 0, 'Configuration-only retention/signing failed'
+    assert json.loads((root / 'retained-config/verification.json').read_text())['publishedUpdateCount'] == 2
+    assert [item.findtext(sparkle + 'version') for item in ET.parse(root / 'retained-config/appcast.xml').findall('./channel/item')] == ['20', '19']
+    print('PASS: synthetic signatures, tampering rejection, digest/trust guards, monotonic builds and two-version retention for releases and configuration-only signing.')
     print('Retained synthetic fixtures:', root)
 
 
