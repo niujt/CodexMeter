@@ -37,6 +37,7 @@ extension Notification.Name {
 
 @MainActor @Observable final class UsageStore {
     static let shared = UsageStore()
+    let resetHistory = ResetHistoryStore()
     var snapshot = ScreenshotFixture.snapshot
     var isRefreshing = false
     var errorMessage: String?

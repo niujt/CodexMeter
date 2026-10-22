@@ -38,6 +38,7 @@ struct UsageRefreshFeedback: Equatable {
 @Observable
 final class UsageStore {
     static let shared = UsageStore()
+    let resetHistory = ResetHistoryStore()
     private(set) var snapshot = UsageSnapshot.empty
     private(set) var context: CodexDataContext?
     private(set) var isRefreshing = false
@@ -101,6 +102,7 @@ final class UsageStore {
             generation = UUID()
             snapshot = .empty
             context = nil
+            resetHistory.synchronize(context: nil)
             isRefreshing = false
             errorMessage = folderAccess.restoreError
             refreshFeedback = nil
@@ -114,6 +116,7 @@ final class UsageStore {
         loadTask?.cancel()
         generation = UUID()
         context = next
+        resetHistory.synchronize(context: next)
         snapshot = .empty
         snapshot.dataPath = source.root.path
         QuotaRateCache.restore(into: &snapshot, scope: next.quotaScope, defaults: defaults, now: clock())
