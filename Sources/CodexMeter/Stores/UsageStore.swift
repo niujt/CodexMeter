@@ -38,7 +38,7 @@ struct UsageRefreshFeedback: Equatable {
 @Observable
 final class UsageStore {
     static let shared = UsageStore()
-    let resetHistory = ResetHistoryStore()
+    let resetHistory: ResetHistoryStore
     private(set) var snapshot = UsageSnapshot.empty
     private(set) var context: CodexDataContext?
     private(set) var isRefreshing = false
@@ -66,6 +66,7 @@ final class UsageStore {
         self.folderAccess = folderAccess
         self.defaults = defaults
         self.effectsEnabled = effectsEnabled
+        self.resetHistory = ResetHistoryStore(archiveDirectory: effectsEnabled ? ResetHistoryArchive.defaultDirectory() : nil)
         self.clock = clock
     }
 

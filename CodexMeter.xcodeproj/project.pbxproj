@@ -47,6 +47,7 @@
 		9C0DE100000000000000000A /* ResetHistoryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DE000000000000000000A /* ResetHistoryClient.swift */; };
 		9C0DE100000000000000000B /* ResetHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DE000000000000000000B /* ResetHistoryView.swift */; };
 		9C0DE100000000000000000C /* ResetHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DE000000000000000000C /* ResetHistoryStore.swift */; };
+		9C0DE100000000000000000D /* ResetHistoryArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DE000000000000000000D /* ResetHistoryArchive.swift */; };
 		66B2BFA227E63D018274AB49 /* HistoryRecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E88C8B955634A98B53ACD618 /* HistoryRecordsView.swift */; };
 		C14D1948084E01B228412CD0 /* UsageTrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32572A57C5D55FD099EA869 /* UsageTrendsView.swift */; };
 		335BD5B9F6FD0EF350E640A1 /* ModelEfficiencyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11BFA321E80938EEEB156C09 /* ModelEfficiencyView.swift */; };
@@ -112,6 +113,7 @@
 		9C0DE000000000000000000A /* ResetHistoryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResetHistoryClient.swift; path = Services/ResetHistoryClient.swift; sourceTree = "<group>"; };
 		9C0DE000000000000000000B /* ResetHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResetHistoryView.swift; path = Views/ResetHistoryView.swift; sourceTree = "<group>"; };
 		9C0DE000000000000000000C /* ResetHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResetHistoryStore.swift; path = Stores/ResetHistoryStore.swift; sourceTree = "<group>"; };
+		9C0DE000000000000000000D /* ResetHistoryArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ResetHistoryArchive.swift; path = Support/ResetHistoryArchive.swift; sourceTree = "<group>"; };
 		E88C8B955634A98B53ACD618 /* HistoryRecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HistoryRecordsView.swift; path = Views/HistoryRecordsView.swift; sourceTree = "<group>"; };
 		A32572A57C5D55FD099EA869 /* UsageTrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UsageTrendsView.swift; path = Views/UsageTrendsView.swift; sourceTree = "<group>"; };
 		11BFA321E80938EEEB156C09 /* ModelEfficiencyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ModelEfficiencyView.swift; path = Views/ModelEfficiencyView.swift; sourceTree = "<group>"; };
@@ -199,6 +201,7 @@
 				9C0DE000000000000000000A /* ResetHistoryClient.swift */,
 				9C0DE000000000000000000B /* ResetHistoryView.swift */,
 				9C0DE000000000000000000C /* ResetHistoryStore.swift */,
+				9C0DE000000000000000000D /* ResetHistoryArchive.swift */,
 				0D08383147571548BA77F3B4 /* CodexUsageReader.swift */,
 				09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */,
 				C0DECF000000000000000031 /* WidgetExtensionRecovery.swift */,
@@ -359,6 +362,7 @@
 				9C0DE100000000000000000A /* ResetHistoryClient.swift in Sources */,
 				9C0DE100000000000000000B /* ResetHistoryView.swift in Sources */,
 				9C0DE100000000000000000C /* ResetHistoryStore.swift in Sources */,
+				9C0DE100000000000000000D /* ResetHistoryArchive.swift in Sources */,
 				72C8AE23FD2E354DF0747D89 /* CodexUsageReader.swift in Sources */,
 				A1AF8676F4ED910B3A596482 /* DesktopWidgetController.swift in Sources */,
 				C0DECF000000000000000030 /* WidgetExtensionRecovery.swift in Sources */,

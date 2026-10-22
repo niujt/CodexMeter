@@ -49,7 +49,7 @@ struct ResetHistoryTests {
     @Test @MainActor func cachesEmptyHistoryUntilExpiryAndManualRefreshBypassesCache() async {
         let clock = Clock()
         let loader = Loader()
-        let history = ResetHistoryStore(loader: { try await loader.load($0) }, clock: { clock.now })
+        let history = ResetHistoryStore(loader: { context, _ in try await loader.load(context) }, clock: { clock.now })
         let account = context()
         await history.refresh(context: account)
         #expect(history.hasLoaded && history.events.isEmpty)
@@ -65,7 +65,7 @@ struct ResetHistoryTests {
 
     @Test @MainActor func accountDirectoryAndLogoutClearCachedHistory() async {
         let event = ResetHistoryEvent(id: "grant", kind: "granted", occurredAt: .now)
-        let history = ResetHistoryStore(loader: { _ in [event] })
+        let history = ResetHistoryStore(loader: { _, _ in [event] })
         let original = context()
         for changed in [context(account: "B"), context(directory: "two")] {
             await history.refresh(context: original)
@@ -82,7 +82,7 @@ struct ResetHistoryTests {
 
     @Test @MainActor func lateResponseCannotRepopulateCacheAfterSwitchingAwayAndBack() async {
         let loader = PendingLoader()
-        let history = ResetHistoryStore(loader: { try await loader.load($0) })
+        let history = ResetHistoryStore(loader: { context, _ in try await loader.load(context) })
         let original = context()
         let first = Task { await history.refresh(context: original) }
         await loader.waitForCalls(1)
@@ -102,7 +102,7 @@ struct ResetHistoryTests {
 
     @Test @MainActor func concurrentPageVisitsShareInFlightRequest() async {
         let loader = PendingLoader()
-        let history = ResetHistoryStore(loader: { try await loader.load($0) })
+        let history = ResetHistoryStore(loader: { context, _ in try await loader.load(context) })
         let account = context()
         let first = Task { await history.refresh(context: account) }
         await loader.waitForCalls(1)
@@ -119,7 +119,7 @@ struct ResetHistoryTests {
     @Test @MainActor func failedLoadRetriesOnNextVisitAndKeepsPriorResult() async {
         let loader = Loader()
         let clock = Clock()
-        let history = ResetHistoryStore(loader: { try await loader.load($0) }, clock: { clock.now })
+        let history = ResetHistoryStore(loader: { context, _ in try await loader.load(context) }, clock: { clock.now })
         let account = context()
         await loader.setFails(true)
         await history.refresh(context: account)

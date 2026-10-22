@@ -11,22 +11,29 @@ struct ResetHistoryView: View {
             HStack {
                 Label("使用限额重置", systemImage: "clock.arrow.circlepath").font(.headline)
                 Spacer()
-                Text("过去 30 天 · 账户记录").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                Text("账户历史").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 Button(history.isLoading ? "读取中…" : "刷新重置历史") {
                     Task { await refresh(force: true) }
                 }
                 .disabled(history.isLoading || store.context?.quotaScope == nil)
             }
             if history.isLoading {
-                ProgressView("正在读取重置历史…").controlSize(.small)
+                ProgressView(history.hasLoaded ? "正在补取新记录…" : "正在读取重置历史…").controlSize(.small)
             } else if let error = history.error {
                 Text(error).font(.callout).foregroundStyle(DashboardPalette.secondaryInk)
             } else if history.hasLoaded && history.events.isEmpty {
-                Text("过去 30 天没有获得或使用重置次数的记录。")
+                Text("暂无获得或使用重置次数的记录。")
                     .font(.callout).foregroundStyle(DashboardPalette.secondaryInk)
             } else if !history.hasLoaded {
-                Text(store.context?.quotaScope == nil ? store.accountStatus : "进入此页后自动查询当前账户的重置历史，仅查询，不消耗重置次数。")
+                Text(store.context?.quotaScope == nil ? store.accountStatus : "自动同步当前账户的重置历史，已同步的记录会保存在本地；仅查询，不消耗重置次数。")
                     .font(.callout).foregroundStyle(DashboardPalette.secondaryInk)
+            }
+            if let warning = history.persistenceWarning {
+                Text(warning).font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+            }
+            if let checkedAt = history.loadedAt {
+                Text("\(history.hasSavedHistory ? "本地已保存" : "当前已读取") \(history.events.count) 条 · 最近同步 \(checkedAt.formatted(.dateTime.month().day().hour().minute()))")
+                    .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
             ForEach(Array(history.events.prefix(showsAllEvents ? history.events.count : 10))) { event in
                 HStack {

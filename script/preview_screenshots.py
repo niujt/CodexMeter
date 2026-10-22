@@ -87,9 +87,12 @@ for path in sorted((ROOT / "Sources/CodexMeter").rglob("*.swift")):
 """
     elif path.name == "ResetHistoryClient.swift":
         source = source[:source.index("actor ResetHistoryClient {")] + """actor ResetHistoryClient {
-    func load(context: CodexDataContext) async throws -> [ResetHistoryEvent] {
+    func load(context: CodexDataContext, knownEvents: [ResetHistoryEvent] = []) async throws -> [ResetHistoryEvent] {
         [ResetHistoryEvent(id: "demo-used", kind: "used", occurredAt: ScreenshotFixture.now.addingTimeInterval(-86400)),
          ResetHistoryEvent(id: "demo-granted", kind: "granted", occurredAt: ScreenshotFixture.now.addingTimeInterval(-3 * 86400))]
+    }
+    static func sorted(_ events: some Sequence<ResetHistoryEvent>) -> [ResetHistoryEvent] {
+        events.sorted { $0.occurredAt == $1.occurredAt ? $0.id < $1.id : $0.occurredAt > $1.occurredAt }
     }
 }
 """

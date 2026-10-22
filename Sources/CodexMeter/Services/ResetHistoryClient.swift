@@ -1,6 +1,6 @@
 import Foundation
 
-struct ResetHistoryEvent: Decodable, Identifiable, Equatable, Sendable {
+struct ResetHistoryEvent: Codable, Identifiable, Equatable, Sendable {
     let id: String
     let kind: String
     let occurredAt: Date
@@ -70,8 +70,14 @@ private final class ResetHistorySessionDelegate: NSObject, URLSessionTaskDelegat
 
 actor ResetHistoryClient {
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, Int)
+    typealias PageLoader = @Sendable (String?) async throws -> ResetHistoryPage
     private let transport: Transport?
-    init(transport: Transport? = nil) { self.transport = transport }
+    private let retryDelay: @Sendable () async throws -> Void
+    init(transport: Transport? = nil,
+         retryDelay: @escaping @Sendable () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }) {
+        self.transport = transport
+        self.retryDelay = retryDelay
+    }
 
     // This is the first-party desktop settings endpoint, not a public API contract.
     static func request(token: String, accountID: String, cursor: String?) -> URLRequest {
@@ -86,11 +92,11 @@ actor ResetHistoryClient {
         return request
     }
 
-    func load(context: CodexDataContext) async throws -> [ResetHistoryEvent] {
+    func load(context: CodexDataContext, knownEvents: [ResetHistoryEvent] = []) async throws -> [ResetHistoryEvent] {
         guard let home = context.source.home, let identity = context.accountIdentity else {
             throw ResetHistoryError.loginRequired
         }
-        func credentials() throws -> CodexCredentials {
+        let credentials: @Sendable () throws -> CodexCredentials = {
             guard let auth = CodexCredentials.read(home: home) else { throw ResetHistoryError.loginRequired }
             guard auth.identity == identity else { throw ResetHistoryError.accountChanged }
             return auth
@@ -101,36 +107,73 @@ actor ResetHistoryClient {
         configuration.urlCache = nil
         let session = URLSession(configuration: configuration, delegate: ResetHistorySessionDelegate(), delegateQueue: nil)
         defer { session.invalidateAndCancel() }
+        let transport = transport
+        let retryDelay = retryDelay
+        return try await Self.collect(knownEvents: knownEvents) { cursor in
+            for attempt in 0...1 {
+                try Task.checkCancellation()
+                let auth = try credentials()
+                let request = Self.request(token: auth.token, accountID: auth.accountID, cursor: cursor)
+                do {
+                    let data: Data
+                    let status: Int
+                    if let transport {
+                        (data, status) = try await transport(request)
+                    } else {
+                        let (body, response) = try await session.data(for: request)
+                        guard let response = response as? HTTPURLResponse else { throw ResetHistoryError.invalidResponse }
+                        data = body
+                        status = response.statusCode
+                    }
+                    try Task.checkCancellation()
+                    _ = try credentials()
+                    guard status == 200 else { throw ResetHistoryError.rejected(status) }
+                    guard let page = try? ResetHistoryPage.decode(data) else { throw ResetHistoryError.invalidResponse }
+                    return page
+                } catch {
+                    // Retry the same page once; never replay authentication failures or cancelled work.
+                    guard attempt == 0, !Task.isCancelled, let error = error as? URLError,
+                          [.timedOut, .networkConnectionLost].contains(error.code) else { throw error }
+                    _ = try credentials()
+                    try await retryDelay()
+                }
+            }
+            throw ResetHistoryError.incomplete
+        }
+    }
+
+    /// The endpoint exposes cursors, not a verified date filter. Keep overlapping known pages
+    /// before stopping; tied timestamps, mixed pages and observed disorder must not skip new IDs.
+    static func collect(knownEvents: [ResetHistoryEvent], page loadPage: PageLoader) async throws -> [ResetHistoryEvent] {
+        let known = Dictionary(knownEvents.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+        let watermark = knownEvents.map(\.occurredAt).max()
         var cursor: String?
         var cursors = Set<String>()
         var events: [String: ResetHistoryEvent] = [:]
+        var lastDate: Date?
+        var newestFirst = true
+        var knownPages = 0
         for _ in 0..<100 {
             try Task.checkCancellation()
-            let auth = try credentials()
-            let request = Self.request(token: auth.token, accountID: auth.accountID, cursor: cursor)
-            let data: Data
-            let status: Int
-            if let transport {
-                (data, status) = try await transport(request)
-            } else {
-                let (body, response) = try await session.data(for: request)
-                guard let response = response as? HTTPURLResponse else { throw ResetHistoryError.invalidResponse }
-                data = body
-                status = response.statusCode
-            }
+            let page = try await loadPage(cursor)
             try Task.checkCancellation()
-            _ = try credentials() // Never publish a response or send another page for an obsolete account.
-            guard status == 200 else { throw ResetHistoryError.rejected(status) }
-            guard let page = try? ResetHistoryPage.decode(data) else { throw ResetHistoryError.invalidResponse }
-            for event in page.events { events[event.id] = event }
-            guard let next = page.nextCursor, !next.isEmpty else {
-                return events.values.sorted {
-                    $0.occurredAt == $1.occurredAt ? $0.id < $1.id : $0.occurredAt > $1.occurredAt
-                }
+            for event in page.events {
+                if let lastDate, event.occurredAt > lastDate { newestFirst = false }
+                lastDate = event.occurredAt
+                events[event.id] = event
             }
+            let entirelyKnown = !page.events.isEmpty && page.events.allSatisfy { known[$0.id] == $0 }
+            knownPages = entirelyKnown ? knownPages + 1 : 0
+            let crossedBoundary = watermark.map { boundary in lastDate.map { $0 < boundary } ?? false } ?? false
+            let reachedSavedHistory = newestFirst && knownPages >= 2 && crossedBoundary
+            guard let next = page.nextCursor, !next.isEmpty, !reachedSavedHistory else { return sorted(events.values) }
             guard cursors.insert(next).inserted else { throw ResetHistoryError.incomplete }
             cursor = next
         }
         throw ResetHistoryError.incomplete
+    }
+
+    static func sorted(_ events: some Sequence<ResetHistoryEvent>) -> [ResetHistoryEvent] {
+        events.sorted { $0.occurredAt == $1.occurredAt ? $0.id < $1.id : $0.occurredAt > $1.occurredAt }
     }
 }
