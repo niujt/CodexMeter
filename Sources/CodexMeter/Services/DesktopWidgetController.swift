@@ -20,7 +20,7 @@ final class DesktopWidgetController {
         }
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 80, y: 110, width: 300, height: 280),
+            contentRect: NSRect(x: 80, y: 110, width: 300, height: 320),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false

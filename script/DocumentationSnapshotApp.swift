@@ -68,7 +68,7 @@ enum ScreenshotFixture {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(200))
             guard let window else { return }
-            let size: NSSize = mode == "desktop" ? .init(width:300,height:280) : mode == "widget" ? .init(width:630,height:230) : mode == "menu" ? .init(width:320,height:300) : .init(width:1080,height:872)
+            let size: NSSize = mode == "desktop" ? .init(width:300,height:320) : mode == "widget" ? .init(width:630,height:230) : mode == "menu" ? .init(width:320,height:300) : .init(width:1080,height:872)
             window.styleMask = mode == "dashboard" ? [.titled,.closable,.miniaturizable,.resizable,.fullSizeContentView] : [.borderless]
             window.contentMinSize = .zero; window.minSize = .zero
             window.setContentSize(size); window.center(); window.makeKeyAndOrderFront(nil)

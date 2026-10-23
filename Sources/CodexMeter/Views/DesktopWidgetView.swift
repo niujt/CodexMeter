@@ -60,7 +60,7 @@ struct DesktopWidgetView: View {
             .foregroundStyle(DashboardPalette.secondaryInk)
         }
         .padding(16)
-        .frame(width: 300, height: 280, alignment: .topLeading)
+        .frame(width: 300, height: 320, alignment: .topLeading)
         .foregroundStyle(DashboardPalette.ink)
         .tint(DashboardPalette.ink)
         .progressViewStyle(FlatProgressStyle())
