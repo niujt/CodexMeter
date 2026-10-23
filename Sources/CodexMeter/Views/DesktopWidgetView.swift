@@ -5,13 +5,14 @@ struct DesktopWidgetView: View {
     let dismiss: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
                     .font(.headline)
                 Spacer()
                 Button(action: dismiss) {
                     Image(systemName: "xmark")
+                        .frame(width: 24, height: 24)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(DashboardPalette.secondaryInk)
@@ -24,54 +25,48 @@ struct DesktopWidgetView: View {
                 Metric(title: "本月", value: UsageFormatters.tokens(store.snapshot.thisMonth.total))
             }
 
-            if store.snapshot.contextWindow > 0 {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack {
-                        Text("当前上下文")
-                        Spacer()
-                        Text("\(UsageFormatters.tokens(store.snapshot.currentContextUsed)) / \(UsageFormatters.tokens(store.snapshot.contextWindow))")
-                            .monospacedDigit()
-                    }
-                    .font(.caption)
-                    ProgressView(
-                        value: Double(store.snapshot.currentContextUsed),
-                        total: Double(store.snapshot.contextWindow)
-                    )
-                }
-            }
+            QuotaSampleView(title: "7 天剩余额度", window: store.snapshot.sevenDayRate,
+                            sampledAt: store.snapshot.mainRateSampledAt, numberSize: 28,
+                            showsResetTime: true, compactMetadata: true)
 
-            if let window = store.snapshot.primaryRate {
-                QuotaSampleView(title: rateTitle(window), window: window, sampledAt: store.snapshot.primaryRateSampledAt, numberSize: 20)
-            } else {
-                Text("等待新周期数据").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+            if store.snapshot.contextWindow > 0 {
+                HStack {
+                    Text("当前上下文")
+                    Spacer()
+                    Text("\(UsageFormatters.tokens(store.snapshot.currentContextUsed)) / \(UsageFormatters.tokens(store.snapshot.contextWindow))")
+                        .monospacedDigit()
+                }
+                .font(.caption)
+                .foregroundStyle(DashboardPalette.secondaryInk)
             }
 
             Spacer(minLength: 0)
             HStack {
-                Text("低功耗自动刷新")
+                UsageRefreshStatusView(store: store, compact: true)
                 Spacer()
                 Button {
-                    Task { await store.refresh() }
+                    Task { await store.refresh(userInitiated: true) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(store.isRefreshing)
+                .help("刷新本机用量")
+                .accessibilityLabel("刷新本机用量")
             }
             .font(.caption)
             .foregroundStyle(DashboardPalette.secondaryInk)
         }
         .padding(16)
-        .frame(width: 300, height: 245, alignment: .topLeading)
+        .frame(width: 300, height: 280, alignment: .topLeading)
         .foregroundStyle(DashboardPalette.ink)
         .tint(DashboardPalette.ink)
         .progressViewStyle(FlatProgressStyle())
         .modifier(PeripheralGlass(cornerRadius: 20))
     }
 
-    private func rateTitle(_ window: RateWindow) -> String {
-        window.windowMinutes == 10_080 ? "7 天额度" : "5 小时额度"
-    }
 }
 
 private struct Metric: View {
@@ -88,6 +83,6 @@ private struct Metric: View {
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 9)
+        .padding(.vertical, 3)
     }
 }

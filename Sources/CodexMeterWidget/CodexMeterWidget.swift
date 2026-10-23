@@ -71,14 +71,14 @@ struct CodexMeterWidgetView: View {
                 content(usage)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
-                        .font(.caption.weight(.semibold))
+                    widgetHeader(status: .waitingForSample, isCompact: family == .systemSmall)
                     Spacer(minLength: 0)
                     Text("等待用量数据")
                         .font(.headline)
-                    Text("打开主应用后自动同步")
+                    Text("打开主应用同步 · 本地非实时")
                         .font(.caption2)
                         .foregroundStyle(DashboardPalette.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -93,80 +93,127 @@ struct CodexMeterWidgetView: View {
 
     @ViewBuilder
     private func content(_ usage: WidgetUsageData) -> some View {
+        let status = quotaStatus(usage)
         switch family {
         case .systemSmall:
-            VStack(alignment: .leading, spacing: 5) {
-                Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
-                    .font(.caption.weight(.semibold))
-                if usage.isStale(at: entry.date) {
-                    Text("数据可能已过期").font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
-                }
-                sampleTime(usage)
+            VStack(alignment: .leading, spacing: 6) {
+                widgetHeader(status: status, isCompact: true)
                 Spacer(minLength: 0)
-                Text(remainingText(usage))
-                    .font(.system(size: 28, weight: .medium))
-                    .minimumScaleFactor(0.65)
-                Text(usage.recordedRatePercent(at: entry.date) == nil ? "等待新周期数据" : (usage.quotaSample(at: entry.date).isStale ? "上次记录的剩余额度" : "额度剩余"))
-                    .font(.caption)
-                    .foregroundStyle(DashboardPalette.secondaryInk)
-                if let percent = usage.recordedRatePercent(at: entry.date),
-                   let resetsAt = usage.rateResetsAt {
-                    ProgressView(value: max(0, 100 - percent), total: 100)
-                    Text("本周期到期 \(resetsAt, format: .dateTime.month().day().hour().minute())")
-                        .font(.caption2)
-                        .foregroundStyle(DashboardPalette.secondaryInk)
-                }
+                quotaSummary(usage, status: status)
+                sampleTime(usage)
             }
         default:
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text(usage.recordedRatePercent(at: entry.date) == nil ? "额度待更新" : "\(usage.quotaSample(at: entry.date).isStale ? "上次剩余" : "剩余") \(remainingText(usage))")
-                        .font(.caption2)
-                        .foregroundStyle(DashboardPalette.secondaryInk)
-                }
-                if usage.isStale(at: entry.date) {
-                    Text("数据可能已过期 · 打开主应用更新").font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
-                }
-                sampleTime(usage)
-                HStack(spacing: 10) {
-                    metric("今天", usage.todayTokens)
-                    metric("近 7 天", usage.weekTokens)
-                    metric("本月", usage.monthTokens)
-                }
-                if let percent = usage.recordedRatePercent(at: entry.date) {
-                    HStack {
-                        Text((usage.rateWindowMinutes == 10_080 ? "7 天额度" : "额度") + (usage.quotaSample(at: entry.date).isStale ? " · 上次记录" : ""))
-                        Spacer()
-                        Text("剩余 \(max(0, 100 - Int(percent.rounded())))%")
-                    }
-                    .font(.caption)
-                    ProgressView(value: max(0, 100 - percent), total: 100)
-                }
-                Spacer(minLength: 0)
-                ViewThatFits(in: .horizontal) {
-                    HStack {
-                        expiryTime(usage)
-                        Spacer(minLength: 4)
+            VStack(alignment: .leading, spacing: 8) {
+                widgetHeader(status: status, isCompact: false)
+                HStack(alignment: .top, spacing: 16) {
+                    quotaSummary(usage, status: status)
+                        .frame(width: 112, alignment: .leading)
+                    Rectangle()
+                        .fill(DashboardPalette.divider)
+                        .frame(width: 1, height: 72)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Token 用量")
+                            .font(.caption2)
+                            .foregroundStyle(DashboardPalette.secondaryInk)
+                        HStack(alignment: .top, spacing: 8) {
+                            metric("今天", usage.todayTokens)
+                            metric("近 7 天", usage.weekTokens)
+                            metric("本月", usage.monthTokens)
+                        }
                         if usage.contextLimit > 0 {
                             Text("上下文 \(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
+                                .font(.system(size: 10))
+                                .foregroundStyle(DashboardPalette.secondaryInk)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                     }
-                    expiryTime(usage)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                Spacer(minLength: 0)
+                sampleTime(usage)
+            }
+        }
+    }
+
+    private func widgetHeader(status: WidgetQuotaStatus, isCompact: Bool) -> some View {
+        HStack(spacing: 6) {
+            Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if isCompact {
+                Image(systemName: status.symbol)
+                    .font(.caption.weight(status.isEmphasized ? .semibold : .regular))
+                    .foregroundStyle(status.isEmphasized ? DashboardPalette.ink : DashboardPalette.secondaryInk)
+                    .accessibilityLabel(status.title)
+                    .help(status.help)
+            } else {
+                Label(status.title, systemImage: status.symbol)
+                    .font(.system(size: 10, weight: status.isEmphasized ? .semibold : .medium))
+                    .foregroundStyle(status.isEmphasized ? DashboardPalette.ink : DashboardPalette.secondaryInk)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .overlay(Capsule().strokeBorder(DashboardPalette.divider, lineWidth: 1))
+                    .help(status.help)
+            }
+        }
+    }
+
+    private func quotaSummary(_ usage: WidgetUsageData, status: WidgetQuotaStatus) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(quotaTitle(usage, status: status))
+                .font(.caption2)
+                .foregroundStyle(DashboardPalette.secondaryInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(remainingText(usage))
+                .font(.system(size: 32, weight: status == .low ? .bold : .semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            if let percent = usage.recordedRatePercent(at: entry.date) {
+                ProgressView(value: max(0, 100 - percent), total: 100)
+            }
+            expiryTime(usage)
                 .font(.system(size: 10))
                 .foregroundStyle(DashboardPalette.secondaryInk)
-            }
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func quotaStatus(_ usage: WidgetUsageData) -> WidgetQuotaStatus {
+        guard let percent = usage.recordedRatePercent(at: entry.date) else {
+            if let resetsAt = usage.rateResetsAt, resetsAt <= entry.date { return .waitingForCycle }
+            return .waitingForSample
+        }
+        if usage.quotaSample(at: entry.date).isStale || usage.isStale(at: entry.date) { return .stale }
+        return 100 - percent < 20 ? .low : .recorded
+    }
+
+    private func quotaTitle(_ usage: WidgetUsageData, status: WidgetQuotaStatus) -> String {
+        let period = switch usage.rateWindowMinutes {
+        case 10_080: "7 天"
+        case 300: "5 小时"
+        default: ""
+        }
+        switch status {
+        case .recorded: return "\(period)剩余额度"
+        case .low: return "\(period)剩余 · 偏低"
+        case .stale: return "\(period)上次剩余"
+        case .waitingForCycle: return "等待新周期数据"
+        case .waitingForSample: return "等待额度采样"
         }
     }
 
     private func sampleTime(_ usage: WidgetUsageData) -> some View {
         let sample = usage.quotaSample(at: entry.date)
+        let isOld = sample.isStale || usage.isStale(at: entry.date)
         return Group {
             if let date = sample.sampledAt, sample.hasValidTime {
-                Text("\(sample.isStale ? "旧采样" : "本地采样") \(date, format: .dateTime.month().day().hour().minute()) · 非实时")
+                Text("\(isOld ? "旧采样" : (sample.recordedPercent == nil ? "上次采样" : "本地采样")) \(date, format: .dateTime.month().day().hour().minute()) · 非实时")
             } else {
                 Text("等待额度采样 · 非实时")
             }
@@ -175,21 +222,26 @@ struct CodexMeterWidgetView: View {
         .foregroundStyle(DashboardPalette.secondaryInk)
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+        .help("\(sample.description)\(isOld ? " · 打开主应用更新" : "")")
     }
 
     @ViewBuilder
     private func expiryTime(_ usage: WidgetUsageData) -> some View {
         if let resetsAt = usage.rateResetsAt, usage.recordedRatePercent(at: entry.date) != nil {
-            Text("到期 \(resetsAt, format: .dateTime.month().day().hour().minute())")
+            Text("重置 \(resetsAt, format: .dateTime.month().day().hour().minute())")
         } else {
-            Text("更新于 \(usage.updatedAt, style: .time)")
+            Text("打开主应用同步")
         }
     }
 
     private func metric(_ label: String, _ value: Int) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
-            Text(compact(value)).font(.headline).minimumScaleFactor(0.7)
+            Text(compact(value))
+                .font(.system(size: 14, weight: .semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -205,6 +257,42 @@ struct CodexMeterWidgetView: View {
     private func remainingText(_ usage: WidgetUsageData) -> String {
         guard let percent = usage.recordedRatePercent(at: entry.date) else { return "--" }
         return "\(max(0, 100 - Int(percent.rounded())))%"
+    }
+}
+
+private enum WidgetQuotaStatus: Equatable {
+    case recorded, low, stale, waitingForCycle, waitingForSample
+
+    var title: String {
+        switch self {
+        case .recorded: "本地记录"
+        case .low: "额度偏低"
+        case .stale: "旧记录"
+        case .waitingForCycle: "待更新"
+        case .waitingForSample: "待采样"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .recorded: "checkmark.circle"
+        case .low: "exclamationmark.triangle.fill"
+        case .stale: "clock"
+        case .waitingForCycle: "arrow.clockwise"
+        case .waitingForSample: "hourglass"
+        }
+    }
+
+    var isEmphasized: Bool { self == .low || self == .stale }
+
+    var help: String {
+        switch self {
+        case .recorded: "本地采样记录，非实时额度"
+        case .low: "本地记录的剩余额度不超过 20%，非实时额度"
+        case .stale: "显示上次记录，数据可能已过期；打开主应用更新"
+        case .waitingForCycle: "上个额度周期已结束，等待新周期采样"
+        case .waitingForSample: "尚无有效额度采样；打开主应用同步"
+        }
     }
 }
 

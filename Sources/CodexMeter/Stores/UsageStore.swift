@@ -49,7 +49,7 @@ final class UsageStore {
     private(set) var readFiles = 0
     private(set) var reusedFiles = 0
     private var hasCompleteSnapshot = false
-    private var lastSuccessfulRefresh: Date?
+    private(set) var lastSuccessfulRefresh: Date?
     @ObservationIgnored private let reader: CodexUsageReader
     @ObservationIgnored private let folderAccess: CodexFolderAccess
     @ObservationIgnored private let defaults: UserDefaults

@@ -26,7 +26,7 @@ struct UsagePopoverView: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            if store.isRefreshing {
+            if !compact, store.isRefreshing {
                 ProgressView(store.loadingMessage)
                     .controlSize(.small)
                     .padding(10)
@@ -256,10 +256,6 @@ private struct HealthMenuPopover: View {
                     secondaryInk: DashboardPalette.popoverSecondaryInk, showsResetTime: true, compactMetadata: true
                 )
             }
-            if let feedback = store.refreshFeedback {
-                UsageRefreshFeedbackView(feedback: feedback, secondaryInk: DashboardPalette.popoverSecondaryInk)
-            }
-
             FlatDivider()
             ReplySpeedView(
                 samples: store.snapshot.replySpeedSamples, layout: .row, isVisible: isVisible,
@@ -287,16 +283,21 @@ private struct HealthMenuPopover: View {
                         .font(.caption).foregroundStyle(permissionStore.newCount > 0 ? DashboardPalette.ink : DashboardPalette.popoverSecondaryInk)
                 }
             }
-            if let error = store.errorMessage, error != store.refreshFeedback?.detail {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption2).foregroundStyle(DashboardPalette.popoverSecondaryInk).lineLimit(2).help(error)
-            }
             FlatDivider()
+            UsageRefreshStatusView(
+                store: store, compact: true,
+                secondaryInk: DashboardPalette.popoverSecondaryInk
+            )
             HStack {
-                Button("打开详情", systemImage: "arrow.up.forward.app") { openDashboard() }
-                    .buttonStyle(.plain).foregroundStyle(.tint)
+                Button { openDashboard() } label: {
+                    Label("打开详情", systemImage: "arrow.up.forward.app")
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).foregroundStyle(.tint)
+                .help("打开用量详情")
                 Spacer()
-                Text(store.isRefreshing ? "刷新中…" : "本机统计")
+                Text("本机统计")
                     .font(.caption2).foregroundStyle(DashboardPalette.popoverSecondaryInk)
             }.font(.callout)
         }
@@ -322,20 +323,26 @@ private struct HealthMenuPopover: View {
     }
 
     private var controlButtons: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             Button { Task { await store.refresh(userInitiated: true) } } label: {
-                Image(systemName: "arrow.clockwise").frame(width: 20, height: 20)
-            }.disabled(store.isRefreshing).help("刷新")
+                PopoverControlIcon(systemName: "arrow.clockwise")
+            }
+            .disabled(store.isRefreshing)
+            .keyboardShortcut("r", modifiers: .command)
+            .help("刷新（⌘R）")
+            .accessibilityLabel("刷新本机记录")
             Button { openSettings() } label: {
-                Image(systemName: "gearshape").frame(width: 20, height: 20)
-            }.help("偏好设置")
+                PopoverControlIcon(systemName: "gearshape")
+            }
+            .help("偏好设置")
+            .accessibilityLabel("打开偏好设置")
             Menu {
                 Picker("外观", selection: $appearance) {
                     ForEach(AppAppearance.allCases) { Text($0.title).tag($0.rawValue) }
                 }
                 Button("权限请求记录") {
                     showPermissionHistory.toggle()
-                    permissionsExpanded = showPermissionHistory
+                    permissionsExpanded = showPermissionHistory || permissionStore.newCount > 0
                 }
                 Button("重新读取全部记录") {
                     Task { await store.refresh(force: true, userInitiated: true) }
@@ -343,15 +350,34 @@ private struct HealthMenuPopover: View {
                 Divider()
                 Button("退出") { NSApplication.shared.terminate(nil) }
             } label: {
-                Image(systemName: "ellipsis").frame(width: 20, height: 20)
+                PopoverControlIcon(systemName: "ellipsis")
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("更多")
+            .accessibilityLabel("更多操作")
         }.buttonStyle(.plain)
     }
 
     private func openDashboard() {
         NotificationCenter.default.post(name: .codexHealthDashboardWillOpen, object: nil)
         openWindow(id: "dashboard")
+    }
+}
+
+private struct PopoverControlIcon: View {
+    let systemName: String
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovered = false
+
+    var body: some View {
+        Image(systemName: systemName)
+            .frame(width: 20, height: 20)
+            .frame(width: 28, height: 28)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(DashboardPalette.ink.opacity(isHovered && isEnabled ? 0.08 : 0))
+            }
+            .contentShape(Rectangle())
+            .onHover { isHovered = $0 }
     }
 }
 

@@ -4,12 +4,17 @@ import SwiftUI
 struct ProjectsUsageView: View {
     let store: UsageStore
     let pathStore: ProjectPathStore
-    @State private var range = ProjectRange.sevenDays
-    @State private var showFullPaths = false
+    @Bindable var viewState: DashboardViewState
     @State private var selectedPath: String?
 
+    init(store: UsageStore, pathStore: ProjectPathStore, viewState: DashboardViewState? = nil) {
+        self.store = store
+        self.pathStore = pathStore
+        self.viewState = viewState ?? DashboardViewState()
+    }
+
     private var projects: [ProjectUsage] {
-        let discovered: [ProjectUsage] = switch range {
+        let discovered: [ProjectUsage] = switch viewState.projectRange {
         case .today: store.snapshot.todayProjects
         case .sevenDays: store.snapshot.allProjects
         case .thirtyDays: store.snapshot.monthProjects
@@ -40,12 +45,12 @@ struct ProjectsUsageView: View {
             }
 
             HStack(spacing: 12) {
-                Picker("时间范围", selection: $range) {
+                Picker("时间范围", selection: $viewState.projectRange) {
                     ForEach(ProjectRange.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented).labelsHidden()
                 .frame(width: 280)
-                Toggle("显示完整路径", isOn: $showFullPaths)
+                Toggle("显示完整路径", isOn: $viewState.showsFullProjectPaths)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                 Spacer()
@@ -66,12 +71,11 @@ struct ProjectsUsageView: View {
                         ProjectUsageRow(
                             project: project,
                             total: totalTokens,
-                            showFullPath: showFullPaths,
+                            showFullPath: viewState.showsFullProjectPaths,
                             isFollowed: pathStore.followedPaths.contains(project.path),
+                            showDetails: { selectedPath = project.path },
                             remove: { pathStore.remove(project.path) }
                         )
-                        .contentShape(Rectangle())
-                        .onTapGesture { selectedPath = project.path }
                     }
                 }
             }
@@ -86,16 +90,11 @@ struct ProjectsUsageView: View {
         )) { selection in
             ProjectDetailSheet(
                 project: projects.first { $0.path == selection.path } ?? ProjectUsage(path: selection.path, tokens: 0),
-                records: store.snapshot.recentRecords.filter { $0.project == selection.path }
+                range: viewState.projectRange,
+                records: viewState.projectRange.records(store.snapshot.recentRecords, projectPath: selection.path)
             )
         }
     }
-}
-
-private enum ProjectRange: String, CaseIterable, Identifiable {
-    case today, sevenDays, thirtyDays
-    var id: String { rawValue }
-    var title: String { switch self { case .today: "今天"; case .sevenDays: "近 7 天"; case .thirtyDays: "近 30 天" } }
 }
 
 private struct ProjectSelection: Identifiable {
@@ -108,27 +107,40 @@ private struct ProjectUsageRow: View {
     let total: Int
     let showFullPath: Bool
     let isFollowed: Bool
+    let showDetails: () -> Void
     let remove: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 14) {
-                Image(systemName: isFollowed ? "folder.fill.badge.checkmark" : "folder.fill")
-                    .font(.title3).foregroundStyle(DashboardPalette.secondaryInk).frame(width: 28)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(project.name).font(.headline)
-                    Text(showFullPath ? (project.path.isEmpty ? "会话未提供工作目录" : project.path) : project.name)
-                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk).lineLimit(1).textSelection(.enabled)
+                Button(action: showDetails) {
+                    HStack(spacing: 14) {
+                        Image(systemName: isFollowed ? "folder.fill.badge.checkmark" : "folder.fill")
+                            .font(.title3).foregroundStyle(DashboardPalette.secondaryInk).frame(width: 28)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(project.name).font(.headline)
+                            Text(showFullPath ? (project.path.isEmpty ? "会话未提供工作目录" : project.path) : project.name)
+                                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk).lineLimit(1)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 5) {
+                            Text(UsageFormatters.tokens(project.tokens)).font(.headline).monospacedDigit()
+                            Text("\(project.sessions) 个会话" + (project.lastActive.map { " · \($0.formatted(.dateTime.month().day().hour().minute()))" } ?? ""))
+                                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold)).foregroundStyle(DashboardPalette.secondaryInk)
+                    }
+                    .contentShape(Rectangle())
                 }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 5) {
-                    Text(UsageFormatters.tokens(project.tokens)).font(.headline).monospacedDigit()
-                    Text("\(project.sessions) 个会话" + (project.lastActive.map { " · \($0.formatted(.dateTime.month().day().hour().minute()))" } ?? ""))
-                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
-                }
+                .buttonStyle(.plain)
+                .help("查看 \(project.name) 的用量记录")
+                .accessibilityLabel("查看 \(project.name) 的用量记录")
+                .accessibilityValue("\(UsageFormatters.tokens(project.tokens)) Token，\(project.sessions) 个会话")
                 if isFollowed {
                     Button(role: .destructive, action: remove) { Image(systemName: "xmark.circle") }
                         .buttonStyle(.plain).help("移除关注目录")
+                        .accessibilityLabel("移除关注目录 \(project.name)")
                 }
             }
             ProgressView(value: Double(project.tokens), total: Double(max(1, total)))
@@ -141,23 +153,46 @@ private struct ProjectUsageRow: View {
 
 private struct ProjectDetailSheet: View {
     let project: ProjectUsage
+    let range: ProjectRange
     let records: [UsageRecord]
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack { Text(project.name).font(.title2.bold()); Spacer(); Button("完成") { dismiss() } }
+            HStack {
+                Text(project.name).font(.title2.bold())
+                Spacer()
+                Button("完成") { dismiss() }.keyboardShortcut(.cancelAction)
+            }
             Text(project.path.isEmpty ? "会话未提供工作目录" : project.path)
                 .font(.caption).foregroundStyle(DashboardPalette.secondaryInk).textSelection(.enabled)
             HStack(spacing: 18) {
+                Text(range.title)
                 Label(UsageFormatters.tokens(project.tokens), systemImage: "number")
                 Label("\(project.sessions) 个会话", systemImage: "bubble.left.and.bubble.right")
             }.font(.callout.weight(.medium))
             FlatDivider()
-            Text("最近会话").font(.headline)
-            List(records.sorted { $0.date > $1.date }.prefix(12), id: \.date) { record in
-                HStack { Text(record.model).lineLimit(1); Spacer(); Text(UsageFormatters.tokens(record.tokens)); Text(record.date, style: .date).foregroundStyle(DashboardPalette.secondaryInk) }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("最近用量记录").font(.headline)
+                Text("\(range.title) · 本机已记录 \(records.count) 条，显示最近 \(min(12, records.count)) 条")
+                    .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
+            if records.isEmpty {
+                ContentUnavailableView("所选范围内暂无用量记录", systemImage: "clock.badge.questionmark")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(Array(records.prefix(12).enumerated()), id: \.offset) { _, record in
+                    HStack {
+                        Text(record.model).lineLimit(1)
+                        Spacer()
+                        Text(UsageFormatters.tokens(record.tokens)).monospacedDigit()
+                        Text(record.date.formatted(.dateTime.month().day().hour().minute()))
+                            .foregroundStyle(DashboardPalette.secondaryInk)
+                    }
+                }
+            }
+            Text("按小时和模型汇总所选目录中的 Token 增量；未记录不代表消耗为 0。")
+                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
         }
         .padding(22)
         .frame(width: 600, height: 460)

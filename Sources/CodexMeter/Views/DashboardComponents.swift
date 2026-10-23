@@ -17,6 +17,92 @@ struct PageHeader: View {
     }
 }
 
+/// A stable status row: checking local files never implies a new quota observation.
+struct UsageRefreshStatusView: View {
+    let store: UsageStore
+    var compact = false
+    var secondaryInk: Color = DashboardPalette.secondaryInk
+
+    private var feedback: UsageRefreshFeedback? {
+        guard let feedback = store.refreshFeedback,
+              (store.lastSuccessfulRefresh ?? .distantPast) <= feedback.checkedAt else { return nil }
+        return feedback
+    }
+
+    private var message: String {
+        if store.isRefreshing { return "正在刷新本机用量…" }
+        if store.errorMessage != nil {
+            return feedback?.outcome == .failed ? "刷新失败，请查看提示" : "读取不完整，请查看提示"
+        }
+        if let feedback { return feedback.message }
+        return store.lastSuccessfulRefresh == nil ? "等待本机记录" : "本机统计已更新"
+    }
+
+    private var symbol: String {
+        if store.errorMessage != nil { return "exclamationmark.triangle" }
+        switch feedback?.outcome {
+        case .incomplete, .failed: return "exclamationmark.triangle"
+        case .noNewSample: return "clock"
+        case .newSample: return "checkmark.circle"
+        case nil: return "clock.arrow.circlepath"
+        }
+    }
+
+    private var detail: String {
+        if store.isRefreshing { return store.loadingMessage }
+        var lines = [message]
+        if let checkedAt = feedback?.checkedAt ?? store.lastSuccessfulRefresh {
+            lines.append("本机检查于 \(checkedAt.formatted(date: .abbreviated, time: .standard))")
+        }
+        if let error = store.errorMessage ?? feedback?.detail { lines.append(error) }
+        lines.append("检查时间仅表示本机读取完成；额度仍以原始采样时间为准。")
+        return lines.joined(separator: "\n")
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if store.isRefreshing {
+                ProgressView().progressViewStyle(.circular).controlSize(.mini)
+                    .frame(width: 14, height: 14)
+            } else {
+                Image(systemName: symbol).frame(width: 14)
+            }
+            Text(message).lineLimit(1).truncationMode(.tail)
+            Spacer(minLength: 0)
+            if !compact, !store.isRefreshing,
+               let checkedAt = feedback?.checkedAt ?? store.lastSuccessfulRefresh {
+                Text(checkedAt.formatted(.dateTime.hour().minute()))
+                    .monospacedDigit()
+            }
+        }
+        .font(compact ? .caption2 : .caption)
+        .foregroundStyle(secondaryInk)
+        .frame(height: compact ? 18 : 24)
+        .help(detail)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(detail)
+    }
+}
+
+struct QuotaHealthBadge: View {
+    let health: QuotaHealth
+
+    var body: some View {
+        Label(health.title, systemImage: health.icon)
+            .font(.caption.weight(health == .critical || health == .watch ? .semibold : .regular))
+            .foregroundStyle(health.color)
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .background(DashboardPalette.surface, in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(health == .critical ? DashboardPalette.ink : DashboardPalette.divider,
+                                       style: StrokeStyle(lineWidth: health == .critical ? 1.5 : 1,
+                                                          dash: health == .waiting || health == .insufficient ? [3, 3] : []))
+            }
+            .help(health.detail)
+            .accessibilityLabel("\(health.title)。\(health.detail)")
+    }
+}
+
 struct DashboardSidebar: View {
     @Binding var selection: String?
     private let items: [(String, String)] = [
@@ -166,7 +252,8 @@ extension QuotaHealth {
     var icon: String {
         switch self {
         case .waiting, .insufficient: "hourglass"
-        case .critical, .watch: "exclamationmark.shield.fill"
+        case .critical: "exclamationmark.triangle.fill"
+        case .watch: "exclamationmark.shield"
         case .healthy: "checkmark.shield.fill"
         }
     }

@@ -1,18 +1,21 @@
 import SwiftUI
 
+@MainActor
 struct HistoryRecordsView: View {
     let store: UsageStore
-    @State private var range = HistoryRange.thirtyDays
-    @State private var model = "全部"
-    @State private var project = "全部"
-    @State private var showsAllCycles = false
+    @Bindable var viewState: DashboardViewState
+
+    init(store: UsageStore, viewState: DashboardViewState? = nil) {
+        self.store = store
+        self.viewState = viewState ?? DashboardViewState()
+    }
 
     private var records: [UsageRecord] {
-        let cutoff = Date.now.addingTimeInterval(-Double(range.days) * 86_400)
+        let cutoff = Date.now.addingTimeInterval(-Double(viewState.historyRange.days) * 86_400)
         return store.snapshot.recentRecords
             .filter { $0.date >= cutoff }
-            .filter { model == "全部" || $0.model == model }
-            .filter { project == "全部" || $0.project == project }
+            .filter { viewState.historyModel == "全部" || $0.model == viewState.historyModel }
+            .filter { viewState.historyProject == "全部" || $0.project == viewState.historyProject }
             .sorted { $0.date > $1.date }
     }
     private var models: [String] { ["全部"] + Array(Set(store.snapshot.recentRecords.map(\.model))).sorted() }
@@ -24,7 +27,7 @@ struct HistoryRecordsView: View {
             .sorted { $0.key > $1.key }
     }
     private var rateTimeline: [RateTimelineEvent] {
-        let cutoff = Date.now.addingTimeInterval(-Double(range.days) * 86_400)
+        let cutoff = Date.now.addingTimeInterval(-Double(viewState.historyRange.days) * 86_400)
         return store.snapshot.rateTimeline.filter { $0.date >= cutoff }
     }
 
@@ -35,13 +38,13 @@ struct HistoryRecordsView: View {
                 ResetHistoryView(store: store)
             }
             HStack(spacing: 12) {
-                Picker("范围", selection: $range) {
+                Picker("范围", selection: $viewState.historyRange) {
                     ForEach(HistoryRange.allCases) { Text($0.title).tag($0) }
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 210)
-                Picker("模型", selection: $model) {
+                Picker("模型", selection: $viewState.historyModel) {
                     ForEach(models, id: \.self) { Text($0).tag($0) }
                 }.frame(maxWidth: 220)
-                Picker("项目", selection: $project) {
+                Picker("项目", selection: $viewState.historyProject) {
                     ForEach(projects, id: \.self) { Text($0.isEmpty ? "未归属路径" : URL(fileURLWithPath: $0).lastPathComponent).tag($0) }
                 }.frame(maxWidth: 220)
                 Spacer()
@@ -59,12 +62,12 @@ struct HistoryRecordsView: View {
                                 .font(.caption)
                                 .foregroundStyle(DashboardPalette.secondaryInk)
                         }
-                        ForEach(Array(rateTimeline.prefix(showsAllCycles ? rateTimeline.count : 10).enumerated()), id: \.offset) { index, event in
+                        ForEach(Array(rateTimeline.prefix(viewState.showsAllHistoryCycles ? rateTimeline.count : 10).enumerated()), id: \.offset) { index, event in
                             ResetTimelineRow(event: event, isLatest: index == 0 && event.resetsAt > .now)
                         }
                         if rateTimeline.count > 10 {
-                            Button(showsAllCycles ? "收起" : "更多（剩余 \(rateTimeline.count - 10) 个）") {
-                                showsAllCycles.toggle()
+                            Button(viewState.showsAllHistoryCycles ? "收起" : "更多（剩余 \(rateTimeline.count - 10) 个）") {
+                                viewState.showsAllHistoryCycles.toggle()
                             }
                             .buttonStyle(.plain).foregroundStyle(DashboardPalette.secondaryInk)
                         }
@@ -92,8 +95,8 @@ struct HistoryRecordsView: View {
             }
         }
         .padding(28).frame(maxWidth: 1_100, alignment: .leading)
-        .onChange(of: range) { showsAllCycles = false }
-        .onChange(of: store.context?.id) { showsAllCycles = false }
+        .onChange(of: viewState.historyRange) { viewState.showsAllHistoryCycles = false }
+        .onChange(of: store.context?.id) { viewState.showsAllHistoryCycles = false }
     }
 }
 
@@ -134,13 +137,6 @@ private struct ResetTimelineRow: View {
             if !isLatest { FlatDivider() }
         }
     }
-}
-
-private enum HistoryRange: Int, CaseIterable, Identifiable {
-    case sevenDays = 7, thirtyDays = 30
-    var id: Int { rawValue }
-    var days: Int { rawValue }
-    var title: String { self == .sevenDays ? "近 7 天" : "近 30 天" }
 }
 
 private struct HistoryRecordRow: View {

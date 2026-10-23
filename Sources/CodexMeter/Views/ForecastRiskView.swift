@@ -45,6 +45,7 @@ struct ForecastRiskView: View {
                 DashboardCard {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("风险说明").font(.headline)
+                        QuotaHealthBadge(health: health)
                         RiskLine(icon: health.icon, color: health.color, title: health.title, detail: health.detail)
                         RiskLine(icon: "clock.arrow.circlepath", color: DashboardPalette.ink, title: "下次重置", detail: rate.resetsAt.formatted(.dateTime.year().month().day().hour().minute()))
                         RiskLine(icon: "chart.line.uptrend.xyaxis", color: DashboardPalette.secondaryInk, title: "估算依据", detail: store.measuredVelocity.map { "已使用近 \($0.description) 小时的额度变化样本。" } ?? "暂无连续变化样本，已使用本周期平均速度。")

@@ -7,6 +7,7 @@ struct AnalyticsDashboardView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedSection: String? = "健康报告"
     @State private var projectPathStore = ProjectPathStore()
+    @State private var viewState = DashboardViewState()
     @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
 
     private var appearanceMode: AppAppearance {
@@ -33,21 +34,20 @@ struct AnalyticsDashboardView: View {
                             .padding(28)
                             .frame(maxWidth: 1_100, alignment: .leading)
                     case "项目与用量":
-                        ProjectsUsageView(store: store, pathStore: projectPathStore)
+                        ProjectsUsageView(store: store, pathStore: projectPathStore, viewState: viewState)
                     case "使用趋势":
-                        UsageTrendsView(store: store)
+                        UsageTrendsView(store: store, viewState: viewState)
                     case "模型与效率":
                         ModelEfficiencyView(store: store)
                     case "预测与风险":
                         ForecastRiskView(store: store)
                     case "历史记录":
-                        HistoryRecordsView(store: store)
+                        HistoryRecordsView(store: store, viewState: viewState)
                     default:
                         FeaturePlaceholderView(section: selectedSection ?? "健康报告")
                             .frame(minHeight: 500)
                     }
                 }
-                .id(selectedSection)
                 .transition(.opacity)
             }
             .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: selectedSection)
@@ -55,16 +55,9 @@ struct AnalyticsDashboardView: View {
             .background(DashboardPalette.canvas)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            if store.isRefreshing {
-                HStack(spacing: 12) {
-                    ProgressView().controlSize(.small)
-                    Text(store.loadingMessage)
-                    Spacer()
-                }
-                .font(.caption)
-                .padding(.horizontal, 16).padding(.vertical, 8)
+            UsageRefreshStatusView(store: store)
+                .padding(.horizontal, 16).padding(.vertical, 4)
                 .background(.bar)
-            }
         }
         .foregroundStyle(DashboardPalette.ink)
         .tint(DashboardPalette.ink)
@@ -86,6 +79,7 @@ struct AnalyticsDashboardView: View {
                     Task { await store.refresh(userInitiated: true) }
                 }
                 .disabled(store.isRefreshing)
+                .keyboardShortcut("r", modifiers: .command)
                 .help("刷新本机用量；展开菜单可重新读取全部记录")
             }
             if #available(macOS 26.0, *) {

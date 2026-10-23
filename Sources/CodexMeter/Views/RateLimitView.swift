@@ -14,8 +14,16 @@ struct QuotaSampleView: View {
         TimelineView(.explicit([Date.now] + QuotaSampleState.deadlines(sampledAt: sampledAt, resetsAt: window?.resetsAt))) { context in
             let sample = QuotaSampleState(percent: window?.usedPercent, sampledAt: sampledAt, resetsAt: window?.resetsAt, now: context.date)
             VStack(alignment: .leading, spacing: 6) {
-                Text(sample.isStale && sample.recordedRemaining != nil ? "\(title) · 上次记录" : title)
-                    .font(.caption).foregroundStyle(secondaryInk)
+                HStack(spacing: 8) {
+                    Text(title).font(.caption).foregroundStyle(secondaryInk)
+                    if sample.isStale && sample.recordedRemaining != nil {
+                        sampleBadge("上次记录", icon: "clock")
+                    } else if let remaining = sample.recordedRemaining, remaining < 20 {
+                        sampleBadge("额度紧张", icon: "exclamationmark.triangle.fill")
+                    } else if sample.recordedRemaining == nil {
+                        sampleBadge("待更新", icon: "hourglass")
+                    }
+                }
                 Text(sample.recordedRemaining.map { "\($0)%" } ?? "—")
                     .font(.system(size: numberSize, weight: .medium)).monospacedDigit()
                 if let remaining = sample.recordedRemaining {
@@ -36,6 +44,15 @@ struct QuotaSampleView: View {
                 }
             }
         }
+    }
+
+    private func sampleBadge(_ title: String, icon: String) -> some View {
+        Label(title, systemImage: icon)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(DashboardPalette.ink)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .overlay(Capsule().strokeBorder(DashboardPalette.divider, lineWidth: 1))
+            .fixedSize()
     }
 
     private func sampleDescription(_ sample: QuotaSampleState, at now: Date) -> String {

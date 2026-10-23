@@ -18,6 +18,7 @@ import argparse
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--work-dir', type=pathlib.Path, help='Fresh directory for the retained preview build')
+parser.add_argument('--no-open', action='store_true', help='Build the isolated preview without launching it')
 args = parser.parse_args()
 WORK = args.work_dir.resolve() if args.work_dir else pathlib.Path(tempfile.mkdtemp(prefix="codex-health-screenshots-"))
 WORK.mkdir(parents=True, exist_ok=True)
@@ -41,6 +42,8 @@ extension Notification.Name {
     var snapshot = ScreenshotFixture.snapshot
     var isRefreshing = false
     var errorMessage: String?
+    var refreshFeedback: UsageRefreshFeedback?
+    var lastSuccessfulRefresh: Date? = .now
     var processedFiles = 0
     var totalFiles = 0
     var readFiles = 0
@@ -53,7 +56,7 @@ extension Notification.Name {
     var quotaWaitingMessage: String { "等待演示采样" }
     var measuredVelocity: RateVelocity? { RateVelocity(percentPerHour: 0.35, windowsUsed: [1, 6, 24]) }
     @discardableResult func synchronizeContext() -> Bool { false }
-    func refresh(force: Bool = false) async {}
+    func refresh(force: Bool = false, userInitiated: Bool = false) async {}
     func refreshIfNeeded() async {}
     func chooseCodexFolder() {}
     func requestCodexFolderIfNeeded() {}
@@ -70,7 +73,8 @@ for path in sorted((ROOT / "Sources/CodexMeter").rglob("*.swift")):
             'AnalyticsDashboardView(store: store, selectedSection: .constant("健康报告"))',
         )
     elif path.name == "UsageStore.swift":
-        source = usage_store + source[source.index("struct CachedQuotaRate:"):]
+        feedback = source[source.index("struct UsageRefreshFeedback:"):source.index("@MainActor")]
+        source = usage_store + feedback + source[source.index("struct CachedQuotaRate:"):]
     elif path.name == "AnalyticsDashboardView.swift":
         source = source.replace(
             '@State private var selectedSection: String? = "健康报告"',
@@ -111,10 +115,10 @@ struct DocumentationWidgetPreview: View {
     }
     var body: some View {
         HStack(spacing: 20) {
-            CodexMeterWidgetView(family: .systemSmall, entry: entry)
+            CodexMeterWidgetView(entry: entry, family: .systemSmall)
                 .padding(16).frame(width: 190, height: 190)
                 .background(.background, in: RoundedRectangle(cornerRadius: 16))
-            CodexMeterWidgetView(family: .systemMedium, entry: entry)
+            CodexMeterWidgetView(entry: entry, family: .systemMedium)
                 .padding(16).frame(width: 380, height: 190)
                 .background(.background, in: RoundedRectangle(cornerRadius: 16))
         }
@@ -155,6 +159,7 @@ subprocess.run([
     "-o", str(APP / "Contents/MacOS/ScreenshotPreview"),
 ], check=True)
 command = ["/usr/bin/open", "-n", str(APP)]
-subprocess.run(command, check=True)
+if not args.no_open:
+    subprocess.run(command, check=True)
 print("Preview ready. Use the sidebar for analysis pages and the 演示预览 menu for appearance, menu and widget previews.")
 print("Take screenshots of the window, then quit the preview app when finished.")

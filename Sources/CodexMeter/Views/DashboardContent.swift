@@ -28,11 +28,7 @@ struct DashboardContent: View {
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 Spacer()
-                Label(health.title, systemImage: health.icon)
-                    .font(.caption).foregroundStyle(health.color)
-                    .padding(.horizontal, 12).padding(.vertical, 7)
-                    .background(DashboardPalette.surface, in: Capsule())
-                    .help(health.detail)
+                QuotaHealthBadge(health: health)
             }
 
             DashboardPanel {

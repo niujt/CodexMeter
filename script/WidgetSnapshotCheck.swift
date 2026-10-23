@@ -12,13 +12,14 @@ struct WidgetSnapshotCheck {
         let now = Date(timeIntervalSince1970: 1_791_961_200)
         for family in [WidgetFamily.systemSmall, .systemMedium] {
             for scheme in [ColorScheme.light, .dark] {
-                for state in ["fresh", "stale", "empty"] {
+                for state in ["fresh", "stale", "empty", "low", "expired", "unknown-time", "future-time", "unknown-quota"] {
                     let usage: WidgetUsageData? = state == "empty" ? nil : WidgetUsageData(
                         todayTokens: 3_731_923, weekTokens: 1_376_638_466, monthTokens: 1_792_003_171,
-                        contextTokens: 141_007, contextLimit: 475_000, ratePercent: 21, rateWindowMinutes: 10_080,
+                        contextTokens: 141_007, contextLimit: 475_000,
+                        ratePercent: state == "unknown-quota" ? nil : (state == "low" ? 88 : 21), rateWindowMinutes: 10_080,
                         updatedAt: now.addingTimeInterval(state == "stale" ? -3_600 : 0),
-                        sampledAt: now.addingTimeInterval(state == "stale" ? -3_600 : 0),
-                        rateResetsAt: now.addingTimeInterval(86_400))
+                        sampledAt: state == "unknown-time" ? nil : now.addingTimeInterval(state == "stale" ? -3_600 : (state == "future-time" ? 60 : 0)),
+                        rateResetsAt: now.addingTimeInterval(state == "expired" ? -60 : 86_400))
                     let width: CGFloat = family == .systemSmall ? 170 : 360
                     let view = CodexMeterWidgetView(entry: UsageEntry(date: now, usage: usage), family: family)
                         .environment(\.colorScheme, scheme)
