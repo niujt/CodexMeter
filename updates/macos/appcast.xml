@@ -3,6 +3,22 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.17</title>
+      <sparkle:version>26</sparkle:version>
+      <sparkle:shortVersionString>1.0.17</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Sat, 24 Oct 2026 03:07:38 +0000</pubDate>
+      <description>续航预测支持小时与天切换，并记住选择。
+健康报告与使用趋势支持柱状图、折线图、面积图和散点图，默认仍为柱状图。
+折线图和面积图保留缺失记录的断点；悬停可查看时间与用量。
+Token 构成按非缓存输入、缓存输入、输出分开展示，可切换今天、近 7 天与本月；原始合计保留，缓存和推理不重复相加。
+缓存仍消耗 Token，通常按缓存费率计费，不能直接视为免费或按原始 Token 换算订阅额度。
+账户已用额度旁明确显示其他设备暂未统计；现有本机数据不提供设备额度拆分，不推算未经验证的百分比。
+主应用和小组件同步升级至 1.0.17（26）。
+本次为 Apple Development 签名版本，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.17/CodexMeter-1.0.17-macos.dmg" length="6949427" type="application/octet-stream" sparkle:edSignature="58Lqh7kEfEGBvrmRtU3u9dqjsQg+znjJT7OtuQRGixSpM09jQAyaifBjRoeNXn8F5aVklUkCdfoUV7l+4HxpCg=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.16</title>
       <sparkle:version>25</sparkle:version>
       <sparkle:shortVersionString>1.0.16</sparkle:shortVersionString>
@@ -18,25 +34,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 本次为 Apple Development 签名版本，尚未公证。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.16/CodexMeter-1.0.16-macos.dmg" length="6789775" type="application/octet-stream" sparkle:edSignature="OAAa8XWFSo45W1RSANXeVuit8bjF532uPG+0aAmn5Tmp970SzIadeT1ptYdvYET1453+pyHDwS6+ZwrdoYipCw=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.14</title>
-      <sparkle:version>23</sparkle:version>
-      <sparkle:shortVersionString>1.0.14</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Thu, 22 Oct 2026 14:20:19 +0000</pubDate>
-      <description>进入历史页后自动查询使用限额重置历史，无需每次点击读取。
-同一账户与目录的查询结果在内存中缓存 5 分钟，切换栏目后可复用；保留手动刷新，点击后立即重新查询。
-切换账户、切换目录或退出登录时清空缓存，并阻止旧请求覆盖当前账户的结果。
-主应用和小组件同步升级至 1.0.14（23）。
-本次为 Apple Development 签名版本，尚未公证。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.14/CodexMeter-1.0.14-macos.dmg" length="6661226" type="application/octet-stream" sparkle:edSignature="cXpUaAym3obPnZS1QOO1f8DNSjGNuNfz9yOc65p2f+SAve4OR2Q0+i7NC/mbN6gCqkuBvcLvyXiJ52K5+T57Bg=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: vfQ1Eq7NLXELPti/LVU3dKDvwDAmCHpU9rDQ489Rgaupn67dMraFvJ03joqbOyibyNbPFS/wiVP0L6tzYpOXDA==
-length: 3036
+edSignature: usMpeNDebyoMl9no+l9LfMHsi+hnYkYaYnfraCc8DjF1xD8o1rKLZJ0voA70CMiQlr0EwFRTct2uUJXUxAKvAQ==
+length: 3373
 -->
