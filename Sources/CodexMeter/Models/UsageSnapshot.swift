@@ -7,6 +7,10 @@ struct TokenUsage: Sendable, Equatable, Codable {
     var reasoningOutput = 0
     var total = 0
 
+    /// Cached input is already included in input, and remains part of total usage.
+    var cachedInputPortion: Int { min(max(0, input), max(0, cachedInput)) }
+    var uncachedInput: Int { max(0, input) - cachedInputPortion }
+
     static func + (lhs: Self, rhs: Self) -> Self {
         Self(
             input: lhs.input + rhs.input,

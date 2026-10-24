@@ -8,6 +8,22 @@ struct TrendPoint: Identifiable, Equatable {
 }
 
 enum TrendSeries {
+    /// Separate observations across unknown slots; line/area charts must not bridge gaps.
+    static func contiguousSegments(_ points: [TrendPoint]) -> [[TrendPoint]] {
+        var segments: [[TrendPoint]] = []
+        var current: [TrendPoint] = []
+        for point in points {
+            if point.tokens != nil {
+                current.append(point)
+            } else if !current.isEmpty {
+                segments.append(current)
+                current = []
+            }
+        }
+        if !current.isEmpty { segments.append(current) }
+        return segments
+    }
+
     /// Twenty-four consecutive local clock hours, including the current partial hour.
     /// Calendar arithmetic preserves both repeated fall-back hours and skips spring gaps.
     static func hourly(records: [UsageRecord], now: Date = .now,

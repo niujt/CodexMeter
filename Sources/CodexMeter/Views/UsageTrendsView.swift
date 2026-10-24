@@ -4,6 +4,7 @@ import SwiftUI
 struct UsageTrendsView: View {
     let store: UsageStore
     @Bindable var viewState: DashboardViewState
+    @AppStorage(TrendChartStyle.preferenceKey) private var chartStyle = TrendChartStyle.bars.rawValue
 
     init(store: UsageStore, viewState: DashboardViewState? = nil) {
         self.store = store
@@ -30,6 +31,7 @@ struct UsageTrendsView: View {
                     ForEach(TrendGranularity.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 200)
+                TrendChartPicker(selection: $chartStyle)
                 Spacer()
                 Text("已记录总计 \(UsageFormatters.tokens(total)) Token")
                     .foregroundStyle(DashboardPalette.secondaryInk)
@@ -46,7 +48,8 @@ struct UsageTrendsView: View {
                         ContentUnavailableView("暂无趋势样本", systemImage: "chart.bar.xaxis")
                             .frame(maxWidth: .infinity, minHeight: 250)
                     } else {
-                        TrendBars(samples: points, hourly: viewState.trendGranularity == .hourly)
+                        UsageTrendChart(samples: points, hourly: viewState.trendGranularity == .hourly,
+                                        style: TrendChartStyle(rawValue: chartStyle) ?? .bars)
                             .frame(height: 250)
                     }
                     if viewState.trendGranularity == .hourly {

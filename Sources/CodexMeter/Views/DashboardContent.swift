@@ -4,6 +4,7 @@ struct DashboardContent: View {
     let snapshot: UsageSnapshot
     let errorMessage: String?
     let isRefreshing: Bool
+    @AppStorage("codexMeter.tokenBreakdownRange") private var tokenRange = "today"
     let measuredVelocity: Double?
     let quotaMessage: String
     let chooseFolder: () -> Void
@@ -55,6 +56,9 @@ struct DashboardContent: View {
                 }
             }
 
+            DashboardPanel {
+                TokenUsageBreakdownView(usage: breakdownUsage, title: "Token 构成", selectedRange: $tokenRange)
+            }
             DashboardPanel { DeviceUsageSummary(snapshot: snapshot) }
             DashboardPanel { UsageTrendCard(snapshot: snapshot) }
 
@@ -83,6 +87,14 @@ struct DashboardContent: View {
             }
         }
     }
+
+    private var breakdownUsage: TokenUsage {
+        switch tokenRange {
+        case "week": snapshot.lastSevenDays
+        case "month": snapshot.thisMonth
+        default: snapshot.today
+        }
+    }
 }
 
 /// Local token records and account quota have different units and coverage.
@@ -95,7 +107,7 @@ private struct DeviceUsageSummary: View {
             Text("跨设备用量").font(.callout.weight(.semibold))
             HStack(alignment: .top, spacing: 32) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("其他电脑 Token", systemImage: "desktopcomputer")
+                    Label("其他设备 Token", systemImage: "desktopcomputer")
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                     Text("未同步").font(.title3.weight(.medium))
                     Text("尚未接入其他电脑的用量记录")
@@ -106,8 +118,13 @@ private struct DeviceUsageSummary: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("账户 7 天已用额度").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                     if let rate = snapshot.currentSevenDayRate(), rate.windowMinutes == 10_080 {
-                        Text("\(rate.usedPercent.formatted(.number.precision(.fractionLength(0...1))))%")
-                            .font(.title3.weight(.medium)).monospacedDigit()
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text("\(rate.usedPercent.formatted(.number.precision(.fractionLength(0...1))))%")
+                                .font(.title3.weight(.medium)).monospacedDigit()
+                            Text("（其他设备：暂无统计）")
+                                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                                .help("账户额度是合计，本机数据没有按设备拆分的额度；不能从本机 Token 换算出其他设备百分比。")
+                        }
                         Text(snapshot.mainRateIsCached ? "含其他设备 · 有效缓存采样 · 非实时" : "含其他设备 · 本地采样 · 非实时")
                             .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                     } else {
@@ -151,6 +168,7 @@ private struct QuotaSummary: View {
 
 private struct UsageTrendCard: View {
     let snapshot: UsageSnapshot
+    @AppStorage(TrendChartStyle.preferenceKey) private var chartStyle = TrendChartStyle.bars.rawValue
     private var days: [DailyUsage] { snapshot.dailyUsage.sorted { $0.date < $1.date }.suffix(7) }
 
     var body: some View {
@@ -158,13 +176,15 @@ private struct UsageTrendCard: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("使用趋势").font(.callout.weight(.semibold))
                 Spacer()
+                TrendChartPicker(selection: $chartStyle)
                 Text("近 7 天 · Token").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
             }
             if days.isEmpty {
                 ContentUnavailableView("暂无趋势样本", systemImage: "chart.bar.xaxis")
                     .frame(maxWidth: .infinity, minHeight: 150)
             } else {
-                TrendBars(points: days.map { ($0.date, $0.tokens) }, hourly: false)
+                UsageTrendChart(samples: days.map { TrendPoint(date: $0.date, tokens: $0.tokens) }, hourly: false,
+                                style: TrendChartStyle(rawValue: chartStyle) ?? .bars)
                     .frame(height: 140)
             }
         }

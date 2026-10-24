@@ -1,5 +1,12 @@
 import Foundation
 
+enum ForecastDurationUnit: String, CaseIterable, Identifiable {
+    case hours, days
+    static let preferenceKey = "codexMeter.forecastDurationUnit"
+    var id: String { rawValue }
+    var title: String { self == .hours ? "小时" : "天" }
+}
+
 enum UsageFormatters {
     static let compactTokens: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -37,7 +44,14 @@ enum UsageFormatters {
         return "\(minutes)分钟"
     }
 
-    static func duration(hours: Double) -> String {
+    static func duration(hours: Double, unit: ForecastDurationUnit = .hours) -> String {
+        guard hours.isFinite, hours >= 0 else { return "暂无估算" }
+        if unit == .days {
+            let days = hours / 24
+            if days > 0 && days < 0.01 { return "不足 0.01 天" }
+            return "\(days.formatted(.number.precision(.fractionLength(0...2)))) 天"
+        }
+        guard hours < Double(Int.max / 60) else { return "超出可显示范围" }
         let minutes = max(0, Int(hours * 60))
         return "\(minutes / 60)小时\(minutes % 60)分"
     }

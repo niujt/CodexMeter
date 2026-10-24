@@ -267,7 +267,7 @@ private struct HealthMenuPopover: View {
                 Text(UsageFormatters.tokens(store.snapshot.today.total)).monospacedDigit()
             }
             .font(.callout)
-            .help("本机今日记录 · 输入 \(UsageFormatters.tokens(store.snapshot.today.input)) · 输出 \(UsageFormatters.tokens(store.snapshot.today.output)) · 缓存输入 \(UsageFormatters.tokens(store.snapshot.today.cachedInput))。缓存输入是输入的一部分，不重复相加。")
+            .help("本机今日记录 · 非缓存输入 \(UsageFormatters.tokens(store.snapshot.today.uncachedInput)) · 缓存输入 \(UsageFormatters.tokens(store.snapshot.today.cachedInputPortion)) · 输出 \(UsageFormatters.tokens(store.snapshot.today.output))。缓存仍消耗 Token，已包含在输入和合计中。")
 
             if permissionStore.newCount > 0 || showPermissionHistory {
                 FlatDivider()
@@ -538,8 +538,8 @@ private struct TokenBreakdownView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("今日 Token").font(.callout.weight(.semibold))
-            Text("输入 \(UsageFormatters.tokens(usage.input)) · 输出 \(UsageFormatters.tokens(usage.output)) · 推理 \(UsageFormatters.tokens(usage.reasoningOutput))")
-            Text("缓存 \(UsageFormatters.tokens(usage.cachedInput)) · 合计 \(UsageFormatters.tokens(usage.total)) · \(sessions) 个会话")
+            Text("非缓存输入 \(UsageFormatters.tokens(usage.uncachedInput)) · 缓存输入 \(UsageFormatters.tokens(usage.cachedInputPortion)) · 输出 \(UsageFormatters.tokens(usage.output))")
+            Text("合计 \(UsageFormatters.tokens(usage.total)) · \(sessions) 个会话；推理已包含在输出中")
                 .foregroundStyle(DashboardPalette.secondaryInk)
         }.font(.caption)
     }
@@ -548,6 +548,7 @@ private struct TokenBreakdownView: View {
 private struct PredictionView: View {
     let window: RateWindow
     let velocity: RateVelocity?
+    @AppStorage(ForecastDurationUnit.preferenceKey) private var durationUnit = ForecastDurationUnit.hours.rawValue
     var body: some View {
         let resetHours = max(0, window.resetsAt.timeIntervalSinceNow / 3_600)
         let elapsedHours = max(0.1, Double(window.windowMinutes) / 60 - resetHours)
@@ -555,8 +556,15 @@ private struct PredictionView: View {
         let rate = velocity?.percentPerHour ?? fallbackRate
         let remaining = rate > 0 ? (100 - window.usedPercent) / rate : nil
         VStack(alignment: .leading, spacing: 4) {
-            Text("用量预测").font(.callout.weight(.semibold))
-            Text(remaining.map { "预计还能使用 \(UsageFormatters.duration(hours: $0))" } ?? "样本不足，暂不预测")
+            HStack {
+                Text("用量预测").font(.callout.weight(.semibold))
+                Spacer()
+                Picker("时间单位", selection: $durationUnit) {
+                    ForEach(ForecastDurationUnit.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .pickerStyle(.segmented).labelsHidden().frame(width: 110)
+            }
+            Text(remaining.map { "预计还能使用 \(UsageFormatters.duration(hours: $0, unit: ForecastDurationUnit(rawValue: durationUnit) ?? .hours))" } ?? "样本不足，暂不预测")
             Text((remaining ?? .infinity) < resetHours ? "可能在重置前耗尽" : "预计可支撑到重置")
                 .foregroundStyle(DashboardPalette.ink)
             Text(velocity.map { "按近 \($0.description) 小时额度变化加权估算" } ?? "样本不足，使用额度周期平均速度估算")

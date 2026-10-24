@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ForecastRiskView: View {
     let store: UsageStore
+    @AppStorage(ForecastDurationUnit.preferenceKey) private var durationUnit = ForecastDurationUnit.hours.rawValue
     private var rate: RateWindow? { store.snapshot.currentSevenDayRate() }
     private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
     private var resetHours: Double? { rate.map { max(0, $0.resetsAt.timeIntervalSinceNow / 3_600) } }
@@ -33,8 +34,15 @@ struct ForecastRiskView: View {
                     }.frame(maxWidth: .infinity)
                     DashboardCard {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("续航预测").font(.headline)
-                            Text(remainingHours.map { UsageFormatters.duration(hours: $0) } ?? "样本不足")
+                            HStack {
+                                Text("续航预测").font(.headline)
+                                Spacer(minLength: 8)
+                                Picker("时间单位", selection: $durationUnit) {
+                                    ForEach(ForecastDurationUnit.allCases) { Text($0.title).tag($0.rawValue) }
+                                }
+                                .pickerStyle(.segmented).labelsHidden().frame(width: 110)
+                            }
+                            Text(remainingHours.map { UsageFormatters.duration(hours: $0, unit: ForecastDurationUnit(rawValue: durationUnit) ?? .hours) } ?? "样本不足")
                                 .font(.system(size: 32, weight: .medium)).foregroundStyle(color)
                             Text(remainingHours == nil ? "继续使用一段时间后会形成预测" : (willExhaust ? "可能在重置前耗尽" : "预计可支撑到重置"))
                                 .foregroundStyle(DashboardPalette.ink)

@@ -103,6 +103,40 @@ struct QuotaHealthBadge: View {
     }
 }
 
+struct TokenUsageBreakdownView: View {
+    let usage: TokenUsage
+    var title = "今日 Token 构成"
+    var selectedRange: Binding<String>? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(title).font(.callout.weight(.semibold))
+                if let selectedRange {
+                    Picker("Token 统计范围", selection: selectedRange) {
+                        Text("今天").tag("today")
+                        Text("近 7 天").tag("week")
+                        Text("本月").tag("month")
+                    }
+                    .pickerStyle(.segmented).labelsHidden().frame(width: 200)
+                }
+                Spacer()
+                Text("合计 \(UsageFormatters.tokens(usage.total))")
+                    .font(.caption).monospacedDigit().foregroundStyle(DashboardPalette.secondaryInk)
+            }
+            HStack(alignment: .top, spacing: 24) {
+                MetricRow("非缓存输入", UsageFormatters.tokens(usage.uncachedInput))
+                MetricRow("缓存输入", UsageFormatters.tokens(usage.cachedInputPortion))
+                MetricRow("输出", UsageFormatters.tokens(usage.output))
+            }
+            Text("缓存输入已计入输入和合计，不重复相加；缓存仍消耗 Token。订阅额度以账户采样为准。")
+                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+                .help("非缓存输入 = 输入 − 缓存输入。缓存通常使用较低费率，并非免费；推理 Token 已包含在输出中。")
+        }
+    }
+}
+
 struct DashboardSidebar: View {
     @Binding var selection: String?
     private let items: [(String, String)] = [

@@ -28,7 +28,7 @@ struct ModelEfficiencyView: View {
                                     ModelMetric(label: "有效轮次", value: "\(model.requests) 次")
                                     ModelMetric(label: "平均轮次耗时", value: model.averageTurnSeconds.map { UsageFormatters.turnDuration(seconds: $0) } ?? "样本不足")
                                     ModelMetric(label: "缓存命中率", value: model.cacheHitRate.map(UsageFormatters.percentage) ?? "样本不足")
-                                        .help("缓存命中率 = cached_input_tokens / input_tokens")
+                                        .help("缓存命中率 = 缓存输入 / 全部输入。缓存输入仍消耗 Token，按缓存费率计费，不代表免费或等额减少订阅额度。")
                                 }
                             }
                         }
