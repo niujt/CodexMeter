@@ -18,9 +18,10 @@ enum WidgetExtensionRecovery {
         let startedAt: Date
         let userID: uid_t
         let code: CodeIdentity
+        var originalExecutablePath: String? = nil
 
         func requiresReplacement(at path: String, installedCode: CodeIdentity, userID: uid_t) -> Bool {
-            pid > 1 && executablePath == path && self.userID == userID
+            pid > 1 && (executablePath == path || originalExecutablePath == path) && self.userID == userID
                 && code.identifier == installedCode.identifier && code.teamID == installedCode.teamID
                 && code.hash != installedCode.hash
         }
@@ -70,7 +71,10 @@ enum WidgetExtensionRecovery {
             proc_listallpids(buffer.baseAddress, Int32(buffer.count))
         }
         return pids.prefix(max(0, Int(count))).compactMap { pid in
-            guard pid > 1, executablePath(pid) == path else { return nil }
+            // Moving the old bundle into a backup changes proc_pidpath even
+            // though this process was launched from the current installation.
+            guard pid > 1,
+                  executablePath(pid) == path || originalExecutablePath(pid) == path else { return nil }
             return identity(pid)
         }
     }
@@ -99,7 +103,13 @@ enum WidgetExtensionRecovery {
               count > MemoryLayout<Int32>.size, count <= 1_048_576 else { return nil }
         var bytes = [UInt8](repeating: 0, count: count)
         guard sysctl(&mib, 3, &bytes, &count, nil, 0) == 0 else { return nil }
-        return originalExecutablePath(from: Array(bytes.prefix(count)))
+        guard let path = originalExecutablePath(from: Array(bytes.prefix(count))) else { return nil }
+        // Foundation may launch through /var while proc_pidpath reports
+        // /private/var. Resolve an existing installation before comparing paths;
+        // retain the kernel path when an update has unlinked the executable.
+        guard let canonical = realpath(path, nil) else { return path }
+        defer { free(canonical) }
+        return String(cString: canonical)
     }
 
     static func originalExecutablePath(from bytes: [UInt8]) -> String? {
@@ -117,7 +127,7 @@ enum WidgetExtensionRecovery {
               let path = executablePath(pid), let code = runningCode(pid) else { return nil }
         return ProcessIdentity(pid: pid, executablePath: path,
             startedAt: Date(timeIntervalSince1970: Double(info.pbi_start_tvsec) + Double(info.pbi_start_tvusec) / 1_000_000),
-            userID: info.pbi_uid, code: code)
+            userID: info.pbi_uid, code: code, originalExecutablePath: originalExecutablePath(pid))
     }
 
     static func installedCode(at path: String, processID: pid_t? = nil) -> CodeIdentity? {

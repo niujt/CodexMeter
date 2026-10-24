@@ -77,10 +77,11 @@ struct WidgetRefreshTests {
         let path = "/synthetic/Codex Health.app/Contents/PlugIns/CodexMeterWidget.appex/Contents/MacOS/CodexMeterWidget"
         let installed = WidgetExtensionRecovery.CodeIdentity(identifier: "test.widget", teamID: "TESTTEAM", hash: Data([2]))
         let old = WidgetExtensionRecovery.CodeIdentity(identifier: "test.widget", teamID: "TESTTEAM", hash: Data([1]))
-        func matches(pid: pid_t = 123, path candidate: String? = nil, start: Date? = nil,
+        func matches(pid: pid_t = 123, path candidate: String? = nil, originalPath: String? = nil, start: Date? = nil,
                      uid: uid_t = 501, code: WidgetExtensionRecovery.CodeIdentity? = nil) -> Bool {
             WidgetExtensionRecovery.ProcessIdentity(pid: pid, executablePath: candidate ?? path,
-                startedAt: start ?? now.addingTimeInterval(-86_400), userID: uid, code: code ?? old)
+                startedAt: start ?? now.addingTimeInterval(-86_400), userID: uid, code: code ?? old,
+                originalExecutablePath: originalPath)
                 .requiresReplacement(at: path, installedCode: installed, userID: 501)
         }
         #expect(matches())
@@ -95,6 +96,12 @@ struct WidgetRefreshTests {
         #expect(!matches(pid: 0))
         #expect(!matches(pid: 1))
         #expect(!matches(pid: -1))
+        #expect(matches(path: "/backup/CodexMeterWidget", originalPath: path))
+        #expect(!matches(path: "/backup/CodexMeterWidget", originalPath: path, code: installed))
+        #expect(!matches(path: "/backup/CodexMeterWidget", originalPath: path, uid: 502))
+        #expect(!matches(path: "/backup/CodexMeterWidget", originalPath: path,
+                         code: .init(identifier: "test.widget", teamID: "OTHERTEAM", hash: Data([1]))))
+        #expect(!matches(path: "/backup/CodexMeterWidget", originalPath: "/other/CodexMeterWidget"))
     }
 
     @Test func originalExecPathIsReadBeforeArgumentsAndRejectsMalformedKernelData() {
@@ -140,11 +147,63 @@ struct WidgetRefreshTests {
         futureHash[0] ^= 1
         let futureCode = WidgetExtensionRecovery.CodeIdentity(identifier: code.identifier, teamID: code.teamID, hash: futureHash)
         let retired = WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path, installedCode: futureCode)
-        #expect(retired == [old.processIdentifier])
+        try #require(retired == [old.processIdentifier])
         old.waitUntilExit()
         #expect(!old.isRunning)
         #expect(unrelated.isRunning)
         #expect(WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path, installedCode: futureCode).isEmpty)
+    }
+
+    @Test func recoveryFindsAMovedOldExecutableWithoutRetiringTheCurrentOrAnotherInstallation() throws {
+        let directory = try fixture()
+        let installed = directory.appendingPathComponent("SyntheticWidget")
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: installed)
+        let physicalPath = try #require(realpath(installed.path, nil))
+        defer { free(physicalPath) }
+        let executable = URL(fileURLWithPath: String(cString: physicalPath))
+        func launch(_ url: URL) throws -> Process {
+            let process = Process()
+            process.executableURL = url
+            process.arguments = ["30"]
+            try process.run()
+            return process
+        }
+        let old = try launch(executable)
+        defer { if old.isRunning { old.terminate() } }
+        let backup = executable.deletingLastPathComponent().appendingPathComponent("BackupWidget")
+        try FileManager.default.moveItem(at: executable, to: backup)
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: executable)
+        let anotherInstallation = try launch(backup)
+        defer { if anotherInstallation.isRunning { anotherInstallation.terminate() } }
+
+        let moved = try #require(WidgetExtensionRecovery.identity(old.processIdentifier))
+        #expect(moved.executablePath == backup.path)
+        #expect(moved.originalExecutablePath == executable.path)
+        let other = try #require(WidgetExtensionRecovery.identity(anotherInstallation.processIdentifier))
+        #expect(other.originalExecutablePath == backup.path)
+        let installedCode = try #require(WidgetExtensionRecovery.installedCode(at: executable.path,
+                                                                            processID: old.processIdentifier))
+        // Identical code remains alive even when its bundle was moved.
+        #expect(WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path).isEmpty)
+        // Give the current executable a different real code identity, preserving
+        // its signing identifier, so the full process-discovery path is tested.
+        let signing = Process()
+        signing.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        signing.arguments = ["--force", "--sign", "-", "--identifier", installedCode.identifier,
+                             "--options", "runtime", executable.path]
+        try signing.run()
+        signing.waitUntilExit()
+        #expect(signing.terminationStatus == 0)
+        let current = try launch(executable)
+        defer { if current.isRunning { current.terminate() } }
+        let updatedCode = try #require(WidgetExtensionRecovery.installedCode(at: executable.path,
+                                                                          processID: current.processIdentifier))
+        #expect(updatedCode.hash != moved.code.hash)
+        let retired = WidgetExtensionRecovery.retireOutdatedProcesses(at: executable.path)
+        try #require(retired == [old.processIdentifier])
+        old.waitUntilExit()
+        #expect(current.isRunning)
+        #expect(anotherInstallation.isRunning)
     }
 
     private func usage(tokens: Int = 3_731_923) -> WidgetUsageData {
