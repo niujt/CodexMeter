@@ -2,6 +2,7 @@ import Foundation
 import CryptoKit
 
 actor CodexUsageReader {
+    private static let cacheVersion = 6
     private struct FileFingerprint: Equatable, Codable {
         let path: String
         let modifiedAt: Date
@@ -14,7 +15,7 @@ actor CodexUsageReader {
     private let calendar: Calendar
     private struct CachedFile: Codable {
         let fingerprint: FileFingerprint
-        // Resume before EOF projection so trailing token_count events stay in their turn.
+        // Resume before EOF projection so trailing usage and aborts stay in their turn.
         let summary: SessionSummary
         let fragmentSummary: SessionSummary?
         let checkpoint: AppendCheckpoint
@@ -112,7 +113,7 @@ actor CodexUsageReader {
         guard let url = cacheURL(for: root),
               let data = try? Data(contentsOf: url),
               let cache = try? PropertyListDecoder().decode(DiskCache.self, from: data),
-              cache.version == 5, cache.root == root,
+              cache.version == Self.cacheVersion, cache.root == root,
               cache.calendarID == String(describing: calendar.identifier),
               cache.timeZoneID == calendar.timeZone.identifier else {
             cacheManifestChanged = true
@@ -123,7 +124,7 @@ actor CodexUsageReader {
             guard let fileURL = fileCacheURL(root: root, path: path),
                   let data = try? Data(contentsOf: fileURL),
                   let entry = try? PropertyListDecoder().decode(DiskFileCache.self, from: data),
-                  entry.version == 5, entry.root == root,
+                  entry.version == Self.cacheVersion, entry.root == root,
                   entry.calendarID == cache.calendarID, entry.timeZoneID == cache.timeZoneID,
                   entry.file.fingerprint.path == path else { continue }
             restored[path] = entry.file
@@ -145,14 +146,14 @@ actor CodexUsageReader {
                     continue
                 }
                 try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                let payload = DiskFileCache(version: 5, root: root,
+                let payload = DiskFileCache(version: Self.cacheVersion, root: root,
                     calendarID: String(describing: calendar.identifier), timeZoneID: calendar.timeZone.identifier, file: cached)
                 try encoder.encode(payload).write(to: fileURL, options: .atomic)
                 persistedSummaryCount += 1
                 dirtyCachePaths.remove(path)
             }
             if cacheManifestChanged {
-                let payload = DiskCache(version: 5, root: root,
+                let payload = DiskCache(version: Self.cacheVersion, root: root,
                     calendarID: String(describing: calendar.identifier), timeZoneID: calendar.timeZone.identifier,
                     paths: fileCache.keys.sorted())
                 try encoder.encode(payload).write(to: url, options: .atomic)
@@ -580,6 +581,7 @@ actor CodexUsageReader {
 
     private func displayedSummary(_ cached: CachedFile) -> SessionSummary {
         var result = cached.fragmentSummary ?? cached.summary
+        finishModelTurn(into: &result)
         finishReplySpeed(into: &result)
         return result
     }
@@ -747,22 +749,26 @@ actor CodexUsageReader {
         }
         if type == "response_item", payloadType == "message" {
             if payload["role"] as? String == "user" {
+                finishModelTurn(into: &summary)
                 summary.pendingTurn = PendingTurn(date: date, model: summary.model)
                 if summary.pendingReply?.startedByTaskEvent != true || summary.pendingReply?.completedAt != nil {
                     startReply(at: date, taskEvent: false, summary: &summary)
                 }
             } else if payload["role"] as? String == "assistant", payload["phase"] as? String == "final_answer" {
-                completeTurn(at: date, summary: &summary)
+                markModelTurnCompleted(at: date, summary: &summary)
                 if summary.pendingReply?.completedAt == nil { summary.pendingReply?.completedAt = date }
             }
         } else if type == "event_msg", payloadType == "task_started" {
+            if summary.pendingTurn?.completedAt != nil { finishModelTurn(into: &summary) }
             startReply(at: date, taskEvent: true, summary: &summary)
         } else if type == "event_msg", payloadType == "task_complete" {
             // Older records may omit message phase; an explicit completion is a safe fallback.
-            completeTurn(at: date, summary: &summary)
+            markModelTurnCompleted(at: date, summary: &summary)
+            finishModelTurn(into: &summary)
             if summary.pendingReply?.completedAt == nil { summary.pendingReply?.completedAt = date }
             finishReplySpeed(into: &summary)
         } else if type == "event_msg", payloadType == "task_aborted" || payloadType == "turn_aborted" {
+            summary.pendingTurn = nil
             summary.pendingReply = nil
         }
     }
@@ -777,20 +783,30 @@ actor CodexUsageReader {
         summary.pendingReply = nil
         guard let end = pending.completedAt, end > summary.replySpeedStart,
               pending.hasReliableUsage, pending.outputTokens > 0 else { return }
-        let seconds = end.timeIntervalSince(pending.startedAt)
-        guard seconds > 0, seconds <= 3_600 else { return }
+        guard let seconds = validTurnDuration(from: pending.startedAt, to: end) else { return }
         summary.replySpeedSamples.append(ReplySpeedSample(completedAt: end, outputTokens: pending.outputTokens, turnSeconds: seconds))
     }
 
-    private func completeTurn(at date: Date, summary: inout SessionSummary) {
+    private func markModelTurnCompleted(at date: Date, summary: inout SessionSummary) {
+        // Keep final-only records reversible until a task completion or next turn.
+        // EOF rendering uses a copy; an appended abort can still discard this turn.
+        if summary.pendingTurn?.completedAt == nil { summary.pendingTurn?.completedAt = date }
+    }
+
+    private func finishModelTurn(into summary: inout SessionSummary) {
         guard let pending = summary.pendingTurn else { return }
         summary.pendingTurn = nil
-        let duration = date.timeIntervalSince(pending.date)
-        guard duration >= 0, duration <= 3_600 else { return }
-        let key = UsageBucketKey(hour: calendar.dateInterval(of: .hour, for: date)?.start ?? date, model: pending.model)
+        guard let end = pending.completedAt,
+              let duration = validTurnDuration(from: pending.date, to: end) else { return }
+        let key = UsageBucketKey(hour: calendar.dateInterval(of: .hour, for: end)?.start ?? end, model: pending.model)
         summary.buckets[key, default: UsageBucket()].turnSeconds += duration
         summary.buckets[key, default: UsageBucket()].timedTurns += 1
-        summary.buckets[key, default: UsageBucket()].lastActive = date
+        summary.buckets[key, default: UsageBucket()].lastActive = end
+    }
+
+    private func validTurnDuration(from start: Date, to end: Date) -> TimeInterval? {
+        let duration = end.timeIntervalSince(start)
+        return duration.isFinite && duration > 0 && duration <= 3_600 ? duration : nil
     }
 
     private func activeRate(_ rate: RateWindow?, at now: Date) -> RateWindow? {
@@ -948,6 +964,7 @@ private struct QuotaSample: Codable {
 private struct PendingTurn: Codable {
     let date: Date
     let model: String
+    var completedAt: Date?
 }
 
 private struct SessionSummary: Codable {

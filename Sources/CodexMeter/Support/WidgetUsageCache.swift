@@ -64,6 +64,15 @@ struct WidgetUsageData: Codable, Sendable, Equatable {
 
 enum WidgetUsageCache {
     static let kind = "CodexMeterWidgetV4"
+
+    /// A normal publication only refreshes the timeline. Process recovery belongs
+    /// to app launch, where an installation may actually have been replaced.
+    static func publish(_ usage: WidgetUsageData, forceReload: Bool = false,
+                        to destination: URL? = nil, reload: () -> Void) throws {
+        let changed = try saveIfChanged(usage, to: destination)
+        if changed || forceReload { reload() }
+    }
+
     @discardableResult
     static func save(_ usage: WidgetUsageData, to destination: URL? = nil) throws -> Bool {
         guard let url = destination ?? cacheURL() else {

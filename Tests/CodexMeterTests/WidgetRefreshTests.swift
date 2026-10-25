@@ -32,6 +32,58 @@ struct WidgetRefreshTests {
         #expect(loaded.quotaSample(at: checked.updatedAt).isStale)
     }
 
+    @Test func normalPublicationSkipsUnchangedContentAndManualRefreshReloadsOnce() throws {
+        let file = try fixture().appendingPathComponent("codex-usage.json")
+        let first = usage()
+        var reloadCount = 0
+        try WidgetUsageCache.publish(first, to: file) { reloadCount += 1 }
+        #expect(reloadCount == 1)
+
+        let checked = copy(first, updatedAt: now.addingTimeInterval(60))
+        try WidgetUsageCache.publish(checked, to: file) { reloadCount += 1 }
+        #expect(reloadCount == 1)
+        try WidgetUsageCache.publish(checked, forceReload: true, to: file) { reloadCount += 1 }
+        #expect(reloadCount == 2)
+        #expect(WidgetUsageCache.load(from: file)?.sampledAt == first.sampledAt)
+
+        try WidgetUsageCache.publish(usage(tokens: 4_000_000), to: file) { reloadCount += 1 }
+        #expect(reloadCount == 3)
+        #expect(WidgetUsageCache.load(from: file)?.todayTokens == 4_000_000)
+    }
+
+    @Test func completenessTransitionsPublishEvenWhenTotalsMatchWithoutRenewingQuota() throws {
+        let file = try fixture().appendingPathComponent("codex-usage.json")
+        var data = usage(tokens: 0)
+        var reloadCount = 0
+        try WidgetUsageCache.publish(data, to: file) { reloadCount += 1 }
+        data.sourceIncomplete = true
+        try WidgetUsageCache.publish(data, to: file) { reloadCount += 1 }
+        let incomplete = try #require(WidgetUsageCache.load(from: file))
+        #expect(incomplete.sourceIncomplete == true)
+        #expect(incomplete.todayTokens == 0)
+        #expect(incomplete.sampledAt == now)
+        #expect(incomplete.recordedRatePercent(at: now.addingTimeInterval(1_800)) == 21)
+        #expect(incomplete.quotaSample(at: now.addingTimeInterval(1_800)).isStale)
+        #expect(reloadCount == 2)
+
+        data.sourceIncomplete = false
+        try WidgetUsageCache.publish(data, to: file) { reloadCount += 1 }
+        #expect(WidgetUsageCache.load(from: file)?.sourceIncomplete == false)
+        #expect(reloadCount == 3)
+    }
+
+    @Test func failedPublicationDoesNotReloadEvenWhenManuallyRequested() throws {
+        let file = try fixture().appendingPathComponent("missing-parent/codex-usage.json")
+        var reloadCount = 0
+        do {
+            try WidgetUsageCache.publish(usage(), forceReload: true, to: file) { reloadCount += 1 }
+            Issue.record("Publishing to a missing parent directory should fail")
+        } catch {
+            #expect(reloadCount == 0)
+        }
+        #expect(WidgetUsageCache.load(from: file) == nil)
+    }
+
     @Test func clockCorrectionAndChangedUsageAreNotSuppressedByHeartbeat() throws {
         let file = try fixture().appendingPathComponent("codex-usage.json")
         let first = usage()
@@ -216,7 +268,7 @@ struct WidgetRefreshTests {
         WidgetUsageData(todayTokens: value.todayTokens, weekTokens: value.weekTokens, monthTokens: value.monthTokens,
             contextTokens: value.contextTokens, contextLimit: value.contextLimit, ratePercent: value.ratePercent,
             rateWindowMinutes: value.rateWindowMinutes, updatedAt: updatedAt, sampledAt: value.sampledAt,
-            rateResetsAt: value.rateResetsAt, contextID: value.contextID)
+            rateResetsAt: value.rateResetsAt, sourceIncomplete: value.sourceIncomplete, contextID: value.contextID)
     }
 
     private func fixture() throws -> URL {

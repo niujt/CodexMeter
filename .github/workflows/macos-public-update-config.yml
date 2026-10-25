@@ -80,7 +80,8 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$MOUNT/Codex Health.app/Contents/Info.plist")" = "$VERSION"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$MOUNT/Codex Health.app/Contents/Info.plist")" = "$BUILD"
           for BINARY in "$MOUNT/Codex Health.app/Contents/MacOS/CodexMeter" "$MOUNT/Codex Health.app/Contents/PlugIns/CodexMeterWidget.appex/Contents/MacOS/CodexMeterWidget"; do
-            lipo "$BINARY" -verify_arch arm64 x86_64
+            lipo "$BINARY" -verify_arch arm64
+            lipo "$BINARY" -verify_arch x86_64
           done
           printf 'RELEASE_VERSION=%s\nRELEASE_BUILD=%s\n' "$VERSION" "$BUILD" >> "$GITHUB_ENV"
       - name: Reuse the configured signing Secret and export public files only

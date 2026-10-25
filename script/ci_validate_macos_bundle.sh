@@ -82,7 +82,8 @@ done
 test -f "$APP/Contents/Frameworks/Sparkle.framework/Sparkle"
 for binary in "${BINARIES[@]}"; do
   test -f "$binary"
-  xcrun lipo "$binary" -verify_arch arm64 x86_64
+  xcrun lipo "$binary" -verify_arch arm64
+  xcrun lipo "$binary" -verify_arch x86_64
 done
 
 # Check both slices link to the embedded framework through a bundle-relative path.

@@ -703,7 +703,7 @@ struct QuotaCacheUpgradeRegressionTests {
         var downgraded = 0
         for url in enumerator.allObjects.compactMap({ $0 as? URL }) where url.pathExtension == "plist" {
             var plist = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: url), format: nil) as? [String: Any])
-            plist["version"] = 4
+            plist["version"] = 5
             try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0).write(to: url)
             downgraded += 1
         }

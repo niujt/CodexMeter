@@ -237,8 +237,9 @@ final class UsageStore {
             sampledAt: snapshot.mainRateSampledAt, rateResetsAt: snapshot.sevenDayRate?.resetsAt,
             sourceIncomplete: !hasCompleteSnapshot || snapshot.readWarning != nil, contextID: context?.id)
         do {
-            let changed = try WidgetUsageCache.saveIfChanged(usage)
-            if changed || forceReload { WidgetExtensionRecovery.recoverAfterUpdate() }
+            try WidgetUsageCache.publish(usage, forceReload: forceReload) {
+                WidgetCenter.shared.reloadTimelines(ofKind: WidgetUsageCache.kind)
+            }
         } catch { errorMessage = [errorMessage, "小组件缓存写入失败：\(error.localizedDescription)"].compactMap { $0 }.joined(separator: "\n") }
     }
 

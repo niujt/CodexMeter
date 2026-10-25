@@ -36,6 +36,76 @@ struct DashboardInteractionTests {
         #expect(ProjectRange.thirtyDays.records(records, projectPath: "/missing", now: now, calendar: calendar).isEmpty)
     }
 
+    @Test func historyUsesTheSameLocalCalendarDaysAsProjectDetails() {
+        for zone in ["Asia/Shanghai", "America/Los_Angeles"] {
+            let calendar = calendar(zone)
+            let now = date("2026-03-09T12:00:00-07:00")
+            for historyRange in HistoryRange.allCases {
+                let range = historyRange.dateRange(now: now, calendar: calendar)
+                let expectedStart = calendar.date(byAdding: .day, value: -(historyRange.days - 1),
+                                                  to: calendar.startOfDay(for: now))!
+                #expect(range.lowerBound == expectedStart)
+                #expect(range.upperBound == now)
+                #expect(range.contains(expectedStart))
+                #expect(!range.contains(expectedStart.addingTimeInterval(-1)))
+                #expect(!range.contains(now.addingTimeInterval(1)))
+
+                let records = [expectedStart, expectedStart.addingTimeInterval(-1), now, now.addingTimeInterval(1)]
+                    .enumerated().map { UsageRecord(date: $0.element, project: "/app", model: "main", tokens: $0.offset + 1) }
+                let projectRange: ProjectRange = historyRange == .sevenDays ? .sevenDays : .thirtyDays
+                let projectRecords = projectRange.records(records, projectPath: "/app", now: now, calendar: calendar)
+                #expect(records.filter { range.contains($0.date) }.map(\.tokens).sorted()
+                        == projectRecords.map(\.tokens).sorted())
+            }
+        }
+        let calendar = calendar("America/Los_Angeles")
+        let range = HistoryRange.sevenDays.dateRange(now: date("2026-03-09T12:00:00-07:00"), calendar: calendar)
+        #expect(range.lowerBound == date("2026-03-03T00:00:00-08:00"))
+    }
+
+    @Test @MainActor func historyContextChangesResetFiltersEvenWhileAnotherPageIsVisible() {
+        let state = DashboardViewState()
+        state.synchronizeHistoryContext("directory-a/account-a")
+        state.historyModel = "main"
+        state.historyProject = "/project-a"
+        state.historyRange = .sevenDays
+        state.showsAllHistoryCycles = true
+
+        // Root view synchronization does not depend on the history page being present.
+        state.synchronizeHistoryContext("directory-b/account-b")
+        #expect(state.historyModel == "全部")
+        #expect(state.historyProject == "全部")
+        #expect(!state.showsAllHistoryCycles)
+        #expect(state.historyRange == .sevenDays)
+
+        state.historyModel = "spark"
+        state.historyProject = "/project-b"
+        state.showsAllHistoryCycles = true
+        // Re-entering a page or receiving an unchanged context preserves its filters.
+        state.synchronizeHistoryContext("directory-b/account-b")
+        #expect(state.historyModel == "spark")
+        #expect(state.historyProject == "/project-b")
+        #expect(state.showsAllHistoryCycles)
+
+        state.synchronizeHistoryContext(nil)
+        #expect(state.historyModel == "全部")
+        #expect(state.historyProject == "全部")
+    }
+
+    @Test @MainActor func historyReconciliationOnlyResetsSelectionsMissingFromLoadedRecords() {
+        let state = DashboardViewState()
+        state.synchronizeHistoryContext("same-context")
+        state.historyModel = "main"
+        state.historyProject = "/expired-project"
+        let records = [UsageRecord(date: .now, project: "/current-project", model: "main", tokens: 10)]
+        state.reconcileHistoryFilters(with: records)
+        #expect(state.historyModel == "main")
+        #expect(state.historyProject == "全部")
+        state.reconcileHistoryFilters(with: [])
+        #expect(state.historyModel == "全部")
+        #expect(state.historyProject == "全部")
+    }
+
     @Test func hourlySeriesKeepsGapsDistinctFromExplicitZeroAndAggregatesModels() {
         let calendar = calendar("Asia/Shanghai")
         let now = date("2026-10-24T10:35:00+08:00")

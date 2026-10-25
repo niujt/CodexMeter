@@ -94,10 +94,12 @@ struct CodexMeterWidgetView: View {
     @ViewBuilder
     private func content(_ usage: WidgetUsageData) -> some View {
         let status = quotaStatus(usage)
+        let sourceIncomplete = usage.sourceIncomplete == true
         switch family {
         case .systemSmall:
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: sourceIncomplete ? 3 : 6) {
                 widgetHeader(status: status, isCompact: true)
+                if sourceIncomplete { sourceIncompleteNotice }
                 Spacer(minLength: 0)
                 quotaSummary(usage, status: status)
                 sampleTime(usage)
@@ -112,15 +114,19 @@ struct CodexMeterWidgetView: View {
                         .fill(DashboardPalette.divider)
                         .frame(width: 1, height: 72)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Token 用量")
-                            .font(.caption2)
-                            .foregroundStyle(DashboardPalette.secondaryInk)
-                        HStack(alignment: .top, spacing: 8) {
-                            metric("今天", usage.todayTokens)
-                            metric("近 7 天", usage.weekTokens)
-                            metric("本月", usage.monthTokens)
+                        if sourceIncomplete {
+                            sourceIncompleteNotice
+                        } else {
+                            Text("Token 用量")
+                                .font(.caption2)
+                                .foregroundStyle(DashboardPalette.secondaryInk)
                         }
-                        if usage.contextLimit > 0 {
+                        HStack(alignment: .top, spacing: 8) {
+                            metric("今天", sourceIncomplete ? nil : usage.todayTokens)
+                            metric("近 7 天", sourceIncomplete ? nil : usage.weekTokens)
+                            metric("本月", sourceIncomplete ? nil : usage.monthTokens)
+                        }
+                        if !sourceIncomplete, usage.contextLimit > 0 {
                             Text("上下文 \(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
                                 .font(.system(size: 10))
                                 .foregroundStyle(DashboardPalette.secondaryInk)
@@ -134,6 +140,15 @@ struct CodexMeterWidgetView: View {
                 sampleTime(usage)
             }
         }
+    }
+
+    private var sourceIncompleteNotice: some View {
+        Label("统计不完整", systemImage: "exclamationmark.circle")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(DashboardPalette.secondaryInk)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .help("本地用量尚未完整读取；打开主应用检查读取状态。额度采样时间单独显示。")
     }
 
     private func widgetHeader(status: WidgetQuotaStatus, isCompact: Bool) -> some View {
@@ -234,14 +249,15 @@ struct CodexMeterWidgetView: View {
         }
     }
 
-    private func metric(_ label: String, _ value: Int) -> some View {
+    private func metric(_ label: String, _ value: Int?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
-            Text(compact(value))
+            Text(value.map { compact($0) } ?? "—")
                 .font(.system(size: 14, weight: .semibold))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .accessibilityLabel(value.map { $0.formatted() } ?? "统计未完整读取")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

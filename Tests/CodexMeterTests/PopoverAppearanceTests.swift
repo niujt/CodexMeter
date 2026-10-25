@@ -56,6 +56,70 @@ struct PopoverAppearanceTests {
         #expect(AppAppearance.system.resolvedPopoverAppearance(for: system).name == system.name)
     }
 
+    @Test func rendersRecoveryActionsInFirstDashboardScreen() async throws {
+        _ = NSApplication.shared
+        let root = ProcessInfo.processInfo.environment["CODEX_HEALTH_PREVIEW_DIR"]
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? TestFixtureDirectory.root.appendingPathComponent("recovery-previews-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let defaults = try #require(UserDefaults(suiteName: "CodexMeterTests.Recovery." + UUID().uuidString))
+        let now = Date.now
+        var missing = UsageSnapshot.empty
+        missing.dataPath = "/demo/unavailable-codex-directory"
+        var empty = missing
+        empty.dataPath = "/demo/empty-codex-directory"
+        empty.dataDirectoryExists = true
+        empty.lastUpdated = now
+        var previous = empty
+        previous.fileCount = 42
+        previous.today = TokenUsage(input: 50_000, output: 10_000, total: 60_000)
+        previous.lastSevenDays = TokenUsage(total: 420_000)
+        let longError = "读取失败，已保留当前目录的上次结果：无法打开 /demo/codex-directory-with-a-long-name/sessions/2026/10/25/synthetic-session.jsonl（权限不足）。\n请确认当前用户仍可访问所选目录；如果目录已移动、授权已失效或外接磁盘未连接，请重新选择目录恢复读取。已有统计保留供参考，恢复访问后可点击重试读取。"
+        let cases: [(String, UsageSnapshot, String?)] = [
+            ("first-selection", .empty, nil),
+            ("missing-directory", missing, nil),
+            ("empty-directory", empty, nil),
+            ("long-error", previous, longError)
+        ]
+        for dark in [false, true] {
+            for (name, snapshot, error) in cases {
+                let view = HStack(spacing: 0) {
+                    DashboardSidebar(selection: .constant("健康报告"))
+                        .frame(width: 180)
+                    ScrollView {
+                        DashboardContent(snapshot: snapshot, errorMessage: error, isRefreshing: false,
+                                         measuredVelocity: nil, quotaMessage: "等待新额度采样",
+                                         chooseFolder: {}, retry: {})
+                            .padding(28)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(DashboardPalette.canvas)
+                }
+                .frame(width: 980, height: 640)
+                .foregroundStyle(DashboardPalette.ink).tint(DashboardPalette.ink)
+                .progressViewStyle(FlatProgressStyle())
+                .defaultAppStorage(defaults)
+                .environment(\.locale, Locale(identifier: "zh_CN"))
+                .environment(\.colorScheme, dark ? .dark : .light)
+                .preferredColorScheme(dark ? .dark : .light)
+                let host = NSHostingView(rootView: view)
+                host.setFrameSize(.init(width: 980, height: 640))
+                let window = NSWindow(contentRect: host.bounds, styleMask: [.borderless], backing: .buffered, defer: true)
+                window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+                window.contentView = host
+                host.layoutSubtreeIfNeeded()
+                try await Task.sleep(for: .milliseconds(150))
+                #expect(host.bounds.width == 980)
+                #expect(host.bounds.height == 640)
+                let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let png = try #require(bitmap.representation(using: .png, properties: [:]))
+                try png.write(to: root.appendingPathComponent("recovery-\(name)-\(dark ? "dark" : "light")-980.png"))
+                #expect(bitmap.pixelsWide * 640 == bitmap.pixelsHigh * 980)
+            }
+        }
+    }
+
     @Test func rendersRealSurfacesWithSyntheticData() async throws {
         _ = NSApplication.shared
         let now = Date.now

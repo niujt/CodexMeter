@@ -29,6 +29,8 @@ struct ReplySpeedTests {
         #expect(speed.turnSeconds == 80)
         #expect(speed.tokensPerSecond == 6.25) // Not the arithmetic mean of 10 and 5.
         #expect(snapshot.allTime.output == 1_000)
+        #expect(snapshot.topModels.first?.requests == 2)
+        #expect(snapshot.topModels.first?.averageTurnSeconds == 40)
     }
 
     @Test func supportsTaskStartWithoutUserAndDoesNotRestartOnUserMessage() async throws {
@@ -47,6 +49,9 @@ struct ReplySpeedTests {
         #expect(speed.sampleCount == 2)
         #expect(speed.turnSeconds == 20)
         #expect(speed.outputTokens == 300)
+        // Model timings still require a paired user message, unlike task-only speed samples.
+        #expect(snapshot.topModels.first?.requests == 1)
+        #expect(snapshot.topModels.first?.averageTurnSeconds == 5)
     }
 
     @Test func usesFinalAnswerFallbackAndCountsFollowingTokenAtEOF() async throws {
@@ -60,6 +65,8 @@ struct ReplySpeedTests {
         let speed = try #require(RecentReplySpeed.summarize(snapshot.replySpeedSamples, now: now))
         #expect(speed.tokensPerSecond == 30)
         #expect(speed.sampleCount == 1)
+        #expect(snapshot.topModels.first?.requests == 1)
+        #expect(snapshot.topModels.first?.averageTurnSeconds == 10)
     }
 
     @Test func excludesUnknownInitialBaselineButAllowsProvenFirstUsage() async throws {
@@ -70,6 +77,9 @@ struct ReplySpeedTests {
         ])
         let excluded = try await CodexUsageReader().load(now: now, codexHome: uncertain)
         #expect(excluded.replySpeedSamples.isEmpty)
+        // A reliable output-token baseline is unnecessary for elapsed-time statistics.
+        #expect(excluded.topModels.first?.requests == 1)
+        #expect(excluded.topModels.first?.averageTurnSeconds == 10)
         let first = try fixture([
             message(-60, role: "user"),
             token(-50, output: 100, lastOutput: 100),
@@ -131,6 +141,40 @@ struct ReplySpeedTests {
         ])
         let snapshot = try await CodexUsageReader().load(now: now, codexHome: root)
         #expect(snapshot.replySpeedSamples.isEmpty)
+        #expect(snapshot.topModels.first?.requests == 0)
+        #expect(snapshot.topModels.first?.averageTurnSeconds == nil)
+    }
+
+    @Test func abortClearsUserPairingBeforeATaskOnlyCompletion() async throws {
+        let root = try fixture([
+            token(-100, output: 100),
+            message(-60, role: "user"),
+            token(-50, output: 200),
+            event(-49, type: "turn_aborted"),
+            event(-40, type: "task_started"),
+            token(-30, output: 300),
+            event(-30, type: "task_complete")
+        ])
+        let snapshot = try await CodexUsageReader().load(now: now, codexHome: root)
+        #expect(snapshot.replySpeedSamples.count == 1)
+        #expect(snapshot.topModels.first?.requests == 0)
+        #expect(snapshot.topModels.first?.averageTurnSeconds == nil)
+    }
+
+    @Test func finalOnlyTurnsAreFinalizedByTheNextUserOrTaskStart() async throws {
+        let root = try fixture([
+            token(-100, output: 100),
+            message(-90, role: "user"), token(-80, output: 200),
+            message(-80, role: "assistant", phase: "final_answer"),
+            message(-70, role: "user"), token(-60, output: 300),
+            message(-60, role: "assistant", phase: "final_answer"),
+            event(-50, type: "task_started"), token(-40, output: 400),
+            event(-40, type: "task_complete")
+        ])
+        let snapshot = try await CodexUsageReader().load(now: now, codexHome: root)
+        #expect(snapshot.topModels.first?.requests == 2)
+        #expect(snapshot.topModels.first?.averageTurnSeconds == 10)
+        #expect(snapshot.replySpeedSamples.count == 3)
     }
 
     @Test func reaggregatesUnchangedCacheAsWindowExpiresAndFileGrows() async throws {

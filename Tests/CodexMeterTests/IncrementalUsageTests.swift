@@ -18,11 +18,15 @@ struct IncrementalUsageTests {
         let reader = reader(fixture)
         let first = try await reader.load(now: now, codexHome: fixture.root)
         #expect(first.replySpeedSamples.first?.outputTokens == 200)
+        #expect(first.topModels.first?.requests == 1)
+        #expect(first.topModels.first?.averageTurnSeconds == 10)
         try append("\n" + token(-49, output: 500) + "\n" + event(-49, "task_complete") + "\n", to: fixture.file)
         let grown = try await reader.load(now: now, codexHome: fixture.root)
         #expect(await reader.incrementalFileCount == 1)
         #expect(grown.replySpeedSamples.count == 1)
         #expect(grown.replySpeedSamples.first?.outputTokens == 400)
+        #expect(grown.topModels.first?.requests == 1)
+        #expect(grown.topModels.first?.averageTurnSeconds == 10)
         #expect(grown == (try await reference(fixture: fixture, at: now)))
     }
 
@@ -148,17 +152,28 @@ struct IncrementalUsageTests {
         #expect(changed == (try await reference(fixture: fixture, at: now)))
     }
 
-    @Test func appendedAbortRetractsEOFOnlySpeedSample() async throws {
-        let fixture = try fixture()
-        try write([token(-100, output: 100), message(-60, role: "user"), token(-50, output: 300),
-                   message(-50, role: "assistant", phase: "final_answer")], to: fixture.file, newline: true)
-        let reader = reader(fixture)
-        let first = try await reader.load(now: now, codexHome: fixture.root)
-        #expect(first.replySpeedSamples.count == 1)
-        try append(event(-49, "task_aborted") + "\n", to: fixture.file)
-        let aborted = try await reader.load(now: now, codexHome: fixture.root)
-        #expect(aborted.replySpeedSamples.isEmpty)
-        #expect(aborted == (try await reference(fixture: fixture, at: now)))
+    @Test func appendedAbortRetractsEOFOnlyTimingSamplesAcrossRestart() async throws {
+        for restartBeforeAbort in [false, true] {
+            let fixture = try fixture()
+            try write([token(-100, output: 100), message(-60, role: "user"), token(-50, output: 300),
+                       message(-50, role: "assistant", phase: "final_answer")], to: fixture.file, newline: true)
+            let initialReader = reader(fixture)
+            let first = try await initialReader.load(now: now, codexHome: fixture.root)
+            #expect(first.replySpeedSamples.count == 1)
+            #expect(first.topModels.first?.requests == 1)
+            #expect(first.topModels.first?.averageTurnSeconds == 10)
+            let continuation = restartBeforeAbort ? reader(fixture) : initialReader
+            let cached = try await continuation.load(now: now, codexHome: fixture.root)
+            #expect(cached == first)
+            #expect(await continuation.parsedFileCount == 0)
+            try append(event(-49, "task_aborted") + "\n", to: fixture.file)
+            let aborted = try await continuation.load(now: now, codexHome: fixture.root)
+            #expect(await continuation.incrementalFileCount == 1)
+            #expect(aborted.replySpeedSamples.isEmpty)
+            #expect(aborted.topModels.first?.requests == 0)
+            #expect(aborted.topModels.first?.averageTurnSeconds == nil)
+            #expect(aborted == (try await reference(fixture: fixture, at: now)))
+        }
     }
 
     @Test func oversizedPartialLineKeepsDropStateAcrossAppend() async throws {

@@ -12,6 +12,38 @@ final class DashboardViewState {
     var historyModel = "全部"
     var historyProject = "全部"
     var showsAllHistoryCycles = false
+
+    @ObservationIgnored private var historyContextID: String?
+    @ObservationIgnored private var hasHistoryContext = false
+
+    /// Observe from the dashboard root, including while another page is visible.
+    func synchronizeHistoryContext(_ contextID: String?) {
+        guard !hasHistoryContext || historyContextID != contextID else { return }
+        hasHistoryContext = true
+        historyContextID = contextID
+        historyModel = "全部"
+        historyProject = "全部"
+        showsAllHistoryCycles = false
+    }
+
+    /// A model or project can also disappear as the local 30-day window advances.
+    func reconcileHistoryFilters(with records: [UsageRecord]) {
+        if historyModel != "全部", !records.contains(where: { $0.model == historyModel }) {
+            historyModel = "全部"
+        }
+        if historyProject != "全部", !records.contains(where: { $0.project == historyProject }) {
+            historyProject = "全部"
+        }
+    }
+}
+
+enum CalendarDayWindow {
+    /// Include today and the preceding local calendar days, never future records.
+    static func range(days: Int, now: Date = .now, calendar: Calendar = .current) -> ClosedRange<Date> {
+        let today = calendar.startOfDay(for: now)
+        let start = calendar.date(byAdding: .day, value: -max(0, days - 1), to: today) ?? today
+        return start...now
+    }
 }
 
 enum ProjectRange: String, CaseIterable, Identifiable {
@@ -22,10 +54,9 @@ enum ProjectRange: String, CaseIterable, Identifiable {
     /// Match the reader's calendar-day windows, including the current day.
     func records(_ records: [UsageRecord], projectPath: String, now: Date = .now,
                  calendar: Calendar = .current) -> [UsageRecord] {
-        let startOfToday = calendar.startOfDay(for: now)
-        let daysBack = switch self { case .today: 0; case .sevenDays: 6; case .thirtyDays: 29 }
-        let start = calendar.date(byAdding: .day, value: -daysBack, to: startOfToday) ?? startOfToday
-        return records.filter { $0.project == projectPath && $0.date >= start && $0.date <= now }
+        let days = switch self { case .today: 1; case .sevenDays: 7; case .thirtyDays: 30 }
+        let range = CalendarDayWindow.range(days: days, now: now, calendar: calendar)
+        return records.filter { $0.project == projectPath && range.contains($0.date) }
             .sorted {
                 if $0.date != $1.date { return $0.date > $1.date }
                 return $0.model < $1.model
@@ -44,4 +75,8 @@ enum HistoryRange: Int, CaseIterable, Identifiable {
     var id: Int { rawValue }
     var days: Int { rawValue }
     var title: String { self == .sevenDays ? "近 7 天" : "近 30 天" }
+
+    func dateRange(now: Date = .now, calendar: Calendar = .current) -> ClosedRange<Date> {
+        CalendarDayWindow.range(days: days, now: now, calendar: calendar)
+    }
 }

@@ -29,7 +29,8 @@ struct AnalyticsDashboardView: View {
                             isRefreshing: store.isRefreshing,
                             measuredVelocity: store.measuredVelocity?.percentPerHour,
                             quotaMessage: store.quotaWaitingMessage,
-                            chooseFolder: { store.chooseCodexFolder() }
+                            chooseFolder: { store.chooseCodexFolder() },
+                            retry: { Task { await store.refresh(userInitiated: true) } }
                         )
                             .padding(28)
                             .frame(maxWidth: 1_100, alignment: .leading)
@@ -64,6 +65,12 @@ struct AnalyticsDashboardView: View {
         .progressViewStyle(FlatProgressStyle())
         .preferredColorScheme(appearanceMode.colorScheme)
         .onChange(of: appearance) { _, _ in AppIconStyle.applyDockIcon() }
+        .onChange(of: store.context?.id, initial: true) { _, contextID in
+            viewState.synchronizeHistoryContext(contextID)
+        }
+        .onChange(of: store.snapshot.recentRecords, initial: true) { _, records in
+            viewState.reconcileHistoryFilters(with: records)
+        }
         .navigationTitle("Codex Health")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

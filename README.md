@@ -12,7 +12,7 @@
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS 15+（Intel / Apple Silicon） | [1.0.14 安装包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.14)，打开后将 `Codex Health.app` 拖入 Applications |
+| macOS 15+（Intel / Apple Silicon） | [1.0.18 安装包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.18)，打开后将 `Codex Health.app` 拖入 Applications |
 | Windows x64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-x64-setup.exe) |
 | Windows ARM64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-arm64-setup.exe) |
 
@@ -164,7 +164,7 @@ Windows 版沿用黑白灰 Dashboard，支持悬浮球和摘要卡片两种样�
 
 「设置 → 关于 → 检查更新…」使用 Sparkle 的标准更新窗口：检查版本、下载、签名验证，然后安装并重启应用，无需手动拖拽 DMG。关闭设置窗口不会中断已打开的更新窗口；下载可在 Sparkle 窗口取消，网络失败可重试。
 
-仓库包含从已有 GitHub `SPARKLE_PRIVATE_KEY` 导出的公开配置，以及经过签名与篡改拒绝验证的 macOS 更新源；私钥保留在 GitHub Actions。Xcode 和构建脚本默认使用 `Resources/Updates.xcconfig`，可用 `UPDATE_XCCONFIG` 显式覆盖。当前更新源没有新版安装包条目，配置接通不代表已完成真实下载、安装与重启验收。首次从不含更新器的旧版升级仍需安装一次。发布前提与验证步骤见 [macOS 更新发布指南](docs/macos-updates.md)。
+仓库包含从已有 GitHub `SPARKLE_PRIVATE_KEY` 导出的公开配置，以及经过签名与篡改拒绝验证的 macOS 更新源；私钥保留在 GitHub Actions。Xcode 和构建脚本默认使用 `Resources/Updates.xcconfig`，可用 `UPDATE_XCCONFIG` 显式覆盖。更新源保留最近两个已签名版本；构建和发布验证与用户实际下载、安装、重启验收分别记录。首次从不含更新器的旧版升级仍需安装一次。发布前提与验证步骤见 [macOS 更新发布指南](docs/macos-updates.md)。
 
 ## 构建
 

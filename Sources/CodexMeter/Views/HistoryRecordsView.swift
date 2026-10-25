@@ -11,9 +11,9 @@ struct HistoryRecordsView: View {
     }
 
     private var records: [UsageRecord] {
-        let cutoff = Date.now.addingTimeInterval(-Double(viewState.historyRange.days) * 86_400)
+        let range = viewState.historyRange.dateRange()
         return store.snapshot.recentRecords
-            .filter { $0.date >= cutoff }
+            .filter { range.contains($0.date) }
             .filter { viewState.historyModel == "全部" || $0.model == viewState.historyModel }
             .filter { viewState.historyProject == "全部" || $0.project == viewState.historyProject }
             .sorted { $0.date > $1.date }
@@ -27,8 +27,8 @@ struct HistoryRecordsView: View {
             .sorted { $0.key > $1.key }
     }
     private var rateTimeline: [RateTimelineEvent] {
-        let cutoff = Date.now.addingTimeInterval(-Double(viewState.historyRange.days) * 86_400)
-        return store.snapshot.rateTimeline.filter { $0.date >= cutoff }
+        let range = viewState.historyRange.dateRange()
+        return store.snapshot.rateTimeline.filter { range.contains($0.date) }
     }
 
     var body: some View {
@@ -96,7 +96,7 @@ struct HistoryRecordsView: View {
         }
         .padding(28).frame(maxWidth: 1_100, alignment: .leading)
         .onChange(of: viewState.historyRange) { viewState.showsAllHistoryCycles = false }
-        .onChange(of: store.context?.id) { viewState.showsAllHistoryCycles = false }
+        .onAppear { viewState.synchronizeHistoryContext(store.context?.id) }
     }
 }
 

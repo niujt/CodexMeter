@@ -8,6 +8,7 @@ struct DashboardContent: View {
     let measuredVelocity: Double?
     let quotaMessage: String
     let chooseFolder: () -> Void
+    var retry: (() -> Void)? = nil
 
     private var rate: RateWindow? { snapshot.currentSevenDayRate() }
     private var health: QuotaHealth {
@@ -30,6 +31,10 @@ struct DashboardContent: View {
                 }
                 Spacer()
                 QuotaHealthBadge(health: health)
+            }
+
+            if errorMessage != nil || (!isRefreshing && snapshot.fileCount == 0) {
+                recoveryPanel
             }
 
             DashboardPanel {
@@ -76,16 +81,46 @@ struct DashboardContent: View {
 
             MetricsCard(snapshot: snapshot)
                 .padding(.horizontal, 4)
+        }
+    }
 
-            if let error = errorMessage {
-                Label(error, systemImage: "exclamationmark.triangle")
+    private var recoveryPanel: some View {
+        DashboardPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                Label(recoveryTitle, systemImage: errorMessage != nil ? "exclamationmark.triangle" : "folder.badge.questionmark")
+                    .font(.callout.weight(.semibold))
+                Text(recoveryDetail)
                     .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
-            }
-            if snapshot.fileCount == 0 && !isRefreshing {
-                Button("选择 Codex 数据目录…", action: chooseFolder)
-                    .buttonStyle(.bordered)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                HStack(spacing: 10) {
+                    Button(snapshot.dataPath.isEmpty ? "选择 Codex 数据目录…" : "重新选择目录…", action: chooseFolder)
+                        .buttonStyle(.bordered)
+                    if let retry {
+                        Button(isRefreshing ? "正在读取…" : "重试读取", action: retry)
+                            .buttonStyle(.bordered)
+                            .disabled(isRefreshing)
+                    }
+                }
             }
         }
+    }
+
+    private var recoveryTitle: String {
+        if errorMessage != nil { return "用量读取需要处理" }
+        if snapshot.dataPath.isEmpty { return "选择 Codex 数据目录" }
+        return snapshot.dataDirectoryExists ? "尚未找到会话记录" : "无法访问 Codex 数据目录"
+    }
+
+    private var recoveryDetail: String {
+        if let errorMessage { return errorMessage }
+        if snapshot.dataPath.isEmpty {
+            return "请选择 Codex 主目录或会话目录，授权后即可在本机统计用量。"
+        }
+        if snapshot.dataDirectoryExists {
+            return "未在 \(snapshot.dataPath) 找到会话记录。请确认所选目录，或在 Codex 完成一次对话后重试。"
+        }
+        return "无法访问 \(snapshot.dataPath)。请确认目录仍然存在，或重新选择目录恢复读取。"
     }
 
     private var breakdownUsage: TokenUsage {
