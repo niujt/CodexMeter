@@ -12,15 +12,23 @@ struct WidgetSnapshotCheck {
         let now = Date(timeIntervalSince1970: 1_791_961_200)
         for family in [WidgetFamily.systemSmall, .systemMedium] {
             for scheme in [ColorScheme.light, .dark] {
-                for state in ["fresh", "stale", "empty", "low", "expired", "unknown-time", "future-time", "unknown-quota",
-                              "incomplete", "incomplete-zero", "incomplete-stale"] {
+                for state in ["fresh", "yellow", "low", "full", "zero", "stale", "empty", "expired", "unknown-time", "future-time", "unknown-quota",
+                              "incomplete", "incomplete-full", "incomplete-zero", "incomplete-stale"] {
                     let isStale = state == "stale" || state == "incomplete-stale"
+                    let usedPercent: Double? = switch state {
+                    case "yellow": 60 // 40% remaining
+                    case "low": 88 // 12% remaining
+                    case "full", "incomplete-full": 0
+                    case "zero": 100
+                    case "unknown-quota": nil
+                    default: 21 // 79% remaining
+                    }
                     let usage: WidgetUsageData? = state == "empty" ? nil : WidgetUsageData(
                         todayTokens: state == "incomplete-zero" ? 0 : 3_731_923,
                         weekTokens: state == "incomplete-zero" ? 0 : 1_376_638_466,
                         monthTokens: state == "incomplete-zero" ? 0 : 1_792_003_171,
                         contextTokens: 141_007, contextLimit: 475_000,
-                        ratePercent: state == "unknown-quota" ? nil : (state == "low" ? 88 : 21), rateWindowMinutes: 10_080,
+                        ratePercent: usedPercent, rateWindowMinutes: 10_080,
                         updatedAt: now.addingTimeInterval(isStale ? -3_600 : 0),
                         sampledAt: state == "unknown-time" ? nil : now.addingTimeInterval(isStale ? -3_600 : (state == "future-time" ? 60 : 0)),
                         rateResetsAt: now.addingTimeInterval(state == "expired" ? -60 : 86_400),

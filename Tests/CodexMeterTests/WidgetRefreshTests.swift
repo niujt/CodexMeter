@@ -125,6 +125,55 @@ struct WidgetRefreshTests {
         #expect(data.recordedRatePercent(at: expired.dates[0]) == nil)
     }
 
+    @Test func remainingQuotaTintUsesExactFiftyAndTwentyPercentBoundaries() {
+        let cases: [(used: Double, tint: QuotaRemainingTint)] = [
+            (0, .green), (44, .green), (49.999, .green),
+            (50, .yellow), (79.999, .yellow), (80, .yellow),
+            (80.001, .red), (81, .red), (100, .red)
+        ]
+        for item in cases {
+            let sample = QuotaSampleState(percent: item.used, sampledAt: now,
+                                          resetsAt: now.addingTimeInterval(3_600), now: now)
+            #expect(sample.remainingTint == item.tint)
+            #expect(sample.recordedPercent == item.used)
+            #expect(!sample.isStale)
+        }
+    }
+
+    @Test func oldQuotaKeepsItsRecordedTintUntilTheCycleActuallyEnds() {
+        let cases: [(used: Double, tint: QuotaRemainingTint)] = [(0, .green), (50, .yellow), (80, .yellow), (100, .red)]
+        for item in cases {
+            let reset = now.addingTimeInterval(3_600)
+            let sample = QuotaSampleState(percent: item.used, sampledAt: now, resetsAt: reset,
+                                          now: now.addingTimeInterval(QuotaSampleState.lifetime))
+            #expect(sample.isStale)
+            #expect(sample.currentPercent == nil)
+            #expect(sample.recordedPercent == item.used)
+            #expect(sample.remainingTint == item.tint)
+            let expired = QuotaSampleState(percent: item.used, sampledAt: now, resetsAt: reset, now: reset)
+            #expect(expired.recordedPercent == nil)
+            #expect(expired.remainingTint == .unknown)
+        }
+    }
+
+    @Test func missingInvalidExpiredAndFutureQuotaSamplesUseUnknownTint() {
+        let futureReset = now.addingTimeInterval(3_600)
+        let unknownSamples = [
+            QuotaSampleState(percent: nil, sampledAt: now, resetsAt: futureReset, now: now),
+            QuotaSampleState(percent: 44, sampledAt: nil, resetsAt: futureReset, now: now),
+            QuotaSampleState(percent: 44, sampledAt: now, resetsAt: nil, now: now),
+            QuotaSampleState(percent: 44, sampledAt: now.addingTimeInterval(1), resetsAt: futureReset, now: now),
+            QuotaSampleState(percent: 44, sampledAt: now.addingTimeInterval(-60), resetsAt: now, now: now),
+            QuotaSampleState(percent: 44, sampledAt: now.addingTimeInterval(-60), resetsAt: now.addingTimeInterval(-1), now: now)
+        ] + [-1.0, 101.0, Double.nan, Double.infinity, -Double.infinity].map {
+            QuotaSampleState(percent: $0, sampledAt: now, resetsAt: futureReset, now: now)
+        }
+        for sample in unknownSamples {
+            #expect(sample.remainingTint == .unknown)
+            #expect(sample.recordedPercent == nil)
+        }
+    }
+
     @Test func recoveryRequiresDifferentCodeFromTheSameInstallationUserAndSigningIdentity() {
         let path = "/synthetic/Codex Health.app/Contents/PlugIns/CodexMeterWidget.appex/Contents/MacOS/CodexMeterWidget"
         let installed = WidgetExtensionRecovery.CodeIdentity(identifier: "test.widget", teamID: "TESTTEAM", hash: Data([2]))

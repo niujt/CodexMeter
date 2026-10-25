@@ -68,135 +68,141 @@ struct CodexMeterWidgetView: View {
     var body: some View {
         Group {
             if let usage = entry.usage {
-                content(usage)
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    widgetHeader(status: .waitingForSample, isCompact: family == .systemSmall)
-                    Spacer(minLength: 0)
-                    Text("等待用量数据")
-                        .font(.headline)
-                    Text("打开主应用同步 · 本地非实时")
-                        .font(.caption2)
-                        .foregroundStyle(DashboardPalette.secondaryInk)
-                        .fixedSize(horizontal: false, vertical: true)
+                if family == .systemSmall {
+                    smallContent(usage)
+                } else {
+                    mediumContent(usage)
                 }
+            } else {
+                emptyContent
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .foregroundStyle(DashboardPalette.ink)
-        .tint(DashboardPalette.ink)
-        .progressViewStyle(WidgetGrayProgressStyle())
-        .containerBackground(for: .widget) {
-            Color(nsColor: .windowBackgroundColor)
+        .foregroundStyle(.primary)
+        .containerBackground(.background, for: .widget)
+    }
+
+    private func smallContent(_ usage: WidgetUsageData) -> some View {
+        let status = quotaStatus(usage)
+        let incomplete = usage.sourceIncomplete == true
+        return VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                Text(quotaTitle(usage, status: status))
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1).minimumScaleFactor(0.85)
+                Spacer(minLength: 0)
+                statusIcon(status, color: quotaColor(usage))
+            }
+            Spacer(minLength: 4)
+            quotaRing(usage, size: incomplete ? 64 : 72)
+            Spacer(minLength: 4)
+            VStack(spacing: 2) {
+                resetTime(usage)
+                sampleTime(usage)
+                if incomplete { sourceIncompleteNotice }
+            }
+            .font(.system(size: 10))
+            .foregroundStyle(.secondary)
         }
     }
 
-    @ViewBuilder
-    private func content(_ usage: WidgetUsageData) -> some View {
+    private func mediumContent(_ usage: WidgetUsageData) -> some View {
         let status = quotaStatus(usage)
-        let sourceIncomplete = usage.sourceIncomplete == true
-        switch family {
-        case .systemSmall:
-            VStack(alignment: .leading, spacing: sourceIncomplete ? 3 : 6) {
-                widgetHeader(status: status, isCompact: true)
-                if sourceIncomplete { sourceIncompleteNotice }
-                Spacer(minLength: 0)
-                quotaSummary(usage, status: status)
-                sampleTime(usage)
+        let incomplete = usage.sourceIncomplete == true
+        return HStack(spacing: 18) {
+            VStack(spacing: 5) {
+                Text(quotaTitle(usage, status: status))
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1).minimumScaleFactor(0.85)
+                quotaRing(usage, size: 78)
+                resetTime(usage)
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
             }
-        default:
-            VStack(alignment: .leading, spacing: 8) {
-                widgetHeader(status: status, isCompact: false)
-                HStack(alignment: .top, spacing: 16) {
-                    quotaSummary(usage, status: status)
-                        .frame(width: 112, alignment: .leading)
-                    Rectangle()
-                        .fill(DashboardPalette.divider)
-                        .frame(width: 1, height: 72)
-                    VStack(alignment: .leading, spacing: 8) {
-                        if sourceIncomplete {
-                            sourceIncompleteNotice
-                        } else {
-                            Text("Token 用量")
-                                .font(.caption2)
-                                .foregroundStyle(DashboardPalette.secondaryInk)
-                        }
-                        HStack(alignment: .top, spacing: 8) {
-                            metric("今天", sourceIncomplete ? nil : usage.todayTokens)
-                            metric("近 7 天", sourceIncomplete ? nil : usage.weekTokens)
-                            metric("本月", sourceIncomplete ? nil : usage.monthTokens)
-                        }
-                        if !sourceIncomplete, usage.contextLimit > 0 {
-                            Text("上下文 \(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
-                                .font(.system(size: 10))
-                                .foregroundStyle(DashboardPalette.secondaryInk)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
+            .frame(width: 100)
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 4) {
+                    if incomplete {
+                        sourceIncompleteNotice
+                    } else {
+                        Text("本机 Token").font(.system(size: 11, weight: .medium))
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Spacer(minLength: 0)
+                    statusIcon(status, color: quotaColor(usage))
                 }
-                Spacer(minLength: 0)
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    metric("今天", incomplete ? nil : usage.todayTokens)
+                    metric("近 7 天", incomplete ? nil : usage.weekTokens)
+                    metric("本月", incomplete ? nil : usage.monthTokens)
+                }
+                contextSummary(usage, incomplete: incomplete)
                 sampleTime(usage)
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    private var emptyContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Codex Health", systemImage: "circle.dotted")
+                .font(.system(size: 11, weight: .medium))
+            Spacer(minLength: 0)
+            Text("等待用量数据").font(.headline)
+            Text("打开主应用同步")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+            Text("本地采样 · 非实时")
+                .font(.system(size: 10)).foregroundStyle(.secondary)
+        }
+    }
+
+    private func quotaRing(_ usage: WidgetUsageData, size: CGFloat) -> some View {
+        let sample = usage.quotaSample(at: entry.date)
+        let remaining = sample.recordedPercent.map { min(1, max(0, (100 - $0) / 100)) }
+        let color = quotaColor(usage)
+        return ZStack {
+            Circle().stroke(.secondary.opacity(0.13), lineWidth: 6)
+            if let remaining, remaining > 0 {
+                Circle().trim(from: 0, to: remaining)
+                    .stroke(color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            Text(remainingText(usage))
+                .font(.system(size: size < 70 ? 23 : 27, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.55)
+                .padding(5)
+        }
+        .padding(3)
+        .frame(width: size, height: size)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(quotaTitle(usage, status: quotaStatus(usage)))，\(remainingText(usage))。\(quotaStatus(usage).help)")
+    }
+
+    private func quotaColor(_ usage: WidgetUsageData) -> Color {
+        switch usage.quotaSample(at: entry.date).remainingTint {
+        case .green: .green
+        case .yellow: .yellow
+        case .red: .red
+        case .unknown: .secondary
+        }
+    }
+
+    private func statusIcon(_ status: WidgetQuotaStatus, color: Color) -> some View {
+        Image(systemName: status.symbol)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(status == .low ? color : .secondary)
+            .accessibilityLabel(status.help)
+            .help(status.help)
     }
 
     private var sourceIncompleteNotice: some View {
         Label("统计不完整", systemImage: "exclamationmark.circle")
             .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(DashboardPalette.secondaryInk)
+            .foregroundStyle(.secondary)
             .lineLimit(1)
-            .minimumScaleFactor(0.8)
             .help("本地用量尚未完整读取；打开主应用检查读取状态。额度采样时间单独显示。")
-    }
-
-    private func widgetHeader(status: WidgetQuotaStatus, isCompact: Bool) -> some View {
-        HStack(spacing: 6) {
-            Label("Codex Health", systemImage: "gauge.with.dots.needle.33percent")
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            if isCompact {
-                Image(systemName: status.symbol)
-                    .font(.caption.weight(status.isEmphasized ? .semibold : .regular))
-                    .foregroundStyle(status.isEmphasized ? DashboardPalette.ink : DashboardPalette.secondaryInk)
-                    .accessibilityLabel(status.title)
-                    .help(status.help)
-            } else {
-                Label(status.title, systemImage: status.symbol)
-                    .font(.system(size: 10, weight: status.isEmphasized ? .semibold : .medium))
-                    .foregroundStyle(status.isEmphasized ? DashboardPalette.ink : DashboardPalette.secondaryInk)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .overlay(Capsule().strokeBorder(DashboardPalette.divider, lineWidth: 1))
-                    .help(status.help)
-            }
-        }
-    }
-
-    private func quotaSummary(_ usage: WidgetUsageData, status: WidgetQuotaStatus) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(quotaTitle(usage, status: status))
-                .font(.caption2)
-                .foregroundStyle(DashboardPalette.secondaryInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Text(remainingText(usage))
-                .font(.system(size: 32, weight: status == .low ? .bold : .semibold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            if let percent = usage.recordedRatePercent(at: entry.date) {
-                ProgressView(value: max(0, 100 - percent), total: 100)
-            }
-            expiryTime(usage)
-                .font(.system(size: 10))
-                .foregroundStyle(DashboardPalette.secondaryInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     private func quotaStatus(_ usage: WidgetUsageData) -> WidgetQuotaStatus {
@@ -215,10 +221,9 @@ struct CodexMeterWidgetView: View {
         default: ""
         }
         switch status {
-        case .recorded: return "\(period)剩余额度"
-        case .low: return "\(period)剩余 · 偏低"
+        case .recorded, .low: return "\(period)剩余额度"
         case .stale: return "\(period)上次剩余"
-        case .waitingForCycle: return "等待新周期数据"
+        case .waitingForCycle: return "额度待更新"
         case .waitingForSample: return "等待额度采样"
         }
     }
@@ -228,42 +233,66 @@ struct CodexMeterWidgetView: View {
         let isOld = sample.isStale || usage.isStale(at: entry.date)
         return Group {
             if let date = sample.sampledAt, sample.hasValidTime {
-                Text("\(isOld ? "旧采样" : (sample.recordedPercent == nil ? "上次采样" : "本地采样")) \(date, format: .dateTime.month().day().hour().minute()) · 非实时")
+                Text("\(isOld ? "旧采样" : "采样") \(date, format: .dateTime.hour().minute()) · 非实时")
             } else {
-                Text("等待额度采样 · 非实时")
+                Text("采样时间未知 · 非实时")
             }
         }
-        .font(.system(size: 10))
-        .foregroundStyle(DashboardPalette.secondaryInk)
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
+        .lineLimit(1).minimumScaleFactor(0.85)
         .help("\(sample.description)\(isOld ? " · 打开主应用更新" : "")")
     }
 
     @ViewBuilder
-    private func expiryTime(_ usage: WidgetUsageData) -> some View {
+    private func resetTime(_ usage: WidgetUsageData) -> some View {
         if let resetsAt = usage.rateResetsAt, usage.recordedRatePercent(at: entry.date) != nil {
-            Text("重置 \(resetsAt, format: .dateTime.month().day().hour().minute())")
+            Text("\(resetsAt, format: .dateTime.month().day().hour().minute()) 重置")
+                .lineLimit(1).minimumScaleFactor(0.8)
         } else {
-            Text("打开主应用同步")
+            Text("打开主应用同步").lineLimit(1)
+        }
+    }
+
+    @ViewBuilder
+    private func contextSummary(_ usage: WidgetUsageData, incomplete: Bool) -> some View {
+        if incomplete {
+            Text("上下文待完整读取")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+        } else if usage.contextLimit > 0 {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("上下文 \(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .lineLimit(1).minimumScaleFactor(0.85)
+                    .help("上下文 \(usage.contextTokens.formatted()) / \(usage.contextLimit.formatted()) Token")
+                GeometryReader { proxy in
+                    Capsule().fill(.secondary.opacity(0.13))
+                        .overlay(alignment: .leading) {
+                            Capsule().fill(.secondary.opacity(0.55))
+                                .frame(width: proxy.size.width * min(1, max(0, Double(usage.contextTokens) / Double(usage.contextLimit))))
+                        }
+                }
+                .frame(height: 3)
+            }
+        } else {
+            Text("暂无上下文记录")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
         }
     }
 
     private func metric(_ label: String, _ value: Int?) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.caption2).foregroundStyle(DashboardPalette.secondaryInk)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label).font(.system(size: 10)).foregroundStyle(.secondary)
             Text(value.map { compact($0) } ?? "—")
-                .font(.system(size: 14, weight: .semibold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.75)
                 .accessibilityLabel(value.map { $0.formatted() } ?? "统计未完整读取")
+                .help(value.map { "\($0.formatted()) Token" } ?? "统计未完整读取")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func compact(_ value: Int) -> String {
         switch value {
+        case 1_000_000_000...: String(format: "%.1fB", Double(value) / 1_000_000_000)
         case 1_000_000...: String(format: "%.1fM", Double(value) / 1_000_000)
         case 1_000...: String(format: "%.1fK", Double(value) / 1_000)
         default: value.formatted()
@@ -271,23 +300,12 @@ struct CodexMeterWidgetView: View {
     }
 
     private func remainingText(_ usage: WidgetUsageData) -> String {
-        guard let percent = usage.recordedRatePercent(at: entry.date) else { return "--" }
-        return "\(max(0, 100 - Int(percent.rounded())))%"
+        usage.quotaSample(at: entry.date).recordedRemaining.map { "\($0)%" } ?? "—"
     }
 }
 
 private enum WidgetQuotaStatus: Equatable {
     case recorded, low, stale, waitingForCycle, waitingForSample
-
-    var title: String {
-        switch self {
-        case .recorded: "本地记录"
-        case .low: "额度偏低"
-        case .stale: "旧记录"
-        case .waitingForCycle: "待更新"
-        case .waitingForSample: "待采样"
-        }
-    }
 
     var symbol: String {
         switch self {
@@ -299,29 +317,13 @@ private enum WidgetQuotaStatus: Equatable {
         }
     }
 
-    var isEmphasized: Bool { self == .low || self == .stale }
-
     var help: String {
         switch self {
         case .recorded: "本地采样记录，非实时额度"
-        case .low: "本地记录的剩余额度不超过 20%，非实时额度"
+        case .low: "本地记录的剩余额度低于 20%，非实时额度"
         case .stale: "显示上次记录，数据可能已过期；打开主应用更新"
         case .waitingForCycle: "上个额度周期已结束，等待新周期采样"
         case .waitingForSample: "尚无有效额度采样；打开主应用同步"
         }
-    }
-}
-
-
-private struct WidgetGrayProgressStyle: ProgressViewStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Rectangle().fill(DashboardPalette.divider)
-                Rectangle().fill(DashboardPalette.progress)
-                    .frame(width: proxy.size.width * min(1, max(0, configuration.fractionCompleted ?? 0)))
-            }
-        }
-        .frame(height: 3)
     }
 }

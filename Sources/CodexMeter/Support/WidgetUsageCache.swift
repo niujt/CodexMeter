@@ -1,5 +1,9 @@
 import Foundation
 
+enum QuotaRemainingTint: Equatable, Sendable {
+    case unknown, green, yellow, red
+}
+
 /// Local observations are never a live account query. Checking files does not renew a sample.
 struct QuotaSampleState {
     static let lifetime: TimeInterval = 15 * 60
@@ -21,6 +25,12 @@ struct QuotaSampleState {
     var remaining: Int? { currentPercent.map { Int((100 - $0).rounded()) } }
     var recordedRemaining: Int? { recordedPercent.map { Int((100 - $0).rounded()) } }
     var lastRemaining: Int? { lastPercent.map { Int((100 - $0).rounded()) } }
+    var remainingTint: QuotaRemainingTint {
+        guard let percent = recordedPercent else { return .unknown }
+        let remaining = 100 - percent
+        if remaining > 50 { return .green }
+        return remaining >= 20 ? .yellow : .red
+    }
     var description: String {
         let time = hasValidTime ? "采样于 \(sampledAt!.formatted(.dateTime.year().month().day().hour().minute().second()))" : "采样时间未知"
         return "\(isStale ? "旧采样" : "本地采样") · \(time) · 非实时"

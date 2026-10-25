@@ -45,6 +45,7 @@ struct SettingsView: View {
     @AppStorage(RefreshPolicy.intervalKey) private var refreshInterval = RefreshPolicy.lowPowerDefault
     @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
     @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.flat.rawValue
+    @AppStorage(MenuBarQuotaDisplay.showPercentageKey) private var showMenuBarPercentage = false
 
     private var appearanceMode: AppAppearance {
         AppAppearance(rawValue: appearance) ?? .system
@@ -82,6 +83,12 @@ struct SettingsView: View {
                         Text("每 30 分钟").tag(1_800.0)
                     }
                     Text("前台按所选间隔刷新；界面隐藏或被遮挡时，以 15 分钟起的间隔由系统调度。低电量模式以 30 分钟起的间隔刷新，温度较高时继续降频；打开摘要和手动刷新仍会按需检查，未变化的数据复用缓存。")
+                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
+                }
+
+                Section("菜单栏") {
+                    Toggle("显示额度百分比", isOn: $showMenuBarPercentage)
+                    Text("圆环表示剩余额度：大于 50% 为绿色，20%～50% 为黄色，低于 20% 为红色。额度越少，圆环越短。")
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
 

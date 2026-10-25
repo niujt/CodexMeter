@@ -136,6 +136,85 @@ extension UsageSnapshot {
     }
 }
 
+struct MenuBarQuotaDisplay: Equatable, Sendable {
+    enum Tint: Equatable, Sendable { case unknown, green, yellow, red }
+    static let showPercentageKey = "codexMeter.menuBar.showPercentage"
+
+    let remainingFraction: Double?
+    let isStale: Bool
+    let title: String
+
+    var tint: Tint {
+        guard let remainingFraction else { return .unknown }
+        if remainingFraction > 0.5 { return .green }
+        return remainingFraction >= 0.2 ? .yellow : .red
+    }
+
+    static func showsPercentage(defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: showPercentageKey)
+    }
+
+    init(sample: QuotaSampleState, showsPercentage: Bool, attentionCount: Int = 0) {
+        remainingFraction = sample.recordedPercent.map { (100 - $0) / 100 }
+        let stale = sample.isStale && remainingFraction != nil
+        isStale = stale
+        let quota = showsPercentage
+            ? sample.recordedRemaining.map { "\($0)%" + (stale ? "·旧" : "") } ?? "—"
+            : ""
+        title = [quota, attentionCount > 0 ? "⚠ \(attentionCount)" : ""]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    @MainActor
+    func image(appearance: NSAppearance? = nil) -> NSImage {
+        let color: NSColor = switch tint {
+        case .unknown: .labelColor
+        case .green: .systemGreen
+        case .yellow: .systemYellow
+        case .red: .systemRed
+        }
+        var trackColor = NSColor.black.withAlphaComponent(0.22)
+        var arcColor = color
+        (appearance ?? NSAppearance(named: .aqua))?.performAsCurrentDrawingAppearance {
+            let resolved = color.usingColorSpace(.sRGB) ?? color
+            trackColor = resolved.withAlphaComponent(remainingFraction == nil ? 0.4 : 0.22)
+            arcColor = resolved.withAlphaComponent(isStale ? 0.6 : 1)
+        }
+        let resolvedTrack = trackColor
+        let resolvedArc = arcColor
+        let image = NSImage(size: NSSize(width: 19, height: 19), flipped: false) { _ in
+            let bounds = NSRect(x: 2.4, y: 2.4, width: 14.2, height: 14.2)
+            let track = NSBezierPath(ovalIn: bounds)
+            track.lineWidth = 2.2
+            if remainingFraction == nil {
+                track.setLineDash([1.5, 2.0], count: 2, phase: 0)
+                track.lineCapStyle = .round
+            }
+            resolvedTrack.setStroke()
+            track.stroke()
+
+            if let fraction = remainingFraction, fraction > 0 {
+                let arc = NSBezierPath()
+                if fraction >= 1 {
+                    arc.appendOval(in: bounds)
+                } else {
+                    arc.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1,
+                                  startAngle: 90, endAngle: 90 - 360 * fraction, clockwise: true)
+                }
+                arc.lineWidth = 2.2
+                arc.lineCapStyle = .round
+                if isStale { arc.setLineDash([1.5, 1.5], count: 2, phase: 0) }
+                resolvedArc.setStroke()
+                arc.stroke()
+            }
+            return true
+        }
+        // Keep the ring's colors; the native status button draws its text separately.
+        image.isTemplate = false
+        return image
+    }
+}
+
 @MainActor
 private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNUserNotificationCenterDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -158,9 +237,10 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     private var dashboardWillOpenObserver: NSObjectProtocol?
     private var permissionObserver: NSObjectProtocol?
     private var dockAppearanceObservation: NSKeyValueObservation?
+    private var statusAppearanceObservation: NSKeyValueObservation?
     private var quotaExpiryTask: Task<Void, Never>?
-    private var usageTitle = "—"
-    private var renderedStatusTitle: String?
+    private var quotaSample = QuotaSampleState(percent: nil, sampledAt: nil, resetsAt: nil, now: .now)
+    private var renderedStatus: MenuBarQuotaDisplay?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Start as a menu-bar accessory. The dashboard promotes the app to a
@@ -174,6 +254,9 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             }
         }
         guard let button = statusItem.button else { return }
+        statusAppearanceObservation = button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor [weak self] in self?.applyStatusAppearance(force: true) }
+        }
         button.imagePosition = .imageOnly
         button.target = self
         button.action = #selector(togglePopover(_:))
@@ -350,13 +433,12 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
 
     private func update(snapshot: UsageSnapshot) {
         quotaExpiryTask?.cancel()
-        guard let button = statusItem.button else { return }
+        guard statusItem.button != nil else { return }
         let now = Date.now
         let rate = snapshot.sevenDayRate
         let sample = QuotaSampleState(percent: rate?.usedPercent, sampledAt: snapshot.mainRateSampledAt,
                                       resetsAt: rate?.resetsAt, now: now)
-        usageTitle = sample.recordedRemaining.map { sample.isStale ? "\($0)%·旧" : "\($0)%" } ?? "—"
-        button.toolTip = sample.description + (sample.isStale ? sample.recordedRemaining.map { " · 上次剩余 \($0)%" } ?? "" : "")
+        quotaSample = sample
         applyStatusAppearance()
         if let deadline = snapshot.quotaDisplayDeadlines.filter({ $0 > now }).min() {
             quotaExpiryTask = Task { @MainActor [weak self] in
@@ -368,19 +450,24 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         }
     }
 
-    private func applyStatusAppearance() {
+    private func applyStatusAppearance(force: Bool = false) {
         guard let button = statusItem.button else { return }
-        // Use one template for the mark and percentage. AppKit handles contrast
-        // and highlighted states without rebuilding the image on theme changes.
         let showBadge = UserDefaults.standard.bool(forKey: PermissionPreferences.badgeEnabledKey)
         let count = showBadge ? permissionStore.newCount : 0
-        let title = count > 0 ? "\(usageTitle) · ⚠ \(count)" : usageTitle
-        let style = AppIconStyle.selected()
-        let renderedKey = "\(style.rawValue):\(title)"
-        guard renderedKey != renderedStatusTitle || button.image == nil else { return }
-        renderedStatusTitle = renderedKey
-        button.image = Self.menuBarMark(title: title, style: style)
-        button.title = ""
+        let display = MenuBarQuotaDisplay(sample: quotaSample,
+            showsPercentage: MenuBarQuotaDisplay.showsPercentage(), attentionCount: count)
+        let quotaDescription = quotaSample.recordedRemaining.map {
+            "\(quotaSample.isStale ? "上次剩余" : "剩余") \($0)%"
+        } ?? "等待有效额度采样"
+        let attentionDescription = count > 0 ? " · \(count) 个权限请求需要关注" : ""
+        let description = "Codex Health · " + quotaDescription + attentionDescription + "\n" + quotaSample.description
+        button.toolTip = description
+        button.setAccessibilityLabel(description)
+        guard force || display != renderedStatus || button.image == nil else { return }
+        renderedStatus = display
+        button.image = display.image(appearance: button.effectiveAppearance)
+        button.title = display.title
+        button.imagePosition = display.title.isEmpty ? .imageOnly : .imageLeading
         button.contentTintColor = nil
     }
 
@@ -389,50 +476,6 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         let appearance = mode.resolvedPopoverAppearance(for: NSApp.effectiveAppearance)
         popover.appearance = appearance
         popoverController.view.appearance = appearance
-    }
-
-    private static func menuBarMark(title: String, style: AppIconStyle) -> NSImage {
-        let markWidth: CGFloat = 19
-        let markTitleSpacing: CGFloat = 4
-        let font = NSFont.systemFont(ofSize: 13, weight: .regular)
-        let titleAttributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor.black
-        ]
-        let titleSize = (title as NSString).size(withAttributes: titleAttributes)
-        let size = NSSize(width: markWidth + markTitleSpacing + titleSize.width, height: 19)
-        let image = NSImage(size: size, flipped: false) { _ in
-            let ring = NSBezierPath()
-            ring.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1, startAngle: 75, endAngle: 335, clockwise: false)
-            ring.lineWidth = 3.1
-            NSColor.black.setStroke()
-            ring.stroke()
-            let segments: [(CGFloat, CGFloat)] = style == .glass ? [(15, 27), (31, 43), (47, 59)] : [(15, 59)]
-            for (start, end) in segments {
-                let segment = NSBezierPath()
-                segment.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1,
-                                  startAngle: start, endAngle: end, clockwise: false)
-                segment.lineWidth = 3.1
-                segment.stroke()
-            }
-
-            let h = NSBezierPath()
-            h.move(to: NSPoint(x: 8.0, y: 6.3)); h.line(to: NSPoint(x: 8.0, y: 12.8))
-            h.move(to: NSPoint(x: 11.3, y: 6.3)); h.line(to: NSPoint(x: 11.3, y: 12.8))
-            h.move(to: NSPoint(x: 8.0, y: 9.5)); h.line(to: NSPoint(x: 11.3, y: 9.5))
-            h.lineWidth = 1.45
-            NSColor.black.setStroke()
-            h.stroke()
-
-            let titleY = (size.height - titleSize.height) / 2
-            (title as NSString).draw(
-                at: NSPoint(x: markWidth + markTitleSpacing, y: titleY),
-                withAttributes: titleAttributes
-            )
-            return true
-        }
-        image.isTemplate = true
-        return image
     }
 
     nonisolated func userNotificationCenter(
