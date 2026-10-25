@@ -16,6 +16,8 @@ APP="$1"
 WIDGET="$APP/Contents/PlugIns/CodexMeterWidget.appex"
 SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
 
+python3 "$(dirname "${BASH_SOURCE[0]}")/validate_widget_version.py" "$APP"
+
 python3 - "$APP" <<'PY'
 import plistlib
 import sys
@@ -39,7 +41,7 @@ require(info.get("CFBundleIdentifier") == "com.codexmeter.CodexMeter", "Unexpect
 require(widget.get("CFBundleIdentifier") == "com.codexmeter.CodexMeter.WidgetV4", "Unexpected Widget identifier")
 require(info.get("CFBundleExecutable") == "CodexMeter", "Unexpected app executable")
 require(widget.get("CFBundleExecutable") == "CodexMeterWidget", "Unexpected Widget executable")
-for field in ("CFBundleVersion", "CFBundleShortVersionString"):
+for field in ("CFBundleShortVersionString",):
     value = info.get(field)
     require(isinstance(value, str) and bool(value), f"Missing app {field}")
     require(widget.get(field) == value, f"App and Widget {field} differ")
@@ -58,7 +60,7 @@ expiration = info.get("SUSignedFeedFailureExpirationInterval")
 require(type(expiration) is int and expiration == 0, "Signed-feed fallback must remain disabled")
 for field in ("SUEnableAutomaticChecks", "SUAutomaticallyUpdate", "SUEnableSystemProfiling"):
     require(info.get(field) is False, f"{field} must stay disabled")
-print("PASS: matching app/Widget versions, Sparkle 2.10.0 and fail-closed updater policy")
+print("PASS: compatible app/Widget versions, Sparkle 2.10.0 and fail-closed updater policy")
 PY
 
 # Validate every shipped code component, not just the outer framework. Preserve

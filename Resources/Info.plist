@@ -11,9 +11,9 @@
     <key>CFBundleName</key>
     <string>Codex Health</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.19</string>
+	<string>1.0.20</string>
 	<key>CFBundleVersion</key>
-	<string>29</string>
+	<string>30</string>
     <key>AppGroupIdentifier</key>
     <string>$(TeamIdentifierPrefix)com.codexmeter.CodexMeter</string>
     <key>CFBundlePackageType</key>

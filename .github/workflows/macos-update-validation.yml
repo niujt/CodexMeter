@@ -66,6 +66,9 @@ jobs:
       - name: Test public updater configuration using synthetic data
         run: python3 -m unittest discover -s script -p 'test_update_config.py'
 
+      - name: Reject incompatible Widget archive versions
+        run: python3 script/test_widget_version.py
+
       - name: Run native Swift tests using synthetic fixtures
         env:
           TEST_WORK_DIR: ${{ runner.temp }}/codex-health-tests

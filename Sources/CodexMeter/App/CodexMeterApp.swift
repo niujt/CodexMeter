@@ -137,7 +137,7 @@ extension UsageSnapshot {
 }
 
 struct MenuBarQuotaDisplay: Equatable, Sendable {
-    enum Tint: Equatable, Sendable { case unknown, green, yellow, red }
+    typealias Tint = QuotaRemainingTint
     static let showPercentageKey = "codexMeter.menuBar.showPercentage"
 
     let remainingFraction: Double?
@@ -167,12 +167,7 @@ struct MenuBarQuotaDisplay: Equatable, Sendable {
 
     @MainActor
     func image(appearance: NSAppearance? = nil) -> NSImage {
-        let color: NSColor = switch tint {
-        case .unknown: .labelColor
-        case .green: .systemGreen
-        case .yellow: .systemYellow
-        case .red: .systemRed
-        }
+        let color = DashboardPalette.quotaNSColor(tint)
         var trackColor = NSColor.black.withAlphaComponent(0.22)
         var arcColor = color
         var monogramColor = NSColor.black

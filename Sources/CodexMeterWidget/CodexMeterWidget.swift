@@ -181,12 +181,8 @@ struct CodexMeterWidgetView: View {
     }
 
     private func quotaColor(_ usage: WidgetUsageData) -> Color {
-        switch usage.quotaSample(at: entry.date).remainingTint {
-        case .green: .green
-        case .yellow: .yellow
-        case .red: .red
-        case .unknown: .secondary
-        }
+        let tint = usage.quotaSample(at: entry.date).remainingTint
+        return tint == .unknown ? .secondary : DashboardPalette.quotaColor(tint)
     }
 
     private func statusIcon(_ status: WidgetQuotaStatus, color: Color) -> some View {

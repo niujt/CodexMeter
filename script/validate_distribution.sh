@@ -46,9 +46,7 @@ validate_app() {
   [[ -x "$app/Contents/MacOS/$executable" && -x "$widget/Contents/MacOS/$widget_executable" ]] || {
     echo 'Missing bundle executable.' >&2; return 1;
   }
-  [[ "$version" == "$widget_version" && "$build" == "$widget_build" ]] || {
-    echo "App/widget version mismatch: $version ($build) / $widget_version ($widget_build)" >&2; return 1;
-  }
+  python3 "$(dirname "${BASH_SOURCE[0]}")/validate_widget_version.py" "$app"
   codesign --verify --deep --strict "$app"
   codesign --verify --strict "$widget"
   validate_sparkle "$app" "$executable"

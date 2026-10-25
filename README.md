@@ -180,6 +180,8 @@ cd CodexMeter
 
 每次发布使用新的 `dist/release.*` 目录，保留应用、构建产物、DMG、`.sha256` 校验文件和 `release-info.txt`。可通过 `DIST_DIR` 与 `BUILD_DIR` 指定输出目录；如果已有同名应用或发布文件，脚本拒绝覆盖。打包后会验证主应用和 WidgetKit 扩展的版本、可执行文件、签名及 App Group，验证 DMG 完整性，并只读挂载确认包含 `Codex Health.app` 和指向 `/Applications` 的快捷方式。不安装应用，不启动真实会话读取，不自动清理产物。
 
+从 1.0.20 起，小组件的 `CFBundleVersion` 与 `CFBundleShortVersionString` 一致，以匹配 macOS 扩展登记和 WidgetKit 视图校验；主应用仍使用独立递增的整数构建号供 Sparkle 比较更新。打包与 CI 会拒绝不兼容的版本组合。
+
 已有发布包也可以独立复核：
 
 ```bash

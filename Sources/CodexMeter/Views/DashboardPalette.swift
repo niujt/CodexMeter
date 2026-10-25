@@ -16,8 +16,26 @@ enum DashboardPalette {
     static let popoverBackground = surface
     static let popoverSecondaryInk = secondaryInk
 
+    // Muted forest, ochre and clay; share the same resolved colors with AppKit.
+    static func quotaColor(_ tint: QuotaRemainingTint) -> Color {
+        Color(nsColor: quotaNSColor(tint))
+    }
+
+    static func quotaNSColor(_ tint: QuotaRemainingTint) -> NSColor {
+        switch tint {
+        case .unknown: .labelColor
+        case .green: adaptiveNSColor(light: 0x487663, dark: 0x81A38E)
+        case .yellow: adaptiveNSColor(light: 0x987437, dark: 0xB39A69)
+        case .red: adaptiveNSColor(light: 0xA3615C, dark: 0xBE8C83)
+        }
+    }
+
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
+        Color(nsColor: adaptiveNSColor(light: light, dark: dark))
+    }
+
+    private static func adaptiveNSColor(light: UInt32, dark: UInt32) -> NSColor {
+        NSColor(name: nil) { appearance in
             let hex = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
             return NSColor(
                 srgbRed: Double((hex >> 16) & 0xFF) / 255,
@@ -25,6 +43,6 @@ enum DashboardPalette {
                 blue: Double(hex & 0xFF) / 255,
                 alpha: 1
             )
-        })
+        }
     }
 }
