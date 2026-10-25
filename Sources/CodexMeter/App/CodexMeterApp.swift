@@ -175,13 +175,16 @@ struct MenuBarQuotaDisplay: Equatable, Sendable {
         }
         var trackColor = NSColor.black.withAlphaComponent(0.22)
         var arcColor = color
+        var monogramColor = NSColor.black
         (appearance ?? NSAppearance(named: .aqua))?.performAsCurrentDrawingAppearance {
             let resolved = color.usingColorSpace(.sRGB) ?? color
             trackColor = resolved.withAlphaComponent(remainingFraction == nil ? 0.4 : 0.22)
             arcColor = resolved.withAlphaComponent(isStale ? 0.6 : 1)
+            monogramColor = NSColor.labelColor.usingColorSpace(.sRGB) ?? .labelColor
         }
         let resolvedTrack = trackColor
         let resolvedArc = arcColor
+        let resolvedMonogram = monogramColor
         let image = NSImage(size: NSSize(width: 19, height: 19), flipped: false) { _ in
             let bounds = NSRect(x: 2.4, y: 2.4, width: 14.2, height: 14.2)
             let track = NSBezierPath(ovalIn: bounds)
@@ -207,6 +210,18 @@ struct MenuBarQuotaDisplay: Equatable, Sendable {
                 resolvedArc.setStroke()
                 arc.stroke()
             }
+
+            let monogram = NSBezierPath()
+            monogram.move(to: NSPoint(x: 7, y: 6.1))
+            monogram.line(to: NSPoint(x: 7, y: 12.9))
+            monogram.move(to: NSPoint(x: 12, y: 6.1))
+            monogram.line(to: NSPoint(x: 12, y: 12.9))
+            monogram.move(to: NSPoint(x: 7, y: 9.5))
+            monogram.line(to: NSPoint(x: 12, y: 9.5))
+            monogram.lineWidth = 1.4
+            monogram.lineCapStyle = .round
+            resolvedMonogram.setStroke()
+            monogram.stroke()
             return true
         }
         // Keep the ring's colors; the native status button draws its text separately.

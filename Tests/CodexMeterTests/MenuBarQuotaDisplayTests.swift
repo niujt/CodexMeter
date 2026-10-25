@@ -112,6 +112,34 @@ struct MenuBarQuotaDisplayTests {
         #expect(fullPixels != emptyPixels)
     }
 
+    @Test func centralAppMarkStaysVisibleAtNormalZeroAndUnknownQuotaInBothAppearances() throws {
+        _ = NSApplication.shared
+        let unknown = QuotaSampleState(percent: nil, sampledAt: nil, resetsAt: nil, now: now)
+        let centralRange: Range<CGFloat> = 6.5..<12.5
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let appearance = try #require(NSAppearance(named: name))
+            for state in [sample(used: 44), sample(used: 100), unknown] {
+                let image = MenuBarQuotaDisplay(sample: state, showsPercentage: false).image(appearance: appearance)
+                let rendered = try #require(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
+                let bitmap = NSBitmapImageRep(cgImage: rendered)
+                var opaqueMarkPixels = 0
+                for y in 0..<bitmap.pixelsHigh {
+                    for x in 0..<bitmap.pixelsWide {
+                        let logicalX = (CGFloat(x) + 0.5) * image.size.width / CGFloat(bitmap.pixelsWide)
+                        let logicalY = (CGFloat(y) + 0.5) * image.size.height / CGFloat(bitmap.pixelsHigh)
+                        // This central 6×6-point area is inside the ring's inner radius,
+                        // so the old ring without an H cannot satisfy the assertion.
+                        guard centralRange.contains(logicalX), centralRange.contains(logicalY) else { continue }
+                        if (bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) >= 0.75 {
+                            opaqueMarkPixels += 1
+                        }
+                    }
+                }
+                #expect(opaqueMarkPixels >= 3)
+            }
+        }
+    }
+
     private func sample(used: Double, sampledAgo: TimeInterval = 0) -> QuotaSampleState {
         QuotaSampleState(percent: used, sampledAt: now.addingTimeInterval(-sampledAgo),
                          resetsAt: now.addingTimeInterval(3_600), now: now)
