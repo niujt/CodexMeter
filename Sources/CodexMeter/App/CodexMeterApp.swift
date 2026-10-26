@@ -225,6 +225,36 @@ struct MenuBarQuotaDisplay: Equatable, Sendable {
     }
 }
 
+/// AppKit can report effectiveAppearance again while updating status-item
+/// snapshots. Commit the render key before changing the button, and never
+/// recreate an unchanged image in response to those notifications.
+@MainActor
+final class MenuBarQuotaRenderer {
+    private var renderedDisplay: MenuBarQuotaDisplay?
+    private var renderedAppearance: NSAppearance.Name?
+
+    @discardableResult
+    func apply(_ display: MenuBarQuotaDisplay, description: String, to button: NSButton) -> Bool {
+        let appearance = button.effectiveAppearance
+        let appearanceName = appearance.name
+        let needsImage = display != renderedDisplay || appearanceName != renderedAppearance || button.image == nil
+        if needsImage {
+            renderedDisplay = display
+            renderedAppearance = appearanceName
+        }
+        if button.toolTip != description {
+            button.toolTip = description
+            button.setAccessibilityLabel(description)
+        }
+        guard needsImage else { return false }
+        button.image = display.image(appearance: appearance)
+        button.title = display.title
+        button.imagePosition = display.title.isEmpty ? .imageOnly : .imageLeading
+        button.contentTintColor = nil
+        return true
+    }
+}
+
 @MainActor
 private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNUserNotificationCenterDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -250,7 +280,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     private var statusAppearanceObservation: NSKeyValueObservation?
     private var quotaExpiryTask: Task<Void, Never>?
     private var quotaSample = QuotaSampleState(percent: nil, sampledAt: nil, resetsAt: nil, now: .now)
-    private var renderedStatus: MenuBarQuotaDisplay?
+    private let statusRenderer = MenuBarQuotaRenderer()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Start as a menu-bar accessory. The dashboard promotes the app to a
@@ -265,7 +295,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         }
         guard let button = statusItem.button else { return }
         statusAppearanceObservation = button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            Task { @MainActor [weak self] in self?.applyStatusAppearance(force: true) }
+            Task { @MainActor [weak self] in self?.applyStatusAppearance() }
         }
         button.imagePosition = .imageOnly
         button.target = self
@@ -460,7 +490,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         }
     }
 
-    private func applyStatusAppearance(force: Bool = false) {
+    private func applyStatusAppearance() {
         guard let button = statusItem.button else { return }
         let showBadge = UserDefaults.standard.bool(forKey: PermissionPreferences.badgeEnabledKey)
         let count = showBadge ? permissionStore.newCount : 0
@@ -471,14 +501,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         } ?? "等待有效额度采样"
         let attentionDescription = count > 0 ? " · \(count) 个权限请求需要关注" : ""
         let description = "Codex Health · " + quotaDescription + attentionDescription + "\n" + quotaSample.description
-        button.toolTip = description
-        button.setAccessibilityLabel(description)
-        guard force || display != renderedStatus || button.image == nil else { return }
-        renderedStatus = display
-        button.image = display.image(appearance: button.effectiveAppearance)
-        button.title = display.title
-        button.imagePosition = display.title.isEmpty ? .imageOnly : .imageLeading
-        button.contentTintColor = nil
+        statusRenderer.apply(display, description: description, to: button)
     }
 
     private func applyPopoverAppearance() {
