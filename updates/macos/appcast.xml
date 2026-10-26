@@ -3,6 +3,19 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.21</title>
+      <sparkle:version>31</sparkle:version>
+      <sparkle:shortVersionString>1.0.21</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Mon, 26 Oct 2026 15:27:52 +0000</pubDate>
+      <description>修复菜单栏图标外观通知触发重复强制重绘，导致主应用持续高 CPU 占用的问题。
+只有额度状态或实际外观变化时才更新图标；采样时间和辅助说明单独更新。
+保留低饱和度状态色、剩余额度圆环、百分比和权限提醒。
+主应用升级至 1.0.21（31）；小组件登记与视图版本保持一致，统一为 1.0.21。
+本次为 Apple Development 签名版本，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.21/CodexMeter-1.0.21-macos.dmg" length="7019335" type="application/octet-stream" sparkle:edSignature="Ztb+Vb6fF3j9sWbNM38a6+M2ijBjcjWgMbOZt9/S7EWBpfz32uMovSWhlTxZ+7atgEyHyniQbfduDbeNH2XcCg=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.20</title>
       <sparkle:version>30</sparkle:version>
       <sparkle:shortVersionString>1.0.20</sparkle:shortVersionString>
@@ -15,28 +28,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 本次为 Apple Development 签名版本，尚未公证。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.20/CodexMeter-1.0.20-macos.dmg" length="7021090" type="application/octet-stream" sparkle:edSignature="epRTsKaz7FFHxX9L23zTJVHeriRfIekePj/BxaraoaIQ+aMl/oAVMgieJtjXIdAH8Qya5LpmsxSp402eiDgRDQ=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.17</title>
-      <sparkle:version>26</sparkle:version>
-      <sparkle:shortVersionString>1.0.17</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Sat, 24 Oct 2026 03:07:38 +0000</pubDate>
-      <description>续航预测支持小时与天切换，并记住选择。
-健康报告与使用趋势支持柱状图、折线图、面积图和散点图，默认仍为柱状图。
-折线图和面积图保留缺失记录的断点；悬停可查看时间与用量。
-Token 构成按非缓存输入、缓存输入、输出分开展示，可切换今天、近 7 天与本月；原始合计保留，缓存和推理不重复相加。
-缓存仍消耗 Token，通常按缓存费率计费，不能直接视为免费或按原始 Token 换算订阅额度。
-账户已用额度旁明确显示其他设备暂未统计；现有本机数据不提供设备额度拆分，不推算未经验证的百分比。
-主应用和小组件同步升级至 1.0.17（26）。
-本次为 Apple Development 签名版本，尚未公证。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.17/CodexMeter-1.0.17-macos.dmg" length="6949427" type="application/octet-stream" sparkle:edSignature="58Lqh7kEfEGBvrmRtU3u9dqjsQg+znjJT7OtuQRGixSpM09jQAyaifBjRoeNXn8F5aVklUkCdfoUV7l+4HxpCg=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: ZAnDM35TWw8SWWhzrg6EaKqZ6n8M9rHFjU9ozUbpMDH5BiYP2JOwDlTP6nttpdSV4SyJOGroeOkKDMYkbKAhBQ==
-length: 3148
+edSignature: ryTJdwpC+Q+Utb6sHXyVRWo247zNQfh5KcBpiuRy5WSZ2SUCoQO8xaEZlrFZHZE4m7mKsWNdct8HxsGW0vIHDQ==
+length: 2808
 -->
