@@ -40,7 +40,7 @@ struct QuotaSampleView: View {
                    sample.recordedRemaining != nil {
                     Text("重置于 \(window.resetsAt.formatted(.dateTime.month().day().hour().minute()))")
                         .font(.caption2).foregroundStyle(secondaryInk)
-                        .help("本地采样记录的重置时间：\(window.resetsAt.formatted(date: .complete, time: .standard))")
+                        .help("额度采样记录的重置时间：\(window.resetsAt.formatted(date: .complete, time: .standard))")
                 }
             }
         }
@@ -61,7 +61,7 @@ struct QuotaSampleView: View {
         let timestamp = Calendar.current.isDate(sampledAt, inSameDayAs: now)
             ? sampledAt.formatted(.dateTime.hour().minute())
             : sampledAt.formatted(.dateTime.month().day().hour().minute())
-        return "本地采样 · \(timestamp) · 非实时"
+        return "额度采样 · \(timestamp) · 非实时"
     }
 }
 

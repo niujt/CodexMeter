@@ -52,10 +52,10 @@ struct UsageRefreshStatusView: View {
         if store.isRefreshing { return store.loadingMessage }
         var lines = [message]
         if let checkedAt = feedback?.checkedAt ?? store.lastSuccessfulRefresh {
-            lines.append("本机检查于 \(checkedAt.formatted(date: .abbreviated, time: .standard))")
+            lines.append("检查完成于 \(checkedAt.formatted(date: .abbreviated, time: .standard))")
         }
         if let error = store.errorMessage ?? feedback?.detail { lines.append(error) }
-        lines.append("检查时间仅表示本机读取完成；额度仍以原始采样时间为准。")
+        lines.append("检查时间表示本轮刷新完成；额度以实际采样时间为准。")
         return lines.joined(separator: "\n")
     }
 

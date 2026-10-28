@@ -395,7 +395,7 @@ private struct UsageRefreshFeedbackView: View {
         }
         .font(.caption2).foregroundStyle(secondaryInk)
         .fixedSize(horizontal: false, vertical: true)
-        .help("\(feedback.message)。检查时间仅表示本机读取完成时间，额度采样时间以原始记录为准。")
+        .help("\(feedback.message)。检查时间表示本轮刷新完成，额度以实际采样时间为准。")
     }
 
     private var symbol: String {

@@ -6,13 +6,13 @@
 
 在「设置 → 通用 → 外观 → 应用 Logo」中可选择黑白扁平版或玻璃黑白版。黑白扁平版作为默认，切换 Dock、应用内 Logo 和菜单栏标识无需重启；浅色外观使用白底黑字，深色外观使用黑底白字；Finder 中的安装包图标使用黑白扁平版。
 
-> 数据只在本机读取与计算，不上传会话内容或用量数据。
+> Token、模型和项目统计在本机读取与计算，不上传会话内容或用量数据。账户额度使用当前 Codex 登录向 ChatGPT 查询；凭据只在内存中使用。
 
 ## 下载
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS 15+（Intel / Apple Silicon） | [1.0.18 安装包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.18)，打开后将 `Codex Health.app` 拖入 Applications |
+| macOS 15+（Intel / Apple Silicon） | [1.0.22 安装包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.22)，打开后将 `Codex Health.app` 拖入 Applications |
 | Windows x64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-x64-setup.exe) |
 | Windows ARM64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-arm64-setup.exe) |
 
@@ -46,6 +46,8 @@
 </details>
 
 ## 菜单栏摘要
+
+macOS 1.0.22（32）在手动刷新和定时刷新时直接查询当前账户额度，账户重置后无需等待新的本地会话记录。查询失败会保留上次采样并显示原因；旧会话记录不会覆盖更新的账户采样。只选择会话目录或未登录 ChatGPT 时不发起账户请求。
 
 Mac 1.0.9 的手动刷新会明确显示新额度采样、暂无新采样、读取不完整或失败，并区分检查时间与额度采样时间。已配置更新器的 1.0.8（17）可在「偏好设置 → 关于 → 检查更新」升级；本次发布为开发签名、未公证的升级验证包。
 

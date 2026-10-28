@@ -26,7 +26,7 @@ struct DashboardContent: View {
                     Text("健康报告").font(.system(size: 26, weight: .semibold))
                     Text("本机 Token 记录与账户额度")
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
-                    Text(snapshot.lastUpdated.map { "更新于 \($0.formatted(.relative(presentation: .named)))" } ?? "等待本机用量")
+                    Text(snapshot.lastUpdated.map { "本机记录更新于 \($0.formatted(.relative(presentation: .named)))" } ?? "等待本机用量")
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 Spacer()
@@ -160,7 +160,7 @@ private struct DeviceUsageSummary: View {
                                 .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                                 .help("账户额度是合计，本机数据没有按设备拆分的额度；不能从本机 Token 换算出其他设备百分比。")
                         }
-                        Text(snapshot.mainRateIsCached ? "含其他设备 · 有效缓存采样 · 非实时" : "含其他设备 · 本地采样 · 非实时")
+                        Text(snapshot.mainRateIsCached ? "含其他设备 · 有效缓存采样 · 非实时" : "含其他设备 · 额度采样 · 非实时")
                             .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                     } else {
                         Text("等待有效采样").font(.title3.weight(.medium))

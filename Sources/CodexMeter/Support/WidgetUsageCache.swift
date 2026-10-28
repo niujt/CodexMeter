@@ -33,7 +33,7 @@ struct QuotaSampleState {
     }
     var description: String {
         let time = hasValidTime ? "采样于 \(sampledAt!.formatted(.dateTime.year().month().day().hour().minute().second()))" : "采样时间未知"
-        return "\(isStale ? "旧采样" : "本地采样") · \(time) · 非实时"
+        return "\(isStale ? "旧采样" : "额度采样") · \(time) · 非实时"
     }
     static func deadlines(sampledAt: Date?, resetsAt: Date?, now: Date = .now) -> [Date] {
         [sampledAt?.addingTimeInterval(lifetime), resetsAt].compactMap { $0 }.filter { $0 > now }.sorted()

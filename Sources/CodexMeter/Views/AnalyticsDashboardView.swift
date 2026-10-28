@@ -78,7 +78,7 @@ struct AnalyticsDashboardView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("刷新本机用量") { Task { await store.refresh(userInitiated: true) } }
+                    Button("刷新用量与账户额度") { Task { await store.refresh(userInitiated: true) } }
                     Button("重新读取全部记录") { Task { await store.refresh(force: true, userInitiated: true) } }
                 } label: {
                     Label("刷新", systemImage: "arrow.clockwise")
@@ -87,7 +87,7 @@ struct AnalyticsDashboardView: View {
                 }
                 .disabled(store.isRefreshing)
                 .keyboardShortcut("r", modifiers: .command)
-                .help("刷新本机用量；展开菜单可重新读取全部记录")
+                .help("刷新本机用量并查询账户额度；展开菜单可重新读取全部记录")
             }
             if #available(macOS 26.0, *) {
                 ToolbarSpacer(.fixed, placement: .primaryAction)

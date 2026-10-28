@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0DECA000000000000000081 /* LiveQuotaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECA000000000000000082 /* LiveQuotaClient.swift */; };
 		C0DECF000000000000000060 /* UsageTrendChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000061 /* UsageTrendChart.swift */; };
 		C0DECF000000000000000050 /* DashboardViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000052 /* DashboardViewState.swift */; };
 		C0DECF000000000000000051 /* TrendSeries.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000053 /* TrendSeries.swift */; };
@@ -74,6 +75,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C0DECA000000000000000082 /* LiveQuotaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LiveQuotaClient.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000061 /* UsageTrendChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UsageTrendChart.swift; path = Views/UsageTrendChart.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000052 /* DashboardViewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DashboardViewState.swift; path = Support/DashboardViewState.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000053 /* TrendSeries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TrendSeries.swift; path = Support/TrendSeries.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 				9C0DE000000000000000000C /* ResetHistoryStore.swift */,
 				9C0DE000000000000000000D /* ResetHistoryArchive.swift */,
 				0D08383147571548BA77F3B4 /* CodexUsageReader.swift */,
+				C0DECA000000000000000082 /* LiveQuotaClient.swift */,
 				09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */,
 				C0DECF000000000000000031 /* WidgetExtensionRecovery.swift */,
 				CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */,
@@ -373,6 +376,7 @@
 				9C0DE100000000000000000C /* ResetHistoryStore.swift in Sources */,
 				9C0DE100000000000000000D /* ResetHistoryArchive.swift in Sources */,
 				72C8AE23FD2E354DF0747D89 /* CodexUsageReader.swift in Sources */,
+				C0DECA000000000000000081 /* LiveQuotaClient.swift in Sources */,
 				A1AF8676F4ED910B3A596482 /* DesktopWidgetController.swift in Sources */,
 				C0DECF000000000000000030 /* WidgetExtensionRecovery.swift in Sources */,
 				FEBADF776B5F64FA07883229 /* ProjectPathStore.swift in Sources */,

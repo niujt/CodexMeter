@@ -51,6 +51,9 @@ final class UsageStore {
     private var hasCompleteSnapshot = false
     private(set) var lastSuccessfulRefresh: Date?
     @ObservationIgnored private let reader: CodexUsageReader
+    @ObservationIgnored private let quotaClient: LiveQuotaClient?
+    @ObservationIgnored private var quotaTask: Task<LiveQuotaObservation, Error>?
+    private var lastQuotaAttempt: Date?
     @ObservationIgnored private let folderAccess: CodexFolderAccess
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let effectsEnabled: Bool
@@ -61,8 +64,9 @@ final class UsageStore {
 
     init(reader: CodexUsageReader = CodexUsageReader(cacheDirectory: CodexUsageReader.defaultCacheDirectory()),
          folderAccess: CodexFolderAccess = CodexFolderAccess(), defaults: UserDefaults = .standard,
-         effectsEnabled: Bool = true, clock: @escaping () -> Date = { .now }) {
+         effectsEnabled: Bool = true, clock: @escaping () -> Date = { .now }, quotaClient: LiveQuotaClient? = nil) {
         self.reader = reader
+        self.quotaClient = quotaClient ?? (effectsEnabled ? LiveQuotaClient() : nil)
         self.folderAccess = folderAccess
         self.defaults = defaults
         self.effectsEnabled = effectsEnabled
@@ -82,7 +86,7 @@ final class UsageStore {
         if let error = folderAccess.restoreError { return error }
         guard let context else { return "等待检查登录状态" }
         if context.source.home == nil { return "仅会话目录，账户功能不可用" }
-        return context.accountIdentity == nil ? "未识别 ChatGPT 账户，额度与预测暂停" : "已识别登录；额度采用登录边界后的本地采样"
+        return context.accountIdentity == nil ? "未识别 ChatGPT 账户，额度与预测暂停" : "已识别登录；刷新时查询账户额度，本地记录用于 Token 统计"
     }
     var quotaWaitingMessage: String {
         if folderAccess.restoreError != nil { return "请重新选择数据目录" }
@@ -100,6 +104,8 @@ final class UsageStore {
     func synchronizeContext() -> Bool {
         guard folderAccess.restoreError == nil else {
             loadTask?.cancel()
+            quotaTask?.cancel()
+            lastQuotaAttempt = nil
             generation = UUID()
             snapshot = .empty
             context = nil
@@ -115,6 +121,8 @@ final class UsageStore {
             initialObservation: context?.source.id != source.id)
         guard next != context else { return false }
         loadTask?.cancel()
+        quotaTask?.cancel()
+        lastQuotaAttempt = nil
         generation = UUID()
         context = next
         resetHistory.synchronize(context: next)
@@ -165,6 +173,15 @@ final class UsageStore {
         if userInitiated { refreshFeedback = nil }
         processedFiles = 0; totalFiles = 0; readFiles = 0; reusedFiles = 0
         let previous = snapshot
+        let quotaTask: Task<LiveQuotaObservation, Error>?
+        if let quotaClient, context.quotaScope != nil,
+           userInitiated || force || lastQuotaAttempt == nil || now.timeIntervalSince(lastQuotaAttempt!) >= RefreshPolicy.interval(defaults: defaults) {
+            lastQuotaAttempt = now
+            quotaTask = Task { try await quotaClient.load(context: context) }
+        } else {
+            quotaTask = nil
+        }
+        self.quotaTask = quotaTask
         let showsPartialResults = !hasCompleteSnapshot
         let reader = reader
         let partialProgress: (@Sendable (UsageSnapshot, Int, Int) async -> Void)?
@@ -185,29 +202,42 @@ final class UsageStore {
                 }, onProgress: partialProgress)
         }
         loadTask = task
-        defer { if generation == request { isRefreshing = false; loadTask = nil } }
+        defer {
+            quotaTask?.cancel()
+            if generation == request { isRefreshing = false; loadTask = nil; self.quotaTask = nil }
+        }
         do {
             var loaded = try await task.value
+            var quotaWarning: String?
+            if let quotaTask {
+                do {
+                    let observation = try await quotaTask.value
+                    observation.apply(to: &loaded, now: clock())
+                } catch {
+                    if !(error is CancellationError) { quotaWarning = error.localizedDescription }
+                }
+            }
             guard request == generation else { return }
             if synchronizeContext() { await refresh(force: force, userInitiated: userInitiated); return }
             guard request == generation else { return }
             hasCompleteSnapshot = true
             lastSuccessfulRefresh = clock()
             processedFiles = loaded.fileCount
-            QuotaRateCache.restoreMissing(into: &loaded, scope: context.quotaScope, defaults: defaults, now: now)
+            let completedAt = clock()
+            QuotaRateCache.restoreMissing(into: &loaded, scope: context.quotaScope, defaults: defaults, now: completedAt)
             snapshot = loaded
-            QuotaRateCache.save(loaded, scope: context.quotaScope, defaults: defaults, now: now)
+            QuotaRateCache.save(loaded, scope: context.quotaScope, defaults: defaults, now: completedAt)
             if let scope = context.quotaScope, let rate = snapshot.sevenDayRate {
                 if !snapshot.mainRateIsCached, let sampledAt = snapshot.mainRateSampledAt {
-                    RateHistory.append(rate, sampledAt: sampledAt, scope: scope, defaults: defaults, now: now)
+                    RateHistory.append(rate, sampledAt: sampledAt, scope: scope, defaults: defaults, now: completedAt)
                 }
-                if effectsEnabled, snapshot.currentSevenDayRate(at: now) != nil {
+                if effectsEnabled, snapshot.currentSevenDayRate(at: completedAt) != nil {
                     UsageNotifier.evaluate(rate, scope: scope, velocity: measuredVelocity)
                 }
             }
             let cacheWarning = await reader.cacheWarning
             guard request == generation else { return }
-            errorMessage = [snapshot.readWarning, cacheWarning].compactMap { $0 }.joined(separator: "\n")
+            errorMessage = [snapshot.readWarning, cacheWarning, quotaWarning].compactMap { $0 }.joined(separator: "\n")
             if errorMessage?.isEmpty == true { errorMessage = nil }
             if effectsEnabled {
                 publishWidget(forceReload: userInitiated)
@@ -336,7 +366,8 @@ enum QuotaRateCache {
     static func restoreMissing(into snapshot: inout UsageSnapshot, scope: QuotaScope? = nil, defaults: UserDefaults = .standard, now: Date = .now) {
         guard let scope else { return }
         let payload = load(scope: scope, defaults: defaults)
-        if snapshot.mainMenuRate == nil, let main = valid(payload.main, scope: scope, now: now) {
+        if let main = valid(payload.main, scope: scope, now: now),
+           snapshot.mainMenuRate == nil || snapshot.mainRateSampledAt.map({ main.sampledAt > $0 }) == true {
             snapshot.mainMenuRate = main.rateWindow
             snapshot.mainRateIsCached = true
             snapshot.mainRateSampledAt = main.sampledAt
