@@ -96,6 +96,7 @@ struct APIBillingView: View {
     }
 
     private func openAPISettings() {
+        UserDefaults.standard.set("openai", forKey: APISettingsView.providerKey)
         UserDefaults.standard.set("api", forKey: SettingsView.selectedTabKey)
         openSettings()
     }

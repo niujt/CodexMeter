@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C43FBE317BDB4806BC114250 /* APISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C9E70D84AE42B2B1544580 /* APISettingsView.swift */; };
+		B57C61FBF441480BA288F8F3 /* DeepSeekBalanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28DA685B39B34E52A76F6ADE /* DeepSeekBalanceView.swift */; };
+		11700FFD91744E8EAAAAECE5 /* DeepSeekBalanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A5079F196444A80647000 /* DeepSeekBalanceStore.swift */; };
+		5704E216CB0D475FA9B78C8A /* DeepSeekBalanceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDBE1E55620143B2B555D8D3 /* DeepSeekBalanceClient.swift */; };
+		9AF96E112A7F412B9DFEBE36 /* DeepSeekBalance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5E898A6B794C70ADB1AFD7 /* DeepSeekBalance.swift */; };
 		9E3A42712705460AAF8DF011 /* APIBillingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13252DEE3014E2299A6E82E /* APIBillingView.swift */; };
 		202C3F951B0943DCBA88BEDD /* APIBillingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 820E65DDFBF64D81A3E60E6B /* APIBillingStore.swift */; };
 		54B9E9BD80E349009467A493 /* APIKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6E302AAF64C407C9AC3869D /* APIKeychain.swift */; };
@@ -80,6 +85,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B5C9E70D84AE42B2B1544580 /* APISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/APISettingsView.swift; sourceTree = "<group>"; };
+		28DA685B39B34E52A76F6ADE /* DeepSeekBalanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/DeepSeekBalanceView.swift; sourceTree = "<group>"; };
+		C83A5079F196444A80647000 /* DeepSeekBalanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stores/DeepSeekBalanceStore.swift; sourceTree = "<group>"; };
+		FDBE1E55620143B2B555D8D3 /* DeepSeekBalanceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/DeepSeekBalanceClient.swift; sourceTree = "<group>"; };
+		0D5E898A6B794C70ADB1AFD7 /* DeepSeekBalance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/DeepSeekBalance.swift; sourceTree = "<group>"; };
 		D13252DEE3014E2299A6E82E /* APIBillingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/APIBillingView.swift; sourceTree = "<group>"; };
 		820E65DDFBF64D81A3E60E6B /* APIBillingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stores/APIBillingStore.swift; sourceTree = "<group>"; };
 		B6E302AAF64C407C9AC3869D /* APIKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/APIKeychain.swift; sourceTree = "<group>"; };
@@ -222,6 +232,11 @@
 				9C0DE000000000000000000D /* ResetHistoryArchive.swift */,
 				0D08383147571548BA77F3B4 /* CodexUsageReader.swift */,
 				C0DECA000000000000000082 /* LiveQuotaClient.swift */,
+				B5C9E70D84AE42B2B1544580 /* APISettingsView.swift */,
+				28DA685B39B34E52A76F6ADE /* DeepSeekBalanceView.swift */,
+				C83A5079F196444A80647000 /* DeepSeekBalanceStore.swift */,
+				FDBE1E55620143B2B555D8D3 /* DeepSeekBalanceClient.swift */,
+				0D5E898A6B794C70ADB1AFD7 /* DeepSeekBalance.swift */,
 				D13252DEE3014E2299A6E82E /* APIBillingView.swift */,
 				820E65DDFBF64D81A3E60E6B /* APIBillingStore.swift */,
 				B6E302AAF64C407C9AC3869D /* APIKeychain.swift */,
@@ -392,6 +407,11 @@
 				9C0DE100000000000000000D /* ResetHistoryArchive.swift in Sources */,
 				72C8AE23FD2E354DF0747D89 /* CodexUsageReader.swift in Sources */,
 				C0DECA000000000000000081 /* LiveQuotaClient.swift in Sources */,
+				C43FBE317BDB4806BC114250 /* APISettingsView.swift in Sources */,
+				B57C61FBF441480BA288F8F3 /* DeepSeekBalanceView.swift in Sources */,
+				11700FFD91744E8EAAAAECE5 /* DeepSeekBalanceStore.swift in Sources */,
+				5704E216CB0D475FA9B78C8A /* DeepSeekBalanceClient.swift in Sources */,
+				9AF96E112A7F412B9DFEBE36 /* DeepSeekBalance.swift in Sources */,
 				9E3A42712705460AAF8DF011 /* APIBillingView.swift in Sources */,
 				202C3F951B0943DCBA88BEDD /* APIBillingStore.swift in Sources */,
 				54B9E9BD80E349009467A493 /* APIKeychain.swift in Sources */,

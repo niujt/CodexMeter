@@ -146,7 +146,8 @@ struct DashboardSidebar: View {
         ("项目与用量", "folder"),
         ("预测与风险", "scope"),
         ("历史记录", "clock"),
-        ("API 用量与费用", "creditcard")
+        ("API 用量与费用", "creditcard"),
+        ("DeepSeek 余额", "yensign.circle")
     ]
 
     var body: some View {

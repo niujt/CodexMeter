@@ -138,7 +138,7 @@ struct SettingsView: View {
             .tabItem { Label("提醒", systemImage: "bell.badge") }
             .tag("notifications")
 
-            APIBillingSettingsView()
+            APISettingsView()
                 .tabItem { Label("API", systemImage: "key") }
                 .tag("api")
 

@@ -46,6 +46,8 @@ struct AnalyticsDashboardView: View {
                         HistoryRecordsView(store: store, viewState: viewState)
                     case "API 用量与费用":
                         APIBillingView()
+                    case "DeepSeek 余额":
+                        DeepSeekBalanceView()
                     default:
                         FeaturePlaceholderView(section: selectedSection ?? "健康报告")
                             .frame(minHeight: 500)

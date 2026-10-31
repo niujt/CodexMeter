@@ -2,8 +2,14 @@ import Foundation
 import Security
 
 struct APIKeychain: Sendable {
-    private let service = "com.codexmeter.CodexMeter.openai-billing"
-    private let account = "organization-admin-key"
+    enum Provider: Sendable { case openAI, deepSeek }
+    let provider: Provider
+    init(provider: Provider = .openAI) { self.provider = provider }
+
+    var service: String {
+        provider == .openAI ? "com.codexmeter.CodexMeter.openai-billing" : "com.codexmeter.CodexMeter.deepseek-balance"
+    }
+    var account: String { provider == .openAI ? "organization-admin-key" : "user-api-key" }
 
     static func isValid(_ key: String) -> Bool {
         key.hasPrefix("sk-") && key.count >= 16 && key.utf8.allSatisfy {
