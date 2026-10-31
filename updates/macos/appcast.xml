@@ -3,6 +3,19 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.25</title>
+      <sparkle:version>35</sparkle:version>
+      <sparkle:shortVersionString>1.0.25</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Sat, 31 Oct 2026 16:47:00 +0000</pubDate>
+      <description>修复更新后桌面小组件停留灰色占位的问题：启动时刷新当前应用及其扩展的系统登记，再请求时间线重载。
+手动刷新也会恢复登记，并在短暂延迟后有限重试，处理系统登记通知尚未完成的情况。
+不重建全局登记数据库，不删除用户数据，不结束 WidgetKit 宿主。
+主应用升级至 1.0.25（35），小组件版本同步为 1.0.25。
+本次为 Apple Development 签名版本，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.25/CodexMeter-1.0.25-macos.dmg" length="7509786" type="application/octet-stream" sparkle:edSignature="F9tc2w3fmzO6eGsOopOmV/ZdE8IvDntXO+BnJ8OeHmiWSCJ+S+uncEhSLkVYLMtJmoTb4jD5RE1DGHfXVYsFBw=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.24</title>
       <sparkle:version>34</sparkle:version>
       <sparkle:shortVersionString>1.0.24</sparkle:shortVersionString>
@@ -16,26 +29,12 @@ DeepSeek 仅调用官方只读余额接口；进入页面按需查询，手动�
 本次为 Apple Development 签名版本，尚未公证。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.24/CodexMeter-1.0.24-macos.dmg" length="7496465" type="application/octet-stream" sparkle:edSignature="ZuVwDWVJWbXeNMuaGHzmpfHqhlXvDKYq569rf9jGu5jnRTp/zjhtM2CoKhGUbHW8wd269C9zlN36CWTRRVZMAA=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.23</title>
-      <sparkle:version>33</sparkle:version>
-      <sparkle:shortVersionString>1.0.23</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Sat, 31 Oct 2026 05:29:49 +0000</pubDate>
-      <description>新增“API 用量与费用”页面：读取 OpenAI 官方组织本月费用、文本 API Token 和请求数。
-支持查看组织月度消费上限及预算剩余估算；未配置上限与权限不足分别提示，充值余额仍以官方账单页为准。
-设置新增 API 密钥输入和文本文件导入，密钥仅保存在本机钥匙串，不随安装包发布。
-按 UTC 日桶汇总并包含当天已记录费用；分页不完整时不展示不完整汇总，密钥替换后清空旧组织结果。
-主应用升级至 1.0.23（33），小组件版本同步为 1.0.23。
-本次为 Apple Development 签名版本，尚未公证。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.23/CodexMeter-1.0.23-macos.dmg" length="7325805" type="application/octet-stream" sparkle:edSignature="keGSlz+EZdZMb4LcAcfvAbTzXa8YeZCvHrek20aeYESCUwlUavuqPc3XQ2y6YpSFWiFynVtDRbdmz54JSqE7DQ=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: x6wGVJRnYatxhX0nj7p5inhUPX8m9IaWWTh09ppgqzMHnRwqWhZBcTnyLkb03E7IwXB6jz7kBmh2r/Ck4yH0BA==
-length: 3126
+edSignature: 3HZbbEVspqfjfQGZmeVmC6sLhocdM6sd7tgcsLGRquL3qbFFK0mxCRLX5l3iWD955FL7h2Z4kmdxrmfO3/YyCw==
+length: 2962
 -->

@@ -7,7 +7,7 @@
 - 不扫描或删除本地构建副本，不重建全局登记数据库，不结束 WidgetKit 宿主。沿用既有的同安装、同用户、同签名旧扩展回收边界。
 - 经用户授权对 `/Applications/Codex Health.app` 定向登记后，系统出现 `Content load successful` / `LIVE`，用户确认当前小组件恢复；主应用与 Widget 进程未重启。这是当前 1.0.24 的恢复验证，不代表 1.0.25 的 App 内升级验收。
 - 196 项 Swift 回归、7 项更新配置、4 项 Widget 版本及 2 项工作流检查通过。新增登记顺序、失败返回及非本应用隔离测试，均不修改实际安装登记。
-- 1.0.25 双架构 Release 构建、主应用/Widget/Sparkle 嵌套签名、App Group、更新配置、DMG 完整性及 `/Applications` 快捷方式校验通过。沿用 Apple Development 签名，未做 Developer ID 公证。GitHub 安装包和签名更新源发布结果完成后补充。真实点击更新后的启动及小组件保留待用户验收；不直接替换 `/Applications` 安装，不主动重启，不清理产物。
+- 1.0.25 双架构 Release 构建、主应用/Widget/Sparkle 嵌套签名、App Group、更新配置、DMG 完整性及 `/Applications` 快捷方式校验通过。沿用 Apple Development 签名，未做 Developer ID 公证。源码提交 `af18593d`，安装包发布至 [macos-v1.0.25](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.25)。[签名 CI](https://github.com/niujt/CodexMeter/actions/runs/41221272042) 成功；本机对公开下载包独立复核 SHA-256、长度、Ed25519 包签名及签名更新源，公钥未变，篡改包和篡改源均被拒绝。更新源保留 1.0.25 / 1.0.24。DMG SHA-256 为 `9c264ea96b8ef26f77ead9651af2a71e2ca975aa698516e176e94edae5a3ddfa`。真实点击更新后的启动及小组件保留待用户验收；不直接替换 `/Applications` 安装，不主动重启，不清理产物。
 
 ## 1.0.24（34）DeepSeek 余额
 
@@ -112,7 +112,7 @@ macOS 安装版本保留最近两个版本。导出脚本在临时输出中按�
 
 ## 小组件随主应用更新
 
-- 发布包中的主应用与 `CodexMeterWidget.appex` 必须具有相同的展示版本和构建号；`validate_distribution.sh` 会对应用和只读挂载后的 DMG 分别验证，版本不一致即停止发布。DMG 同时保留 `Codex Health.app` 和 `/Applications` 快捷方式。
+- 发布包中的主应用与 `CodexMeterWidget.appex` 必须具有相同的展示版本；Widget 的 `CFBundleVersion` 与其登记的展示版本一致，主应用则保留 Sparkle 使用的递增整数构建号；`validate_distribution.sh` 会对应用和只读挂载后的 DMG 分别验证，版本不一致即停止发布。DMG 同时保留 `Codex Health.app` 和 `/Applications` 快捷方式。
 - Sparkle 更新整个应用包后，macOS 仍可能保留此前的小组件进程。1.0.12 起在启动恢复时，读取本安装路径下扩展的代码签名摘要，与同用户运行中的扩展比较；只有安装路径、签名标识和团队一致而代码摘要不同，才结束旧扩展并请求新时间线。同代码摘要的当前扩展、其他安装和其他用户均不处理。
 - 旧可执行文件被更新器替换后，`proc_pidpath` 可能返回 `ENOENT`。此时从内核 `KERN_PROCARGS2` 读取原始可执行路径，不使用可伪造的 `argv[0]`；运行签名也从内核读取，避免误读已替换的新文件。结束进程前重新核对身份和启动时间，防止 PID 复用。
 - 旧应用被移动到备份目录时，`proc_pidpath` 会返回备份中的现存路径。恢复逻辑也检查内核记录的原始启动路径，并归一化 `/var` 等符号链接别名；只有原安装位置匹配、用户和签名身份一致且代码摘要过期时才回收。从其他位置独立启动的同签名组件不会被回收。
