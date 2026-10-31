@@ -3,6 +3,20 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.23</title>
+      <sparkle:version>33</sparkle:version>
+      <sparkle:shortVersionString>1.0.23</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Sat, 31 Oct 2026 05:29:49 +0000</pubDate>
+      <description>新增“API 用量与费用”页面：读取 OpenAI 官方组织本月费用、文本 API Token 和请求数。
+支持查看组织月度消费上限及预算剩余估算；未配置上限与权限不足分别提示，充值余额仍以官方账单页为准。
+设置新增 API 密钥输入和文本文件导入，密钥仅保存在本机钥匙串，不随安装包发布。
+按 UTC 日桶汇总并包含当天已记录费用；分页不完整时不展示不完整汇总，密钥替换后清空旧组织结果。
+主应用升级至 1.0.23（33），小组件版本同步为 1.0.23。
+本次为 Apple Development 签名版本，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.23/CodexMeter-1.0.23-macos.dmg" length="7325805" type="application/octet-stream" sparkle:edSignature="keGSlz+EZdZMb4LcAcfvAbTzXa8YeZCvHrek20aeYESCUwlUavuqPc3XQ2y6YpSFWiFynVtDRbdmz54JSqE7DQ=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.22</title>
       <sparkle:version>32</sparkle:version>
       <sparkle:shortVersionString>1.0.22</sparkle:shortVersionString>
@@ -16,25 +30,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 本次为 Apple Development 签名版本，尚未公证。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.22/CodexMeter-1.0.22-macos.dmg" length="7066741" type="application/octet-stream" sparkle:edSignature="we2L9w+YqGUBsoCfRswxe54+T34LGQgUhwo+lyPFf9uzMAAgcK3wbbJRQ+an45kggvPwejyENWH6f97mGiv0Cg=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.21</title>
-      <sparkle:version>31</sparkle:version>
-      <sparkle:shortVersionString>1.0.21</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Mon, 26 Oct 2026 15:27:52 +0000</pubDate>
-      <description>修复菜单栏图标外观通知触发重复强制重绘，导致主应用持续高 CPU 占用的问题。
-只有额度状态或实际外观变化时才更新图标；采样时间和辅助说明单独更新。
-保留低饱和度状态色、剩余额度圆环、百分比和权限提醒。
-主应用升级至 1.0.21（31）；小组件登记与视图版本保持一致，统一为 1.0.21。
-本次为 Apple Development 签名版本，尚未公证。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.21/CodexMeter-1.0.21-macos.dmg" length="7019335" type="application/octet-stream" sparkle:edSignature="Ztb+Vb6fF3j9sWbNM38a6+M2ijBjcjWgMbOZt9/S7EWBpfz32uMovSWhlTxZ+7atgEyHyniQbfduDbeNH2XcCg=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: RAlbEIgfd10sWxiMnn4Wrblp+wHDqxRmPQcMf0jmK5uie8XcKf2urwXYf4EFiXDFF/PssqBskEsaZd4345RCAg==
-length: 2798
+edSignature: dcOO+D8GgbvwSUsfpAvhnKmB+OJcpBK2c5Yfd5Cf/VyzBgVQoZ/4dvTIZf0QhmcBkinqGfSTwQfwoo+PiCiMBw==
+length: 2992
 -->

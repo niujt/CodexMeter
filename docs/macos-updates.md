@@ -8,7 +8,9 @@
 - 181 项 Swift 回归（含 13 项 API 测试）、7 项更新配置、4 项 Widget 版本与 2 项签名工作流测试通过。API 页与设置生成 9 张虚构数据隔离快照，目视检查浅色成功、深色预算、深色失败、未配置密钥和设置共 5 张；不代表真实安装后的 UI 操作验收。
 - 用户授权的真实密钥已通过新客户端 URLSession 只读验证：费用与文本用量接口成功，消费上限返回未配置状态；未将密钥写入钥匙串或安装包。真实钥匙串保存与文件导入操作仍待更新后验收。
 - 本地 Release 双架构构建、应用/Widget/Sparkle 嵌套签名、App Group、更新配置、DMG 完整性及 Applications 快捷方式验证通过。沿用 Apple Development 签名，未做 Developer ID 公证。
-- GitHub 安装包、签名更新源和公开下载复核结果将在发布后补充。未直接替换或重启已安装的主应用与 Widget，未清理产物；用户点击更新后的启动与功能验收待完成。
+- 源码提交 `4f097d0725764ce2cd3aacb5328d24c963559bac`，标签 [macos-v1.0.23](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.23)。[签名 CI](https://github.com/niujt/CodexMeter/actions/runs/41172757492) 成功；本机独立验证公开下载包的 SHA-256、长度与 Ed25519 签名、已签名更新源以及篡改包/篡改源拒绝，公钥保持一致。更新源保留 1.0.23 和 1.0.22；未删除 GitHub 历史安装包。
+- DMG SHA-256：`7e1dae7c45a5452120009e02988503ecaab04be8cce6a273781ada16af01cdb4`。
+- 未直接替换或重启已安装的主应用与 Widget，未清理本地产物；用户点击更新后的安装、实际启动、钥匙串保存、文件导入与功能验收待完成。
 
 ## 1.0.18（27）发布与验收边界
 
