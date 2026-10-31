@@ -13,10 +13,10 @@
 | 平台 | 安装包 |
 | --- | --- |
 | macOS 15+（Intel / Apple Silicon） | [1.0.22 安装包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.22)，打开后将 `Codex Health.app` 拖入 Applications |
-| Windows x64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-x64-setup.exe) |
-| Windows ARM64 | [0.1.1 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.1/Codex-Health-0.1.1-windows-arm64-setup.exe) |
+| Windows x64 | [0.1.5 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-x64-setup.exe) |
+| Windows ARM64 | [0.1.5 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-arm64-setup.exe) |
 
-[Windows 发布说明与校验文件](https://github.com/niujt/CodexMeter/releases/tag/windows-v0.1.1)。Windows 包未签名，原生拖动、置顶和不同 DPI 效果仍待目标机器实测。
+[Windows 发布说明与校验文件](https://github.com/niujt/CodexMeter/releases/tag/windows-v0.1.5)。Windows 安装包含应用内更新签名，未配置 Authenticode；实际安装升级、原生拖动、置顶和不同 DPI 效果仍待目标机器实测。
 
 当前发布包使用本机开发签名以确保 WidgetKit 扩展能被 macOS 识别；macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
 

@@ -1,15 +1,15 @@
 {
-  "version": "0.1.4",
-  "notes": "修复旧采样额度变为横线：保留未到期的上次记录和采样时间；旧采样不用于当前预测。设置 → 关于可检查、下载并安装签名更新。",
-  "pub_date": "2026-10-13T14:40:38.054565Z",
+  "version": "0.1.5",
+  "notes": "新增 OpenAI API 用量与费用页面，展示组织本月消费、文本 Token、请求数及月度消费上限；预算剩余估算不代表充值余额。\n新增 DeepSeek 余额页面，显示总可用余额、充值余额和未过期赠金，人民币与美元分别展示。\n设置新增 API 页，支持分别输入或从文本文件导入 OpenAI、DeepSeek 密钥，独立保存到 Windows 凭据管理器。\n仅向对应官方接口发送只读查询，不调用模型；按需刷新，5 分钟内复用内存结果。\n密钥替换后清空旧账户数据；失败不会显示为零余额，DeepSeek 保留带查询时间的上次结果。\n包含 x64 和 ARM64 安装包及应用内更新签名；未配置 Windows Authenticode 签名。",
+  "pub_date": "2026-10-31T09:58:04.076891Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTeFdRTW9NaXYwWHMwTTd2cy9RWUNzbDhDU3hsWU1ubThZcUJGYUl4aTF6eVpZakV5cU9yT0xVczRnL0JOMUsvbTkrOGFxWUJHRzd4RlFHS0sxVVJMMFRJdDYwOVUwOEFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxOTAyMTYwCWZpbGU6Q29kZXggSGVhbHRoXzAuMS40X3g2NC1zZXR1cC5leGUJdmVyc2lvbjowLjEuNApOUHl6ejFZRnRhaURDUnN2ZzJvU2ZXQXdvanZvdXdMQ3llUWRPSjA1bnZROUpnUkVjdkgvb1c0aG5Lb3pkTnhtSWcvcFB4ekthN0pNMGtPMFlIUDhBQT09Cg==",
-      "url": "https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.4/Codex-Health-0.1.4-windows-x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTeFdRTW9NaXYwWHJhZHh1d2FuVWxSTkFsNmgrZ0NXWGI1U3plSDlnUk5TRHBUbURUSlJFWWpzSE52cUZKWGZvV3Y0STJtakVUT1pkeWdHUW02VzU5WU9ITjZzNGw2ZlFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNDQwNjA0CWZpbGU6Q29kZXggSGVhbHRoXzAuMS41X3g2NC1zZXR1cC5leGUJdmVyc2lvbjowLjEuNQpad01Wd2FXRWJCSHFINjc3aHVIWnVOVEZ5a1RJYjZnNTQyZW00RTE3NEx2bjQwb0IvNjlTK1pYWTRZNmUvSkI0ZnV5K3N0ODFJaXRzRWVYUk9kamtEZz09Cg==",
+      "url": "https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-x64-setup.exe"
     },
     "windows-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTeFdRTW9NaXYwWGpZdFNkMk1YdFUrQ0dQYVNyVGtzTUo0eWtwRndkMGxhUllpenVKS2pkRjl6ZmNrMTdvek11QTE5aDBYVHFpaXVYVjFCbXBuOUhUV01HRVVlSG5Na1FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxOTAyMzQ5CWZpbGU6Q29kZXggSGVhbHRoXzAuMS40X2FybTY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMS40CkhXcG01WmVXL2RZWG5JdHlZSjd2TzZtVnc2NzczdW44Nk11OFF5T1FrdWhZSksrSFB4Yis5WGU3aStRdHNCQlJPNHY2SnpvaFVVd2tPaHpWdzRVWkRRPT0K",
-      "url": "https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.4/Codex-Health-0.1.4-windows-arm64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTeFdRTW9NaXYwWGoramJta0lUMVhrK3d0Z1dzYURENXFaMk10Q2RQQS9wV0FCSTIrVHBIdVVQczQ3WDJKNmZkL3hqR0JNQkRIU0JGcnd0eGwyMThrRlZoN2pOMUtSZkFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNDQwNDAzCWZpbGU6Q29kZXggSGVhbHRoXzAuMS41X2FybTY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMS41CkdRSnJDcDhxWnJ3aDZWUXhGTE1YUVZtRkdhN2tpb2xYRWp5L1g4d0V1Z3NYa2h5dENPLzVwNE9aNEJVZGNxUVFiQWNNdW1XWnh1VTJqZWRMR3pDNURnPT0K",
+      "url": "https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-arm64-setup.exe"
     }
   }
 }

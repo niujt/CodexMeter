@@ -16,6 +16,8 @@ Tauri 2 + Vue 3 + TypeScript + Rust 应用，当前版本 **0.1.5**。沿用与 
 | 权限提醒 | 安装/修复/卸载 PermissionRequest Hook，系统通知、已读/忽略、保留期和清理 |
 | 外观 | 跟随系统/浅色/深色，扁平/玻璃 C/H 图标，任务栏和托盘同步切换 |
 | 常驻查看 | 托盘、88×88 额度悬浮球、300×245 用量摘要，拖动位置持久保存 |
+| OpenAI API 用量与费用 | 组织月度费用、文本 Token/请求数、消费上限与预算剩余估算 |
+| DeepSeek 余额 | 总可用余额、充值余额和未过期赠金，独立服务商密钥和币种显示 |
 | 应用更新 | 设置 → 关于检查版本；点击下载并安装，按架构选择并校验更新签名 |
 | 周用量小票 | 白色锯齿边、小票预览、1080px PNG 导出，统一 C/H 图标 |
 
@@ -84,7 +86,11 @@ Windows 实机仍需验收：WebView2 启动、真实记录对账、账户切换
 - OpenAI 费用与用量要求 Admin API Key 的 `api.usage.read`，组织消费上限要求 `api.management.read`；充值余额仍以官方账单页为准。DeepSeek 使用普通 API Key 查询总可用余额、充值余额和未过期赠金。
 - 仅向固定官方地址发送 GET 请求，禁用跳转，不调用模型、不上传会话正文。按需查询，5 分钟内复用内存结果，手动刷新立即查询。分页不完整时不显示不完整汇总；换密钥会清空旧账户数据并拒绝旧请求回写。DeepSeek 查询失败保留带时间的上次成功结果，首次失败不显示为零余额。
 - 本地前端生产构建、18 项前端测试、18 项统计核心测试和 16 项原生后端测试通过。后端测试在 macOS 主机执行，不代表 Win32 凭据保存已通过实测。新增 API 页面采用 Playwright 与虚构 IPC 数据验证，不访问真实账户或读取真实 Codex 会话。
-- Windows x64 / ARM64 原生编译、安装包和签名验证在发布后补充。NSIS 实际安装升级、WebView2 启动、真实凭据管理器保存/导入与账户余额查询仍待 Windows 实机验收；未配置 Authenticode 证书。
+- [Windows x64 / ARM64 原生 CI](https://github.com/niujt/CodexMeter/actions/runs/41189868777) 均通过生产构建、18 项前端测试、18 项统计核心测试和 16 项原生后端测试。源码提交 `04b3ac6457e466ed31697e641911b19f3ace9772`，标签与安装包见 [windows-v0.1.5](https://github.com/niujt/CodexMeter/releases/tag/windows-v0.1.5)。
+- 本机独立核对两份公开下载安装包的源提交、PE 架构、字节长度、SHA-256 与固定更新公钥的 Minisign 签名；篡改包均被拒绝，公开下载文件与审核产物逐字节一致。两种架构更新清单已同步至 `windows/update/latest.json`，下载区同时提供安装包、签名、校验文件和清单。
+- x64 SHA-256：`a9dc4c51e7a9e061d6a6cdeef5dda1e9ca2534462513cdbb13639380c064a381`。
+- ARM64 SHA-256：`9b5cfe4377c3ffe7fb6acdfd0949acc6e6975e241223be18a74613d2a94802de`。
+- NSIS 实际安装升级、WebView2 启动、真实凭据管理器保存/导入与账户余额查询仍待 Windows 实机验收；未配置 Authenticode 证书。本次没有在本机安装或重启用户应用，没有清理构建产物。
 
 ## Windows 0.1.3 更新
 
