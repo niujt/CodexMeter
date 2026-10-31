@@ -2,10 +2,53 @@ import Foundation
 import Darwin
 import Security
 import WidgetKit
+import CoreServices
+import OSLog
 
 /// Recover an extension left alive across an in-place app update. Never target
 /// WidgetKit's host, another installation, another user, or a current process.
 enum WidgetExtensionRecovery {
+    private static let logger = Logger(subsystem: "com.codexmeter.CodexMeter", category: "WidgetRecovery")
+    @MainActor private static var registrationReload: Task<Void, Never>?
+
+    /// Refresh the containing app, not the .appex alone: Chrono rejects an
+    /// extension whose Launch Services record has lost its containing bundle.
+    /// Repeating this on explicit refresh also repairs registration changes made
+    /// after launch (for example when a local build copy is moved).
+    @MainActor
+    @discardableResult
+    static func refreshRegistrationAndReload(bundle: Bundle = .main) -> OSStatus? {
+        guard bundle.bundleIdentifier == "com.codexmeter.CodexMeter",
+              bundle.bundleURL.pathExtension == "app" else { return nil }
+        registrationReload?.cancel()
+        let status = registerAndReload(at: bundle.bundleURL,
+            register: { LSRegisterURL($0 as CFURL, true) },
+            reload: { WidgetCenter.shared.reloadTimelines(ofKind: WidgetUsageCache.kind) })
+        guard status == noErr else {
+            logger.error("Containing app registration failed: \(status)")
+            return status
+        }
+        logger.info("Refreshed containing app registration")
+        // LS registration notifications reach Chrono asynchronously. The old
+        // one-shot reload could run before the extension became available.
+        registrationReload = Task { @MainActor in
+            for delay in [2, 6] {
+                do { try await Task.sleep(for: .seconds(delay)) }
+                catch { return }
+                WidgetCenter.shared.reloadTimelines(ofKind: WidgetUsageCache.kind)
+            }
+        }
+        return status
+    }
+
+    /// Injectable boundary: tests never register the developer's installation.
+    static func registerAndReload(at url: URL, register: (URL) -> OSStatus,
+                                  reload: () -> Void) -> OSStatus {
+        let status = register(url)
+        if status == noErr { reload() }
+        return status
+    }
+
     struct CodeIdentity: Equatable {
         let identifier: String
         let teamID: String?
@@ -38,16 +81,10 @@ enum WidgetExtensionRecovery {
             return
         }
         let path = executable.standardizedFileURL.path
-        let retired = retireOutdatedProcesses(at: path)
+        retireOutdatedProcesses(at: path)
         // Also replace archived views when the cache's displayed values haven't
         // changed. A relaunch must not depend on saveIfChanged writing the file.
-        WidgetCenter.shared.reloadTimelines(ofKind: WidgetUsageCache.kind)
-        if !retired.isEmpty {
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(2))
-                WidgetCenter.shared.reloadTimelines(ofKind: WidgetUsageCache.kind)
-            }
-        }
+        refreshRegistrationAndReload(bundle: bundle)
     }
 
     @discardableResult

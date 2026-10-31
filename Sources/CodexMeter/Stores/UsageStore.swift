@@ -268,6 +268,8 @@ final class UsageStore {
             sourceIncomplete: !hasCompleteSnapshot || snapshot.readWarning != nil, contextID: context?.id)
         do {
             try WidgetUsageCache.publish(usage, forceReload: forceReload) {
+                if forceReload,
+                   WidgetExtensionRecovery.refreshRegistrationAndReload() == noErr { return }
                 WidgetCenter.shared.reloadTimelines(ofKind: WidgetUsageCache.kind)
             }
         } catch { errorMessage = [errorMessage, "小组件缓存写入失败：\(error.localizedDescription)"].compactMap { $0 }.joined(separator: "\n") }

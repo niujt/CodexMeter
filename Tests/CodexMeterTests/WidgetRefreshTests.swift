@@ -174,6 +174,31 @@ struct WidgetRefreshTests {
         }
     }
 
+    @Test func registrationRepairsContainingAppBeforeRequestingTimeline() {
+        let app = URL(fileURLWithPath: "/synthetic/Codex Health.app")
+        var events: [String] = []
+        let status = WidgetExtensionRecovery.registerAndReload(at: app, register: { url in
+            #expect(url == app)
+            events.append("register-containing-app")
+            return 0
+        }, reload: { events.append("reload-timeline") })
+        #expect(status == 0)
+        #expect(events == ["register-containing-app", "reload-timeline"])
+    }
+
+    @Test func failedRegistrationDoesNotPretendTimelineRecoverySucceeded() {
+        var reloaded = false
+        let status = WidgetExtensionRecovery.registerAndReload(
+            at: URL(fileURLWithPath: "/synthetic/Codex Health.app"),
+            register: { _ in -10811 }, reload: { reloaded = true })
+        #expect(status == -10811)
+        #expect(!reloaded)
+    }
+
+    @Test @MainActor func registrationIgnoresTestExecutablesAndOtherApplications() {
+        #expect(WidgetExtensionRecovery.refreshRegistrationAndReload(bundle: Bundle(for: NSObject.self)) == nil)
+    }
+
     @Test func recoveryRequiresDifferentCodeFromTheSameInstallationUserAndSigningIdentity() {
         let path = "/synthetic/Codex Health.app/Contents/PlugIns/CodexMeterWidget.appex/Contents/MacOS/CodexMeterWidget"
         let installed = WidgetExtensionRecovery.CodeIdentity(identifier: "test.widget", teamID: "TESTTEAM", hash: Data([2]))
