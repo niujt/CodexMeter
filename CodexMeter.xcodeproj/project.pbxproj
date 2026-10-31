@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9E3A42712705460AAF8DF011 /* APIBillingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13252DEE3014E2299A6E82E /* APIBillingView.swift */; };
+		202C3F951B0943DCBA88BEDD /* APIBillingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 820E65DDFBF64D81A3E60E6B /* APIBillingStore.swift */; };
+		54B9E9BD80E349009467A493 /* APIKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6E302AAF64C407C9AC3869D /* APIKeychain.swift */; };
+		DA7B0937F6FA4256BC01A2E5 /* OpenAIBillingClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 285348BC926C4B7380287C9D /* OpenAIBillingClient.swift */; };
+		7663A4B8C91A4B0D87B4BD04 /* APIBillingSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12D4685743794C32A2935B6B /* APIBillingSnapshot.swift */; };
 		C0DECA000000000000000081 /* LiveQuotaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECA000000000000000082 /* LiveQuotaClient.swift */; };
 		C0DECF000000000000000060 /* UsageTrendChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000061 /* UsageTrendChart.swift */; };
 		C0DECF000000000000000050 /* DashboardViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF000000000000000052 /* DashboardViewState.swift */; };
@@ -75,6 +80,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D13252DEE3014E2299A6E82E /* APIBillingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/APIBillingView.swift; sourceTree = "<group>"; };
+		820E65DDFBF64D81A3E60E6B /* APIBillingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stores/APIBillingStore.swift; sourceTree = "<group>"; };
+		B6E302AAF64C407C9AC3869D /* APIKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/APIKeychain.swift; sourceTree = "<group>"; };
+		285348BC926C4B7380287C9D /* OpenAIBillingClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OpenAIBillingClient.swift; sourceTree = "<group>"; };
+		12D4685743794C32A2935B6B /* APIBillingSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/APIBillingSnapshot.swift; sourceTree = "<group>"; };
 		C0DECA000000000000000082 /* LiveQuotaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LiveQuotaClient.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000061 /* UsageTrendChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UsageTrendChart.swift; path = Views/UsageTrendChart.swift; sourceTree = "<group>"; };
 		C0DECF000000000000000052 /* DashboardViewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DashboardViewState.swift; path = Support/DashboardViewState.swift; sourceTree = "<group>"; };
@@ -212,6 +222,11 @@
 				9C0DE000000000000000000D /* ResetHistoryArchive.swift */,
 				0D08383147571548BA77F3B4 /* CodexUsageReader.swift */,
 				C0DECA000000000000000082 /* LiveQuotaClient.swift */,
+				D13252DEE3014E2299A6E82E /* APIBillingView.swift */,
+				820E65DDFBF64D81A3E60E6B /* APIBillingStore.swift */,
+				B6E302AAF64C407C9AC3869D /* APIKeychain.swift */,
+				285348BC926C4B7380287C9D /* OpenAIBillingClient.swift */,
+				12D4685743794C32A2935B6B /* APIBillingSnapshot.swift */,
 				09BEDB31A49AC1D7B16B5A76 /* DesktopWidgetController.swift */,
 				C0DECF000000000000000031 /* WidgetExtensionRecovery.swift */,
 				CC09705AD2F25F5FDFFF7056 /* ProjectPathStore.swift */,
@@ -377,6 +392,11 @@
 				9C0DE100000000000000000D /* ResetHistoryArchive.swift in Sources */,
 				72C8AE23FD2E354DF0747D89 /* CodexUsageReader.swift in Sources */,
 				C0DECA000000000000000081 /* LiveQuotaClient.swift in Sources */,
+				9E3A42712705460AAF8DF011 /* APIBillingView.swift in Sources */,
+				202C3F951B0943DCBA88BEDD /* APIBillingStore.swift in Sources */,
+				54B9E9BD80E349009467A493 /* APIKeychain.swift in Sources */,
+				DA7B0937F6FA4256BC01A2E5 /* OpenAIBillingClient.swift in Sources */,
+				7663A4B8C91A4B0D87B4BD04 /* APIBillingSnapshot.swift in Sources */,
 				A1AF8676F4ED910B3A596482 /* DesktopWidgetController.swift in Sources */,
 				C0DECF000000000000000030 /* WidgetExtensionRecovery.swift in Sources */,
 				FEBADF776B5F64FA07883229 /* ProjectPathStore.swift in Sources */,

@@ -44,6 +44,8 @@ struct AnalyticsDashboardView: View {
                         ForecastRiskView(store: store)
                     case "历史记录":
                         HistoryRecordsView(store: store, viewState: viewState)
+                    case "API 用量与费用":
+                        APIBillingView()
                     default:
                         FeaturePlaceholderView(section: selectedSection ?? "健康报告")
                             .frame(minHeight: 500)

@@ -38,6 +38,7 @@ enum AppIconStyle: String, CaseIterable, Identifiable {
 
 @MainActor
 struct SettingsView: View {
+    static let selectedTabKey = "codexMeter.settings.selectedTab"
     let store: UsageStore
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("codexMeter.lowRateThreshold") private var lowRateThreshold = 20
@@ -46,6 +47,7 @@ struct SettingsView: View {
     @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
     @AppStorage(AppIconStyle.preferenceKey) private var iconStyle = AppIconStyle.flat.rawValue
     @AppStorage(MenuBarQuotaDisplay.showPercentageKey) private var showMenuBarPercentage = false
+    @AppStorage(SettingsView.selectedTabKey) private var selectedTab = "general"
 
     private var appearanceMode: AppAppearance {
         AppAppearance(rawValue: appearance) ?? .system
@@ -56,7 +58,7 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             Form {
                 Section("本地数据") {
                     LabeledContent("Codex 数据目录") {
@@ -115,6 +117,7 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .tabItem { Label("通用", systemImage: "gearshape") }
+            .tag("general")
 
             Form {
                 Section("低额度提醒") {
@@ -133,6 +136,11 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .tabItem { Label("提醒", systemImage: "bell.badge") }
+            .tag("notifications")
+
+            APIBillingSettingsView()
+                .tabItem { Label("API", systemImage: "key") }
+                .tag("api")
 
             VStack(spacing: 10) {
                 Image(selectedIcon.assetName(for: colorScheme))
@@ -145,6 +153,7 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .tabItem { Label("关于", systemImage: "info.circle") }
+            .tag("about")
         }
         .frame(width: 520, height: 440)
         .scenePadding()

@@ -6,5 +6,7 @@ build-release/
 CodexMeter.xcodeproj/xcuserdata/
 .idea/
 .private/
+# Local API credential supplied for read-only verification.
+/appikey.txt
 # Local planning/report notes are not release artifacts.
 工作报告.md

@@ -145,7 +145,8 @@ struct DashboardSidebar: View {
         ("模型与效率", "cpu"),
         ("项目与用量", "folder"),
         ("预测与风险", "scope"),
-        ("历史记录", "clock")
+        ("历史记录", "clock"),
+        ("API 用量与费用", "creditcard")
     ]
 
     var body: some View {
