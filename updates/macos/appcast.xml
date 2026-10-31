@@ -3,6 +3,20 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.24</title>
+      <sparkle:version>34</sparkle:version>
+      <sparkle:shortVersionString>1.0.24</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Sat, 31 Oct 2026 09:22:37 +0000</pubDate>
+      <description>新增 DeepSeek 余额页面，显示总可用余额、充值余额和未过期赠金，人民币与美元分别展示。
+设置的 API 页面支持选择 OpenAI 或 DeepSeek，分别输入或导入各自的密钥，独立保存在本机钥匙串。
+DeepSeek 仅调用官方只读余额接口；进入页面按需查询，手动刷新立即查询，不调用模型。
+余额查询失败时保留带查询时间的上次结果；更换密钥会取消旧请求并清空旧账户数据。
+主应用升级至 1.0.24（34），小组件版本同步为 1.0.24。
+本次为 Apple Development 签名版本，尚未公证。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.24/CodexMeter-1.0.24-macos.dmg" length="7496465" type="application/octet-stream" sparkle:edSignature="ZuVwDWVJWbXeNMuaGHzmpfHqhlXvDKYq569rf9jGu5jnRTp/zjhtM2CoKhGUbHW8wd269C9zlN36CWTRRVZMAA=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.23</title>
       <sparkle:version>33</sparkle:version>
       <sparkle:shortVersionString>1.0.23</sparkle:shortVersionString>
@@ -16,26 +30,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 本次为 Apple Development 签名版本，尚未公证。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.23/CodexMeter-1.0.23-macos.dmg" length="7325805" type="application/octet-stream" sparkle:edSignature="keGSlz+EZdZMb4LcAcfvAbTzXa8YeZCvHrek20aeYESCUwlUavuqPc3XQ2y6YpSFWiFynVtDRbdmz54JSqE7DQ=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.22</title>
-      <sparkle:version>32</sparkle:version>
-      <sparkle:shortVersionString>1.0.22</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Wed, 28 Oct 2026 08:28:32 +0000</pubDate>
-      <description>修复账户额度重置后，刷新仍停留在旧本地采样的问题。
-手动和定时刷新现会直接查询当前账户额度，不再等待新的会话记录。
-查询失败时保留上次采样并显示原因；旧文件记录不会覆盖更新的账户采样。
-额度查询沿用当前 Codex 登录，凭据只在内存中使用，不上传会话内容。
-主应用与小组件版本同步为 1.0.22（32）。
-本次为 Apple Development 签名版本，尚未公证。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.22/CodexMeter-1.0.22-macos.dmg" length="7066741" type="application/octet-stream" sparkle:edSignature="we2L9w+YqGUBsoCfRswxe54+T34LGQgUhwo+lyPFf9uzMAAgcK3wbbJRQ+an45kggvPwejyENWH6f97mGiv0Cg=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: dcOO+D8GgbvwSUsfpAvhnKmB+OJcpBK2c5Yfd5Cf/VyzBgVQoZ/4dvTIZf0QhmcBkinqGfSTwQfwoo+PiCiMBw==
-length: 2992
+edSignature: x6wGVJRnYatxhX0nj7p5inhUPX8m9IaWWTh09ppgqzMHnRwqWhZBcTnyLkb03E7IwXB6jz7kBmh2r/Ck4yH0BA==
+length: 3126
 -->

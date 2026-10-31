@@ -8,7 +8,9 @@
 - 193 项 Swift 回归（含 12 项 DeepSeek 测试）、7 项更新配置、4 项 Widget 版本和 2 项工作流检查通过。生成 13 张 DeepSeek 隔离快照，目视检查单币种浅色、双币种浅色、失败后旧数据深色、设置深色和服务商选择器浅色；均使用虚构数据与凭据。
 - 本地 Release 双架构构建、应用/Widget/Sparkle 嵌套签名、App Group、更新配置、DMG 完整性及 Applications 快捷方式验证通过。沿用 Apple Development 签名，未做 Developer ID 公证。
 - 未读取或复用用户的 OpenAI 密钥，未提供真实 DeepSeek 密钥，未进行真实 DeepSeek 账户查询或钥匙串写入。升级后的实际启动、独立密钥保存/导入、余额查询与 Widget 保留仍待用户验收。
-- GitHub 签名与公开下载复核将在发布后补充。未直接替换或重启已安装的主应用与 Widget，未清理本地构建或历史安装包。
+- 源码提交 `866f506c`，标签 [macos-v1.0.24](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.24)。[签名 CI](https://github.com/niujt/CodexMeter/actions/runs/41188411127) 成功；公开下载包经本机独立核对摘要、长度、Ed25519 包签名与已签名更新源，公钥保持一致；篡改包和篡改源均被拒绝。更新源保留 1.0.24 和 1.0.23。
+- 最终 DMG SHA-256：`4587d8554d99ec272bf51fe0ad60c3aeee36a7b57f14f5918e0760dc433827ee`。
+- 未直接替换或重启已安装的主应用与 Widget，未清理本地构建或删除 GitHub 历史安装包。
 
 ## 1.0.23（33）API 用量与费用
 
