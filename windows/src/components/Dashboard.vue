@@ -17,6 +17,8 @@ import {
   FolderPlus,
   Copy,
   Pin,
+  CreditCard,
+  Wallet,
 } from "@lucide/vue";
 import { useDesktop } from "../desktop";
 import {
@@ -35,8 +37,12 @@ import TrendChart from "./TrendChart.vue";
 import Modal from "./Modal.vue";
 import SettingsModal from "./SettingsModal.vue";
 import PermissionCenter from "./PermissionCenter.vue";
+import ApiPanel from "./ApiPanel.vue";
+import { useApiAccounts, type ApiProvider } from "../apiAccounts";
 const desktop = useDesktop(),
   state = desktop.state;
+const accounts = useApiAccounts(desktop.command);
+const settingsTab = ref("通用"), settingsProvider = ref<ApiProvider>("openai");
 const sections = [
   { name: "健康报告", icon: House },
   { name: "使用趋势", icon: ChartNoAxesCombined },
@@ -44,11 +50,16 @@ const sections = [
   { name: "项目与用量", icon: Folder },
   { name: "预测与风险", icon: Crosshair },
   { name: "历史记录", icon: History },
+  { name: "API 用量与费用", icon: CreditCard },
+  { name: "DeepSeek 余额", icon: Wallet },
 ];
 const section = ref("健康报告"),
   settings = ref(false),
   receipt = ref<string | null>(null),
   receiptBytes = ref<Uint8Array | null>(null);
+const apiProvider = computed<ApiProvider | null>(() => section.value === 'API 用量与费用' ? 'openai' : section.value === 'DeepSeek 余额' ? 'deepseek' : null);
+function openSettings() { settingsTab.value = '通用'; settings.value = true; }
+function openApiSettings(provider: ApiProvider) { settingsTab.value = 'API'; settingsProvider.value = provider; settings.value = true; }
 const granularity = ref("daily"),
   projectRange = ref("week"),
   fullPaths = ref(false),
@@ -86,6 +97,8 @@ const subtitles: Record<string, string> = {
   项目与用量: "按会话工作目录归类；不会读取项目源码。",
   预测与风险: "按 1 / 6 / 24 小时额度变化加权；样本不足时采用周期平均速度。",
   历史记录: "按小时、模型和目录汇总最近 30 天 Token 增量。",
+  'API 用量与费用': 'OpenAI 官方组织数据 · 本月按 UTC 统计',
+  'DeepSeek 余额': 'DeepSeek 官方账户 · 当前剩余余额',
 };
 const points = computed(() =>
   granularity.value === "daily"
@@ -195,7 +208,7 @@ function key(event: KeyboardEvent) {
     selectedProject.value
   )
     return;
-  if ((event.ctrlKey || event.metaKey) && /^[1-6]$/.test(event.key)) {
+  if ((event.ctrlKey || event.metaKey) && /^[1-8]$/.test(event.key)) {
     event.preventDefault();
     changeSection(sections[Number(event.key) - 1]!.name);
   }
@@ -334,45 +347,46 @@ function resetTitle(kind: string) {
         <span>{{ section }}</span>
         <div class="toolbar">
           <button
+            v-if="!apiProvider"
             @click="preview"
             :disabled="!snapshot || state.busy"
             title="导出周用量小票"
           >
             <Receipt :size="17" />导出小票</button
           ><button
-            @click="desktop.refresh()"
-            :disabled="!state.preferences.directory || state.busy"
-            title="刷新本机用量"
+            @click="apiProvider ? accounts.load(apiProvider, true) : desktop.refresh()"
+            :disabled="apiProvider ? accounts.states[apiProvider].busy : !state.preferences.directory || state.busy"
+            :title="apiProvider ? '刷新官方 API' : '刷新本机用量'"
           >
             <RefreshCw :size="17" :class="{ spinning: state.busy }" />刷新
           </button>
-          <details class="refresh-menu">
+          <details v-if="!apiProvider" class="refresh-menu">
             <summary aria-label="刷新选项">⌄</summary>
             <button @click="desktop.refresh(true)" :disabled="state.busy">
               重新读取全部记录
             </button>
           </details>
           <span class="toolbar-rule"></span
-          ><button @click="settings = true" title="设置" aria-label="设置">
+          ><button @click="openSettings" title="设置" aria-label="设置">
             <Settings :size="18" />
           </button>
         </div>
       </header>
       <main>
-        <div v-if="state.error" class="notice" role="alert">
+        <div v-if="state.error && !apiProvider" class="notice" role="alert">
           {{ state.error }}
         </div>
-        <div v-if="state.status" class="notice" role="status">
+        <div v-if="state.status && !apiProvider" class="notice" role="status">
           {{ state.status }}
         </div>
-        <div v-if="state.busy" class="loading" role="status">
+        <div v-if="state.busy && !apiProvider" class="loading" role="status">
           <RefreshCw :size="14" class="spinning" />正在检查用量文件…
         </div>
         <div class="page-heading">
           <div>
             <h1>{{ section }}</h1>
             <p>{{ subtitles[section] }}</p>
-            <small v-if="snapshot"
+            <small v-if="snapshot && !apiProvider"
               >最近检查 {{ new Date(snapshot.observedAt).toLocaleString() }} ·
               最新记录
               {{
@@ -382,11 +396,12 @@ function resetTitle(kind: string) {
               }}</small
             >
           </div>
-          <span v-if="snapshot" class="health"
+          <span v-if="snapshot && !apiProvider" class="health"
             ><ShieldCheck :size="15" />{{ health }}</span
           >
         </div>
-        <div v-if="!snapshot" class="empty">
+        <ApiPanel v-if="apiProvider" :key="apiProvider" :provider="apiProvider" :accounts="accounts" @settings="openApiSettings" />
+        <div v-else-if="!snapshot" class="empty">
           <img
             :src="desktop.icon.value"
             width="76"
@@ -915,6 +930,10 @@ function resetTitle(kind: string) {
     <SettingsModal
       v-if="settings"
       :desktop="desktop"
+      :accounts="accounts"
+      :initial-tab="settingsTab"
+      :initial-provider="settingsProvider"
+      @api-saved="provider => { if (apiProvider === provider) accounts.load(provider, true); }"
       @close="settings = false"
     />
     <Modal v-if="receipt" title="周用量小票" @close="closeReceipt"

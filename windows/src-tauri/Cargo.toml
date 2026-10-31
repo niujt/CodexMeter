@@ -1,6 +1,6 @@
 [package]
 name = "codex-health-windows"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 [lib]
 name = "codex_health_windows"
@@ -19,3 +19,6 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 notify = "8"
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
+rust_decimal = { version = "1.39", default-features = false, features = ["std"] }
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Credentials"] }

@@ -95,7 +95,7 @@ Mac 1.0.9 的手动刷新会明确显示新额度采样、暂无新采样、读�
 
 ## Windows 界面与悬浮摘要
 
-Windows 版沿用黑白灰 Dashboard，支持悬浮球和摘要卡片两种样式。当前源码版本为 0.1.2，下载区的已发布安装包仍为 0.1.1。
+Windows 版沿用黑白灰 Dashboard，支持悬浮球和摘要卡片两种样式。Windows 当前源码版本为 0.1.5，支持独立的 OpenAI API 用量费用、DeepSeek 余额和服务商密钥配置；发布与实机验证范围见 [Windows 说明](windows/README.md)。
 
 以下 Windows 截图来自前端界面与虚构演示数据，悬浮球截图为原尺寸；截图不代表 Windows 原生安装、置顶或 DPI 实测结果。
 

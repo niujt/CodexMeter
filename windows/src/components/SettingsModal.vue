@@ -2,15 +2,17 @@
 import { ref, computed, reactive, watch, onMounted } from "vue";
 import { useAppUpdater } from "../updater";
 import Modal from "./Modal.vue";
+import ApiSettings from "./ApiSettings.vue";
+import type { ApiAccounts, ApiProvider } from "../apiAccounts";
 import type { DesktopClient } from "../desktop";
 import type { Preferences } from "../types";
 import { FolderOpen } from "@lucide/vue";
-const props = defineProps<{ desktop: DesktopClient }>();
-const emit = defineEmits<{ close: [] }>();
+const props = defineProps<{ desktop: DesktopClient; accounts: ApiAccounts; initialTab?: string; initialProvider?: ApiProvider }>();
+const emit = defineEmits<{ close: []; apiSaved: [provider: ApiProvider] }>();
 const updater = useAppUpdater(props.desktop.command);
 onMounted(() => { void updater.loadVersion(); });
 function close() { if (!updater.state.installing) emit('close'); }
-const tab = ref("通用"),
+const tab = ref(props.initialTab ?? "通用"),
   pending = ref(false),
   message = ref("");
 const draft = reactive<Preferences>(
@@ -89,7 +91,7 @@ async function clear() {
   <Modal title="设置" @close="close"
     ><div class="segments settings-tabs">
       <button
-        v-for="name in ['通用', '提醒', '关于']"
+        v-for="name in ['通用', '提醒', 'API', '关于']"
         :key="name"
         :class="{ active: tab === name }"
         @click="tab = name"
@@ -274,6 +276,7 @@ async function clear() {
         </div>
       </div>
     </template>
+    <ApiSettings v-else-if="tab === 'API'" :accounts="accounts" :initial-provider="initialProvider" @saved="emit('apiSaved', $event)" />
     <div v-else class="about">
       <img :src="logo" width="64" height="64" alt="Codex Health" />
       <h2>Codex Health</h2>

@@ -1,6 +1,8 @@
 mod permissions;
 mod state;
 mod updates;
+mod api;
+mod api_credentials;
 use chrono::{DateTime, Utc};
 use codex_health_usage::{context, Snapshot};
 use serde::{Deserialize, Serialize};
@@ -361,12 +363,17 @@ pub fn run() {
             get_reset_history,
             updates::app_version,
             updates::check_app_update,
-            updates::install_app_update
+            updates::install_app_update,
+            api::api_status,
+            api::api_save_key,
+            api::api_load,
+            api::api_open_console
         ])
         .setup(|app| {
             let config = app.path().app_config_dir()?;
             let cache = app.path().app_cache_dir()?;
             app.manage(AppState::new(config, cache));
+            app.manage(api::ApiState::default());
             if let Some(main) = app.get_webview_window("main") {
                 let state = app.state::<AppState>();
                 let mut data = state.data.lock().unwrap();

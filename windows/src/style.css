@@ -5,6 +5,16 @@
   font-synthesis: none;
   font-size: 13px;
 }
+.metrics.api-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 14px 0 20px; }
+.api-metrics strong { font-size: 26px; overflow-wrap: anywhere; }
+.api-toolbar { justify-content: flex-end; margin-bottom: 18px; }
+.api-currency { margin-bottom: 20px; }
+.api-token-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin: 20px 0; }
+.api-token-grid > div { display: flex; flex-direction: column; gap: 10px; }
+.api-timestamp { margin: 20px 0; }
+.file-import { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 7px 11px; cursor: pointer; color: var(--ink); }
+.file-import input { width: 1px; height: 1px; opacity: 0; }
+#api-key { width: 100%; padding: 9px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
 * {
   box-sizing: border-box;
 }
