@@ -36,12 +36,12 @@
 <details>
 <summary>应用 Logo 切换</summary>
 
-仅保留黑白扁平版与玻璃黑白版，默认使用黑白扁平版。
+默认使用 N 品牌图标，也可选择原有玻璃黑白版。两种样式均随应用显示模式切换浅色和深色。
 
-| 外观 | 黑白扁平版（默认） | 玻璃黑白版 |
+| 外观 | N 品牌（默认） | 玻璃黑白版 |
 | --- | --- | --- |
-| 浅色 | <img src="Resources/Assets.xcassets/FlatAppIconLight.imageset/FlatAppIconLight.png" width="128" alt="白底黑字扁平 Logo"> | <img src="Resources/Assets.xcassets/GlassAppIcon.imageset/GlassAppIcon.png" width="128" alt="浅色玻璃 Logo"> |
-| 深色 | <img src="Resources/Assets.xcassets/FlatAppIcon.imageset/FlatAppIcon.png" width="128" alt="黑底白字扁平 Logo"> | <img src="Resources/Assets.xcassets/GlassAppIconDark.imageset/GlassAppIconDark.png" width="128" alt="深色玻璃 Logo"> |
+| 浅色 | <img src="Resources/Assets.xcassets/FlatAppIconLight.imageset/FlatAppIconLight.png" width="128" alt="N 品牌浅色图标"> | <img src="Resources/Assets.xcassets/GlassAppIcon.imageset/GlassAppIcon.png" width="128" alt="浅色玻璃 Logo"> |
+| 深色 | <img src="Resources/Assets.xcassets/FlatAppIcon.imageset/FlatAppIcon.png" width="128" alt="N 品牌深色图标"> | <img src="Resources/Assets.xcassets/GlassAppIconDark.imageset/GlassAppIconDark.png" width="128" alt="深色玻璃 Logo"> |
 
 </details>
 

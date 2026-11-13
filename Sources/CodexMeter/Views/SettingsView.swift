@@ -4,7 +4,7 @@ enum AppIconStyle: String, CaseIterable, Identifiable {
     case flat, glass
     static let preferenceKey = "codexMeter.appIconStyle"
     var id: String { rawValue }
-    var title: String { self == .flat ? "扁平 · 黑白（默认）" : "玻璃 · 黑白" }
+    var title: String { self == .flat ? "N 品牌（默认）" : "玻璃 · 黑白" }
 
     func assetName(for colorScheme: ColorScheme) -> String {
         switch (self, colorScheme) {
@@ -111,7 +111,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    Text("扁平与玻璃均随显示模式切换：浅色白底黑字，深色黑底白字；Dock 与应用内 Logo 同步更新，无需重启。")
+                    Text("N 品牌与玻璃样式均随显示模式切换浅色和深色配色。Dock 与应用内 Logo 同步更新，无需重启。")
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
             }
