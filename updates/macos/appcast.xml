@@ -3,6 +3,17 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.26</title>
+      <sparkle:version>36</sparkle:version>
+      <sparkle:shortVersionString>1.0.26</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Fri, 13 Nov 2026 14:24:30 +0000</pubDate>
+      <description>更新 Codex Health 默认应用图标。全新的 N 品牌角标搭配 Codex 终端符号与 DeepSeek 鲸尾，鲸尾指向额度环，底部为两亮一暗的信号点。
+
+提供近白与近黑两套配色，Dock 与应用内图标随显示模式切换。原有玻璃样式仍可在设置中选择。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.26/CodexMeter-1.0.26-macos.dmg" length="11051537" type="application/octet-stream" sparkle:edSignature="boi/JEfXJSjGYqNeCQMDZUbtUXbx+pWfvGryPJWOY9ztTy9G95i+HgJ4r3FGQ9REiJbD78OvzxHmkpkL9bPSAg=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.25</title>
       <sparkle:version>35</sparkle:version>
       <sparkle:shortVersionString>1.0.25</sparkle:shortVersionString>
@@ -15,26 +26,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 本次为 Apple Development 签名版本，尚未公证。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.25/CodexMeter-1.0.25-macos.dmg" length="7509786" type="application/octet-stream" sparkle:edSignature="F9tc2w3fmzO6eGsOopOmV/ZdE8IvDntXO+BnJ8OeHmiWSCJ+S+uncEhSLkVYLMtJmoTb4jD5RE1DGHfXVYsFBw=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.24</title>
-      <sparkle:version>34</sparkle:version>
-      <sparkle:shortVersionString>1.0.24</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Sat, 31 Oct 2026 09:22:37 +0000</pubDate>
-      <description>新增 DeepSeek 余额页面，显示总可用余额、充值余额和未过期赠金，人民币与美元分别展示。
-设置的 API 页面支持选择 OpenAI 或 DeepSeek，分别输入或导入各自的密钥，独立保存在本机钥匙串。
-DeepSeek 仅调用官方只读余额接口；进入页面按需查询，手动刷新立即查询，不调用模型。
-余额查询失败时保留带查询时间的上次结果；更换密钥会取消旧请求并清空旧账户数据。
-主应用升级至 1.0.24（34），小组件版本同步为 1.0.24。
-本次为 Apple Development 签名版本，尚未公证。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.24/CodexMeter-1.0.24-macos.dmg" length="7496465" type="application/octet-stream" sparkle:edSignature="ZuVwDWVJWbXeNMuaGHzmpfHqhlXvDKYq569rf9jGu5jnRTp/zjhtM2CoKhGUbHW8wd269C9zlN36CWTRRVZMAA=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: 3HZbbEVspqfjfQGZmeVmC6sLhocdM6sd7tgcsLGRquL3qbFFK0mxCRLX5l3iWD955FL7h2Z4kmdxrmfO3/YyCw==
-length: 2962
+edSignature: Y0yHwjkeP6DkDTO7heFMvFY4GWcp4Ut+pg2gjTUrlpt1zXDGfyYkHgEkjpkQvBQCkwiGHnM4GKi/FoKtun+DBw==
+length: 2650
 -->
