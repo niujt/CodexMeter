@@ -3,6 +3,16 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.27</title>
+      <sparkle:version>37</sparkle:version>
+      <sparkle:shortVersionString>1.0.27</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Tue, 17 Nov 2026 05:13:26 +0000</pubDate>
+      <description>重新设计 macOS 菜单栏图标，沿用应用图标的终端标记，并由系统随菜单栏背景着色。
+弧长表示剩余额度，虚线表示上次采样，三点表示暂无有效额度；百分比开关和权限提醒仍可照常使用。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.27/CodexMeter-1.0.27-macos.dmg" length="11044040" type="application/octet-stream" sparkle:edSignature="AlU29KLYEDXWmtULPqjeui/+oNWW0MEU7ssI+dThhpq2df2aH62qSTlAgMPy2pNrXkbYir8cbzkQoT4Sl9WYDg=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.26</title>
       <sparkle:version>36</sparkle:version>
       <sparkle:shortVersionString>1.0.26</sparkle:shortVersionString>
@@ -13,25 +23,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 提供近白与近黑两套配色，Dock 与应用内图标随显示模式切换。原有玻璃样式仍可在设置中选择。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.26/CodexMeter-1.0.26-macos.dmg" length="11051537" type="application/octet-stream" sparkle:edSignature="boi/JEfXJSjGYqNeCQMDZUbtUXbx+pWfvGryPJWOY9ztTy9G95i+HgJ4r3FGQ9REiJbD78OvzxHmkpkL9bPSAg=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.25</title>
-      <sparkle:version>35</sparkle:version>
-      <sparkle:shortVersionString>1.0.25</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Sat, 31 Oct 2026 16:47:00 +0000</pubDate>
-      <description>修复更新后桌面小组件停留灰色占位的问题：启动时刷新当前应用及其扩展的系统登记，再请求时间线重载。
-手动刷新也会恢复登记，并在短暂延迟后有限重试，处理系统登记通知尚未完成的情况。
-不重建全局登记数据库，不删除用户数据，不结束 WidgetKit 宿主。
-主应用升级至 1.0.25（35），小组件版本同步为 1.0.25。
-本次为 Apple Development 签名版本，尚未公证。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.25/CodexMeter-1.0.25-macos.dmg" length="7509786" type="application/octet-stream" sparkle:edSignature="F9tc2w3fmzO6eGsOopOmV/ZdE8IvDntXO+BnJ8OeHmiWSCJ+S+uncEhSLkVYLMtJmoTb4jD5RE1DGHfXVYsFBw=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: Y0yHwjkeP6DkDTO7heFMvFY4GWcp4Ut+pg2gjTUrlpt1zXDGfyYkHgEkjpkQvBQCkwiGHnM4GKi/FoKtun+DBw==
-length: 2650
+edSignature: ti5WhptKL3rH+qXRG00Lr+BZ4kkaB5ZUnwK3RKkYv1jOnEn0Di9Ra7AGAc/r5c+auYX03PCIUJjFdf+5MA96CQ==
+length: 2423
 -->
