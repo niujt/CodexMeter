@@ -13,12 +13,12 @@ struct MenuBarQuotaAppearanceTests {
         let samples: [(String, QuotaSampleState)] = [
             ("剩余 100%", sample(remaining: 100, now: now)),
             ("剩余 56%", sample(remaining: 56, now: now)),
-            ("剩余 50%", sample(remaining: 50, now: now)),
             ("剩余 20%", sample(remaining: 20, now: now)),
             ("剩余 10%", sample(remaining: 10, now: now)),
             ("剩余 0%", sample(remaining: 0, now: now)),
             ("未知额度", sample(remaining: nil, now: now)),
-            ("旧采样 56%", sample(remaining: 56, now: now, stale: true))
+            ("旧采样 56%", sample(remaining: 56, now: now, stale: true)),
+            ("旧采样 0%", sample(remaining: 0, now: now, stale: true))
         ]
         let panelSize = NSSize(width: 610, height: 398)
         let canvas = MenuBarQuotaPreviewSurface(frame: NSRect(x: 0, y: 0, width: panelSize.width,
@@ -33,7 +33,7 @@ struct MenuBarQuotaAppearanceTests {
             let appearance = try #require(NSAppearance(named: dark ? .darkAqua : .aqua))
             panel.appearance = appearance
             canvas.addSubview(panel)
-            label(dark ? "深色 · 彩色圆环 + 系统文字" : "浅色 · 彩色圆环 + 系统文字", x: 18, y: 15,
+            label(dark ? "深色 · 终端标记 + 系统着色" : "浅色 · 终端标记 + 系统着色", x: 18, y: 15,
                   width: 560, size: 15, weight: .semibold, in: panel)
             label("隐藏百分比", x: 160, y: 51, width: 120, size: 12, in: panel)
             label("显示百分比", x: 286, y: 51, width: 120, size: 12, in: panel)
@@ -44,8 +44,8 @@ struct MenuBarQuotaAppearanceTests {
                 for (x, showsPercentage, attentionCount) in [(CGFloat(162), false, 0), (288, true, 0), (430, false, 2)] {
                     let display = MenuBarQuotaDisplay(sample: entry.1, showsPercentage: showsPercentage,
                                                      attentionCount: attentionCount)
-                    let image = display.image(appearance: appearance)
-                    #expect(!image.isTemplate)
+                    let image = display.image()
+                    #expect(image.isTemplate)
                     #expect(image.size.height == 19)
                     let button = NSButton(image: image, target: nil, action: nil)
                     button.isBordered = false

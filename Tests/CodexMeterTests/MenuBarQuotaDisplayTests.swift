@@ -77,18 +77,18 @@ struct MenuBarQuotaDisplayTests {
         #expect(button.accessibilityLabel() == "sample two")
     }
 
-    @Test func actualAppearanceAndQuotaChangesStillUpdateTheStatusImage() throws {
+    @Test func nativeTemplateSurvivesAppearanceChangesAndUpdatesForNewQuota() throws {
         _ = NSApplication.shared
         let button = NSButton()
         let renderer = MenuBarQuotaRenderer()
         let display = MenuBarQuotaDisplay(sample: sample(used: 44), showsPercentage: false)
-        var previous: NSImage?
-        for name in [NSAppearance.Name.aqua, .darkAqua, .aqua] {
+        #expect(renderer.apply(display, description: "same sample", to: button))
+        let previous = try #require(button.image)
+        #expect(previous.isTemplate)
+        for name in [NSAppearance.Name.aqua, .darkAqua, .accessibilityHighContrastDarkAqua] {
             button.appearance = NSAppearance(named: name)
-            #expect(renderer.apply(display, description: "same sample", to: button))
-            #expect(button.image !== previous)
-            previous = button.image
             #expect(!renderer.apply(display, description: "same sample", to: button))
+            #expect(button.image === previous)
         }
         let changed = MenuBarQuotaDisplay(sample: sample(used: 88), showsPercentage: true, attentionCount: 2)
         #expect(renderer.apply(changed, description: "changed quota", to: button))
@@ -132,16 +132,6 @@ struct MenuBarQuotaDisplayTests {
         #expect(hidden.remainingFraction == visible.remainingFraction)
         #expect(hidden.isStale)
         #expect(hidden.title.isEmpty)
-    }
-
-    @Test func ringColorUsesRemainingQuotaAtTheExactThresholds() {
-        #expect(MenuBarQuotaDisplay(sample: sample(used: 49), showsPercentage: false).tint == .green)
-        #expect(MenuBarQuotaDisplay(sample: sample(used: 50), showsPercentage: false).tint == .yellow)
-        #expect(MenuBarQuotaDisplay(sample: sample(used: 80), showsPercentage: false).tint == .yellow)
-        #expect(MenuBarQuotaDisplay(sample: sample(used: 81), showsPercentage: false).tint == .red)
-        #expect(MenuBarQuotaDisplay(sample: sample(used: 100), showsPercentage: false).tint == .red)
-        let unknown = QuotaSampleState(percent: nil, sampledAt: nil, resetsAt: nil, now: now)
-        #expect(MenuBarQuotaDisplay(sample: unknown, showsPercentage: false).tint == .unknown)
     }
 
     @Test func unknownExpiredAndFutureSamplesNeverInventRemainingQuota() {
@@ -189,19 +179,19 @@ struct MenuBarQuotaDisplayTests {
         #expect(MenuBarQuotaDisplay(sample: unknown, showsPercentage: true, attentionCount: 3).title == "— · ⚠ 3")
     }
 
-    @Test func menuBarRingImagesStayColoredAndFixedSizeRegardlessOfTheirNativeTitle() throws {
+    @Test func menuBarImagesStayTemplatesAndFixedSizeRegardlessOfTheirNativeTitle() throws {
         _ = NSApplication.shared
         let ring = MenuBarQuotaDisplay(sample: sample(used: 44), showsPercentage: false).image()
-        #expect(!ring.isTemplate)
+        #expect(ring.isTemplate)
         #expect(ring.size == NSSize(width: 19, height: 19))
         #expect(try alphaPixels(ring).contains { $0 > 0 })
         let percentage = MenuBarQuotaDisplay(sample: sample(used: 44), showsPercentage: true).image()
         let attention = MenuBarQuotaDisplay(sample: sample(used: 44), showsPercentage: false, attentionCount: 3).image()
         for image in [percentage, attention] {
-            #expect(!image.isTemplate)
+            #expect(image.isTemplate)
             #expect(image.size == ring.size)
             #expect(try alphaPixels(image).contains { $0 > 0 })
-            #expect(try colorPixels(image) == colorPixels(ring))
+            #expect(try alphaPixels(image) == alphaPixels(ring))
         }
     }
 
@@ -210,41 +200,29 @@ struct MenuBarQuotaDisplayTests {
         let full = MenuBarQuotaDisplay(sample: sample(used: 0), showsPercentage: false).image()
         let partial = MenuBarQuotaDisplay(sample: sample(used: 44), showsPercentage: false).image()
         let empty = MenuBarQuotaDisplay(sample: sample(used: 100), showsPercentage: false).image()
-        let fullPixels = try colorPixels(full)
-        let partialPixels = try colorPixels(partial)
-        let emptyPixels = try colorPixels(empty)
+        let fullPixels = try alphaPixels(full)
+        let partialPixels = try alphaPixels(partial)
+        let emptyPixels = try alphaPixels(empty)
         // Compare states within this render, avoiding a machine-specific pixel snapshot.
         #expect(fullPixels != partialPixels)
         #expect(partialPixels != emptyPixels)
         #expect(fullPixels != emptyPixels)
     }
 
-    @Test func centralAppMarkStaysVisibleAtNormalZeroAndUnknownQuotaInBothAppearances() throws {
+    @Test func staleEmptyAndUnknownQuotaRemainVisuallyDistinct() throws {
         _ = NSApplication.shared
         let unknown = QuotaSampleState(percent: nil, sampledAt: nil, resetsAt: nil, now: now)
-        let centralRange: Range<CGFloat> = 6.5..<12.5
-        for name in [NSAppearance.Name.aqua, .darkAqua] {
-            let appearance = try #require(NSAppearance(named: name))
-            for state in [sample(used: 44), sample(used: 100), unknown] {
-                let image = MenuBarQuotaDisplay(sample: state, showsPercentage: false).image(appearance: appearance)
-                let rendered = try #require(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
-                let bitmap = NSBitmapImageRep(cgImage: rendered)
-                var opaqueMarkPixels = 0
-                for y in 0..<bitmap.pixelsHigh {
-                    for x in 0..<bitmap.pixelsWide {
-                        let logicalX = (CGFloat(x) + 0.5) * image.size.width / CGFloat(bitmap.pixelsWide)
-                        let logicalY = (CGFloat(y) + 0.5) * image.size.height / CGFloat(bitmap.pixelsHigh)
-                        // This central 6×6-point area is inside the ring's inner radius,
-                        // so the old ring without an H cannot satisfy the assertion.
-                        guard centralRange.contains(logicalX), centralRange.contains(logicalY) else { continue }
-                        if (bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) >= 0.75 {
-                            opaqueMarkPixels += 1
-                        }
-                    }
-                }
-                #expect(opaqueMarkPixels >= 3)
-            }
+        let masks = try [sample(used: 44), sample(used: 44, sampledAgo: QuotaSampleState.lifetime),
+                         sample(used: 100), sample(used: 100, sampledAgo: QuotaSampleState.lifetime),
+                         unknown].map { state in
+            let image = MenuBarQuotaDisplay(sample: state, showsPercentage: false).image()
+            let mask = try alphaPixels(image)
+            // The high-opacity foreground includes the prompt in every state,
+            // including unknown and empty quota where there is no filled arc.
+            #expect(mask.filter { $0 >= 192 }.count >= 5)
+            return mask
         }
+        #expect(Set(masks).count == masks.count)
     }
 
     private func sample(used: Double, sampledAgo: TimeInterval = 0) -> QuotaSampleState {
@@ -258,18 +236,6 @@ struct MenuBarQuotaDisplayTests {
         return (0..<bitmap.pixelsHigh).flatMap { y in
             (0..<bitmap.pixelsWide).map { x in
                 UInt8(((bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) * 255).rounded())
-            }
-        }
-    }
-
-    private func colorPixels(_ image: NSImage) throws -> [UInt8] {
-        let rendered = try #require(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
-        let bitmap = NSBitmapImageRep(cgImage: rendered)
-        return (0..<bitmap.pixelsHigh).flatMap { y in
-            (0..<bitmap.pixelsWide).flatMap { x -> [UInt8] in
-                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { return [0, 0, 0, 0] }
-                return [color.redComponent, color.greenComponent, color.blueComponent, color.alphaComponent]
-                    .map { UInt8(($0 * 255).rounded()) }
             }
         }
     }

@@ -90,7 +90,7 @@ struct SettingsView: View {
 
                 Section("菜单栏") {
                     Toggle("显示额度百分比", isOn: $showMenuBarPercentage)
-                    Text("圆环表示剩余额度：大于 50% 为绿色，20%～50% 为黄色，低于 20% 为红色。额度越少，圆环越短。")
+                    Text("实线弧越长，剩余额度越多；虚线表示上次采样，三点表示暂无有效额度。")
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
 

@@ -137,18 +137,11 @@ extension UsageSnapshot {
 }
 
 struct MenuBarQuotaDisplay: Equatable, Sendable {
-    typealias Tint = QuotaRemainingTint
     static let showPercentageKey = "codexMeter.menuBar.showPercentage"
 
     let remainingFraction: Double?
     let isStale: Bool
     let title: String
-
-    var tint: Tint {
-        guard let remainingFraction else { return .unknown }
-        if remainingFraction > 0.5 { return .green }
-        return remainingFraction >= 0.2 ? .yellow : .red
-    }
 
     static func showsPercentage(defaults: UserDefaults = .standard) -> Bool {
         defaults.bool(forKey: showPercentageKey)
@@ -166,88 +159,74 @@ struct MenuBarQuotaDisplay: Equatable, Sendable {
     }
 
     @MainActor
-    func image(appearance: NSAppearance? = nil) -> NSImage {
-        let color = DashboardPalette.quotaNSColor(tint)
-        var trackColor = NSColor.black.withAlphaComponent(0.22)
-        var arcColor = color
-        var monogramColor = NSColor.black
-        (appearance ?? NSAppearance(named: .aqua))?.performAsCurrentDrawingAppearance {
-            let resolved = color.usingColorSpace(.sRGB) ?? color
-            trackColor = resolved.withAlphaComponent(remainingFraction == nil ? 0.4 : 0.22)
-            arcColor = resolved.withAlphaComponent(isStale ? 0.6 : 1)
-            monogramColor = NSColor.labelColor.usingColorSpace(.sRGB) ?? .labelColor
-        }
-        let resolvedTrack = trackColor
-        let resolvedArc = arcColor
-        let resolvedMonogram = monogramColor
+    func image() -> NSImage {
         let image = NSImage(size: NSSize(width: 19, height: 19), flipped: false) { _ in
-            let bounds = NSRect(x: 2.4, y: 2.4, width: 14.2, height: 14.2)
-            let track = NSBezierPath(ovalIn: bounds)
-            track.lineWidth = 2.2
-            if remainingFraction == nil {
-                track.setLineDash([1.5, 2.0], count: 2, phase: 0)
-                track.lineCapStyle = .round
-            }
-            resolvedTrack.setStroke()
-            track.stroke()
-
-            if let fraction = remainingFraction, fraction > 0 {
+            // Leave the bottom open, as on the app icon. The system chooses
+            // the foreground color; opacity separates the track from the fill.
+            let center = NSPoint(x: 9.5, y: 9.25)
+            func gaugeArc(_ fraction: Double) -> NSBezierPath {
                 let arc = NSBezierPath()
-                if fraction >= 1 {
-                    arc.appendOval(in: bounds)
-                } else {
-                    arc.appendArc(withCenter: NSPoint(x: 9.5, y: 9.5), radius: 7.1,
-                                  startAngle: 90, endAngle: 90 - 360 * fraction, clockwise: true)
-                }
-                arc.lineWidth = 2.2
+                arc.appendArc(withCenter: center, radius: 7.1, startAngle: 225,
+                              endAngle: 225 - 270 * fraction, clockwise: true)
                 arc.lineCapStyle = .round
-                if isStale { arc.setLineDash([1.5, 1.5], count: 2, phase: 0) }
-                resolvedArc.setStroke()
-                arc.stroke()
+                return arc
             }
 
-            let monogram = NSBezierPath()
-            monogram.move(to: NSPoint(x: 7, y: 6.1))
-            monogram.line(to: NSPoint(x: 7, y: 12.9))
-            monogram.move(to: NSPoint(x: 12, y: 6.1))
-            monogram.line(to: NSPoint(x: 12, y: 12.9))
-            monogram.move(to: NSPoint(x: 7, y: 9.5))
-            monogram.line(to: NSPoint(x: 12, y: 9.5))
-            monogram.lineWidth = 1.4
-            monogram.lineCapStyle = .round
-            resolvedMonogram.setStroke()
-            monogram.stroke()
+            if let fraction = remainingFraction {
+                let track = gaugeArc(1)
+                track.lineWidth = 1.8
+                if isStale { track.setLineDash([1.5, 2.5], count: 2, phase: 0) }
+                NSColor.black.withAlphaComponent(0.42).setStroke()
+                track.stroke()
+
+                if fraction > 0 {
+                    let fill = gaugeArc(fraction)
+                    fill.lineWidth = 1.8
+                    if isStale { fill.setLineDash([1.5, 2.5], count: 2, phase: 0) }
+                    NSColor.black.setStroke()
+                    fill.stroke()
+                }
+            } else {
+                NSColor.black.withAlphaComponent(0.68).setFill()
+                for x in [6.5, 9.5, 12.5] {
+                    NSBezierPath(ovalIn: NSRect(x: x - 0.75, y: 3, width: 1.5, height: 1.5)).fill()
+                }
+            }
+
+            let prompt = NSBezierPath()
+            prompt.move(to: NSPoint(x: 6.1, y: 11.6))
+            prompt.line(to: NSPoint(x: 8.8, y: 9.35))
+            prompt.line(to: NSPoint(x: 6.1, y: 7.1))
+            prompt.move(to: NSPoint(x: 10.6, y: 7.4))
+            prompt.line(to: NSPoint(x: 13, y: 8.4))
+            prompt.lineWidth = 1.75
+            prompt.lineCapStyle = .round
+            prompt.lineJoinStyle = .round
+            NSColor.black.setStroke()
+            prompt.stroke()
             return true
         }
-        // Keep the ring's colors; the native status button draws its text separately.
-        image.isTemplate = false
+        image.isTemplate = true
         return image
     }
 }
 
-/// AppKit can report effectiveAppearance again while updating status-item
-/// snapshots. Commit the render key before changing the button, and never
-/// recreate an unchanged image in response to those notifications.
+/// Commit the render key before changing the button so a synchronous callback
+/// cannot repeatedly assign the same image. Template tint is managed by AppKit.
 @MainActor
 final class MenuBarQuotaRenderer {
     private var renderedDisplay: MenuBarQuotaDisplay?
-    private var renderedAppearance: NSAppearance.Name?
 
     @discardableResult
     func apply(_ display: MenuBarQuotaDisplay, description: String, to button: NSButton) -> Bool {
-        let appearance = button.effectiveAppearance
-        let appearanceName = appearance.name
-        let needsImage = display != renderedDisplay || appearanceName != renderedAppearance || button.image == nil
-        if needsImage {
-            renderedDisplay = display
-            renderedAppearance = appearanceName
-        }
+        let needsImage = display != renderedDisplay || button.image == nil
+        if needsImage { renderedDisplay = display }
         if button.toolTip != description {
             button.toolTip = description
             button.setAccessibilityLabel(description)
         }
         guard needsImage else { return false }
-        button.image = display.image(appearance: appearance)
+        button.image = display.image()
         button.title = display.title
         button.imagePosition = display.title.isEmpty ? .imageOnly : .imageLeading
         button.contentTintColor = nil
@@ -277,7 +256,6 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
     private var dashboardWillOpenObserver: NSObjectProtocol?
     private var permissionObserver: NSObjectProtocol?
     private var dockAppearanceObservation: NSKeyValueObservation?
-    private var statusAppearanceObservation: NSKeyValueObservation?
     private var quotaExpiryTask: Task<Void, Never>?
     private var quotaSample = QuotaSampleState(percent: nil, sampledAt: nil, resetsAt: nil, now: .now)
     private let statusRenderer = MenuBarQuotaRenderer()
@@ -294,14 +272,11 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             }
         }
         guard let button = statusItem.button else { return }
-        statusAppearanceObservation = button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            Task { @MainActor [weak self] in self?.applyStatusAppearance() }
-        }
         button.imagePosition = .imageOnly
         button.target = self
         button.action = #selector(togglePopover(_:))
         button.toolTip = "Codex Health"
-        applyStatusAppearance()
+        updateStatusItem()
         popover.behavior = .transient
         popover.delegate = self
         popover.contentViewController = popoverController
@@ -319,7 +294,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
             object: permissionStore,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.applyStatusAppearance() }
+            Task { @MainActor [weak self] in self?.updateStatusItem() }
         }
         dashboardWillOpenObserver = NotificationCenter.default.addObserver(
             forName: .codexHealthDashboardWillOpen,
@@ -365,7 +340,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
                 Task { @MainActor [weak self] in
                     self?.scheduleRefreshTimer()
                     AppIconStyle.applyDockIcon()
-                    self?.applyStatusAppearance()
+                    self?.updateStatusItem()
                     self?.applyPopoverAppearance()
                 }
             }
@@ -479,7 +454,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         let sample = QuotaSampleState(percent: rate?.usedPercent, sampledAt: snapshot.mainRateSampledAt,
                                       resetsAt: rate?.resetsAt, now: now)
         quotaSample = sample
-        applyStatusAppearance()
+        updateStatusItem()
         if let deadline = snapshot.quotaDisplayDeadlines.filter({ $0 > now }).min() {
             quotaExpiryTask = Task { @MainActor [weak self] in
                 do { try await Task.sleep(for: .seconds(max(0.025, deadline.timeIntervalSinceNow))) }
@@ -490,7 +465,7 @@ private final class MenuBarController: NSObject, NSApplicationDelegate, NSPopove
         }
     }
 
-    private func applyStatusAppearance() {
+    private func updateStatusItem() {
         guard let button = statusItem.button else { return }
         let showBadge = UserDefaults.standard.bool(forKey: PermissionPreferences.badgeEnabledKey)
         let count = showBadge ? permissionStore.newCount : 0
