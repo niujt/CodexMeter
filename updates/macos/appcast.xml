@@ -3,6 +3,17 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.30</title>
+      <sparkle:version>40</sparkle:version>
+      <sparkle:shortVersionString>1.0.30</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Fri, 20 Nov 2026 15:01:37 +0000</pubDate>
+      <description>- 菜单栏提示本机用量较昨天同时段的突增。点击可查看增量最大的项目、模型、小时和 Token 构成。
+- 菜单栏摘要和桌面小组件显示 7 天额度预计能否撑到重置，采样过期后暂停估算。
+- README 更新 macOS 安装包链接和用量对比演示。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.30/CodexMeter-1.0.30-macos.dmg" length="11212834" type="application/octet-stream" sparkle:edSignature="emKH9ZpXaiPBGUkQxJmYFVm8XiwxwDVBEOytfRJQWmGKaWKKZQpOT1qBybHZE9ZnoGcQgn60awgB3/QaeIijCQ=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.29</title>
       <sparkle:version>39</sparkle:version>
       <sparkle:shortVersionString>1.0.29</sparkle:shortVersionString>
@@ -12,23 +23,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 - 上下文进度条新增占用百分比，并列显示已用 Token 和上限。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.29/CodexMeter-1.0.29-macos.dmg" length="11055489" type="application/octet-stream" sparkle:edSignature="bqfB3a+j3Dn3BeQQjb6mbvG/sUBVc6Gz8kfMywxwAbS4UM1zEEJ6BwJdRMdw4363lml2rTfOzEJVt5BSLC3cBw=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.28</title>
-      <sparkle:version>38</sparkle:version>
-      <sparkle:shortVersionString>1.0.28</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Fri, 20 Nov 2026 14:15:09 +0000</pubDate>
-      <description>- 详情页采用独立的液态玻璃导航条，为右侧报表留出更多空间。悬停可查看页面名称，支持 ⌘1 到 ⌘8 快速切换。
-- 刷新状态移至标题栏，菜单栏摘要精简了旧采样说明和底部操作区。
-- 修复重复点击「打开详情」会创建多个窗口的问题。再次点击会将已有窗口带到前台。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.28/CodexMeter-1.0.28-macos.dmg" length="11031194" type="application/octet-stream" sparkle:edSignature="k/qsIyGybdk8uNDtoCnnOQo6UpZ1k5JpSTePVx5X7fFF+Z06AMu7HdjbZ6Zxgp2smjMjqBxDQnsbVEw7GILDCg=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: i87bcHMaP4+RJ7uwDMmpxWIaq+Gj88nX3jwp2S9ZMuPS6TlhoraDwEbR//2FB8tIph1kDJoNiIoJcPbify1sBQ==
-length: 2463
+edSignature: cvl3D9HgIuVm4ISj/4Rn5wntJtCzpz+3wJRQfVooT4Liny5g9oGqtUB2ah46SXbvibeWus/0xQE6nFf/mDDsCA==
+length: 2406
 -->
