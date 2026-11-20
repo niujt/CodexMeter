@@ -109,35 +109,49 @@ struct CodexMeterWidgetView: View {
     private func mediumContent(_ usage: WidgetUsageData) -> some View {
         let status = quotaStatus(usage)
         let incomplete = usage.sourceIncomplete == true
-        return HStack(spacing: 18) {
-            VStack(spacing: 5) {
-                Text(quotaTitle(usage, status: status))
-                    .font(.system(size: 11, weight: .medium))
-                    .lineLimit(1).minimumScaleFactor(0.85)
-                quotaRing(usage, size: 78)
-                resetTime(usage)
-                    .font(.system(size: 10)).foregroundStyle(.secondary)
+        return HStack(alignment: .top, spacing: 16) {
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    Text(quotaTitle(usage, status: status))
+                        .font(.system(size: 11, weight: .medium))
+                    if status != .recorded {
+                        statusIcon(status, color: quotaColor(usage))
+                    }
+                }
+                .lineLimit(1).minimumScaleFactor(0.85)
+
+                quotaRing(usage, size: 72)
+
+                VStack(spacing: 2) {
+                    if status == .waitingForCycle {
+                        Text("等待新周期采样")
+                    } else {
+                        resetTime(usage)
+                        if usage.recordedRatePercent(at: entry.date) != nil {
+                            sampleTime(usage)
+                        }
+                    }
+                }
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
             }
-            .frame(width: 100)
+            .frame(width: 106)
 
             VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 4) {
-                    if incomplete {
-                        sourceIncompleteNotice
-                    } else {
-                        Text("本机 Token").font(.system(size: 11, weight: .medium))
-                    }
-                    Spacer(minLength: 0)
-                    statusIcon(status, color: quotaColor(usage))
+                if incomplete {
+                    sourceIncompleteNotice
+                } else {
+                    Text("本机 Token").font(.system(size: 11, weight: .medium))
                 }
+
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     metric("今天", incomplete ? nil : usage.todayTokens)
                     metric("近 7 天", incomplete ? nil : usage.weekTokens)
                     metric("本月", incomplete ? nil : usage.monthTokens)
                 }
+
                 contextSummary(usage, incomplete: incomplete)
-                sampleTime(usage)
-                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                    .padding(.top, 12)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -254,20 +268,34 @@ struct CodexMeterWidgetView: View {
             Text("上下文待完整读取")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
         } else if usage.contextLimit > 0 {
+            let fraction = max(0, Double(usage.contextTokens) / Double(usage.contextLimit))
+            let percentage = fraction.formatted(.percent.precision(.fractionLength(0)))
+            let tokenCounts = "\(usage.contextTokens.formatted()) / \(usage.contextLimit.formatted()) Token"
             VStack(alignment: .leading, spacing: 4) {
-                Text("上下文 \(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-                    .lineLimit(1).minimumScaleFactor(0.85)
-                    .help("上下文 \(usage.contextTokens.formatted()) / \(usage.contextLimit.formatted()) Token")
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("上下文 \(percentage)")
+                        .font(.system(size: 11, weight: .medium))
+                        .layoutPriority(1)
+                    Spacer(minLength: 0)
+                    Text("\(compact(usage.contextTokens)) / \(compact(usage.contextLimit))")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                .monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.8)
                 GeometryReader { proxy in
                     Capsule().fill(.secondary.opacity(0.13))
                         .overlay(alignment: .leading) {
                             Capsule().fill(.secondary.opacity(0.55))
-                                .frame(width: proxy.size.width * min(1, max(0, Double(usage.contextTokens) / Double(usage.contextLimit))))
+                                .frame(width: proxy.size.width * min(1, fraction))
                         }
                 }
                 .frame(height: 3)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("上下文")
+            .accessibilityValue("\(percentage)，\(tokenCounts)")
+            .help("上下文 \(tokenCounts)")
         } else {
             Text("暂无上下文记录")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
@@ -287,10 +315,11 @@ struct CodexMeterWidgetView: View {
     }
 
     private func compact(_ value: Int) -> String {
-        switch value {
-        case 1_000_000_000...: String(format: "%.1fB", Double(value) / 1_000_000_000)
-        case 1_000_000...: String(format: "%.1fM", Double(value) / 1_000_000)
-        case 1_000...: String(format: "%.1fK", Double(value) / 1_000)
+        let format = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1)).grouping(.never)
+        return switch value {
+        case 1_000_000_000...: (Double(value) / 1_000_000_000).formatted(format) + "B"
+        case 1_000_000...: (Double(value) / 1_000_000).formatted(format) + "M"
+        case 1_000...: (Double(value) / 1_000).formatted(format) + "K"
         default: value.formatted()
         }
     }
