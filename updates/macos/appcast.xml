@@ -3,6 +3,16 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.29</title>
+      <sparkle:version>39</sparkle:version>
+      <sparkle:shortVersionString>1.0.29</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Fri, 20 Nov 2026 14:26:02 +0000</pubDate>
+      <description>- 中号桌面小组件把采样和重置时间集中到额度环下方。旧采样、额度偏低和等待新周期的提示随额度一起显示。
+- 上下文进度条新增占用百分比，并列显示已用 Token 和上限。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.29/CodexMeter-1.0.29-macos.dmg" length="11055489" type="application/octet-stream" sparkle:edSignature="bqfB3a+j3Dn3BeQQjb6mbvG/sUBVc6Gz8kfMywxwAbS4UM1zEEJ6BwJdRMdw4363lml2rTfOzEJVt5BSLC3cBw=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.28</title>
       <sparkle:version>38</sparkle:version>
       <sparkle:shortVersionString>1.0.28</sparkle:shortVersionString>
@@ -13,22 +23,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 - 修复重复点击「打开详情」会创建多个窗口的问题。再次点击会将已有窗口带到前台。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.28/CodexMeter-1.0.28-macos.dmg" length="11031194" type="application/octet-stream" sparkle:edSignature="k/qsIyGybdk8uNDtoCnnOQo6UpZ1k5JpSTePVx5X7fFF+Z06AMu7HdjbZ6Zxgp2smjMjqBxDQnsbVEw7GILDCg=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.27</title>
-      <sparkle:version>37</sparkle:version>
-      <sparkle:shortVersionString>1.0.27</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Tue, 17 Nov 2026 05:13:26 +0000</pubDate>
-      <description>重新设计 macOS 菜单栏图标，沿用应用图标的终端标记，并由系统随菜单栏背景着色。
-弧长表示剩余额度，虚线表示上次采样，三点表示暂无有效额度；百分比开关和权限提醒仍可照常使用。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.27/CodexMeter-1.0.27-macos.dmg" length="11044040" type="application/octet-stream" sparkle:edSignature="AlU29KLYEDXWmtULPqjeui/+oNWW0MEU7ssI+dThhpq2df2aH62qSTlAgMPy2pNrXkbYir8cbzkQoT4Sl9WYDg=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: 1wvGKYvZ04/qyOqSsL5qfk2PTdXUvYL4uTn/MVr+9SLPiG+F36Vl5u3H2nQ9gV0CFwomwa79gg4a0aQSslLUAg==
-length: 2483
+edSignature: i87bcHMaP4+RJ7uwDMmpxWIaq+Gj88nX3jwp2S9ZMuPS6TlhoraDwEbR//2FB8tIph1kDJoNiIoJcPbify1sBQ==
+length: 2463
 -->
