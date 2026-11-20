@@ -3,6 +3,17 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.28</title>
+      <sparkle:version>38</sparkle:version>
+      <sparkle:shortVersionString>1.0.28</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Fri, 20 Nov 2026 14:15:09 +0000</pubDate>
+      <description>- 详情页采用独立的液态玻璃导航条，为右侧报表留出更多空间。悬停可查看页面名称，支持 ⌘1 到 ⌘8 快速切换。
+- 刷新状态移至标题栏，菜单栏摘要精简了旧采样说明和底部操作区。
+- 修复重复点击「打开详情」会创建多个窗口的问题。再次点击会将已有窗口带到前台。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.28/CodexMeter-1.0.28-macos.dmg" length="11031194" type="application/octet-stream" sparkle:edSignature="k/qsIyGybdk8uNDtoCnnOQo6UpZ1k5JpSTePVx5X7fFF+Z06AMu7HdjbZ6Zxgp2smjMjqBxDQnsbVEw7GILDCg=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.27</title>
       <sparkle:version>37</sparkle:version>
       <sparkle:shortVersionString>1.0.27</sparkle:shortVersionString>
@@ -12,23 +23,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 弧长表示剩余额度，虚线表示上次采样，三点表示暂无有效额度；百分比开关和权限提醒仍可照常使用。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.27/CodexMeter-1.0.27-macos.dmg" length="11044040" type="application/octet-stream" sparkle:edSignature="AlU29KLYEDXWmtULPqjeui/+oNWW0MEU7ssI+dThhpq2df2aH62qSTlAgMPy2pNrXkbYir8cbzkQoT4Sl9WYDg=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.26</title>
-      <sparkle:version>36</sparkle:version>
-      <sparkle:shortVersionString>1.0.26</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Fri, 13 Nov 2026 14:24:30 +0000</pubDate>
-      <description>更新 Codex Health 默认应用图标。全新的 N 品牌角标搭配 Codex 终端符号与 DeepSeek 鲸尾，鲸尾指向额度环，底部为两亮一暗的信号点。
-
-提供近白与近黑两套配色，Dock 与应用内图标随显示模式切换。原有玻璃样式仍可在设置中选择。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.26/CodexMeter-1.0.26-macos.dmg" length="11051537" type="application/octet-stream" sparkle:edSignature="boi/JEfXJSjGYqNeCQMDZUbtUXbx+pWfvGryPJWOY9ztTy9G95i+HgJ4r3FGQ9REiJbD78OvzxHmkpkL9bPSAg=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: ti5WhptKL3rH+qXRG00Lr+BZ4kkaB5ZUnwK3RKkYv1jOnEn0Di9Ra7AGAc/r5c+auYX03PCIUJjFdf+5MA96CQ==
-length: 2423
+edSignature: 1wvGKYvZ04/qyOqSsL5qfk2PTdXUvYL4uTn/MVr+9SLPiG+F36Vl5u3H2nQ9gV0CFwomwa79gg4a0aQSslLUAg==
+length: 2483
 -->
