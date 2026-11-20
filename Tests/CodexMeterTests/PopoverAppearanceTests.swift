@@ -83,9 +83,10 @@ struct PopoverAppearanceTests {
         ]
         for dark in [false, true] {
             for (name, snapshot, error) in cases {
-                let view = HStack(spacing: 0) {
+                let view = HStack(alignment: .top, spacing: 0) {
                     DashboardSidebar(selection: .constant("健康报告"))
-                        .frame(width: 180)
+                        .padding(.leading, 16)
+                        .padding(.top, 24)
                     ScrollView {
                         DashboardContent(snapshot: snapshot, errorMessage: error, isRefreshing: false,
                                          measuredVelocity: nil, quotaMessage: "等待新额度采样",
@@ -93,9 +94,9 @@ struct PopoverAppearanceTests {
                             .padding(28)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(DashboardPalette.canvas)
                 }
                 .frame(width: 980, height: 640)
+                .background(DashboardPalette.canvas)
                 .foregroundStyle(DashboardPalette.ink).tint(DashboardPalette.ink)
                 .progressViewStyle(FlatProgressStyle())
                 .defaultAppStorage(defaults)

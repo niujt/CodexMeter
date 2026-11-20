@@ -220,7 +220,7 @@ struct UsagePopoverView: View {
 
     private func openDashboard() {
         NotificationCenter.default.post(name: .codexHealthDashboardWillOpen, object: nil)
-        openWindow(id: "dashboard")
+        openWindow(id: DashboardWindow.id, value: DashboardWindow.main)
     }
 
 }
@@ -237,7 +237,7 @@ private struct HealthMenuPopover: View {
 
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Codex Health").font(.callout.weight(.semibold))
                 Spacer()
@@ -284,22 +284,20 @@ private struct HealthMenuPopover: View {
                 }
             }
             FlatDivider()
-            UsageRefreshStatusView(
-                store: store, compact: true,
-                secondaryInk: DashboardPalette.popoverSecondaryInk
-            )
-            HStack {
+            HStack(spacing: 10) {
+                UsageRefreshStatusView(
+                    store: store, compact: true,
+                    secondaryInk: DashboardPalette.popoverSecondaryInk
+                )
+                Spacer(minLength: 0)
                 Button { openDashboard() } label: {
                     Label("打开详情", systemImage: "arrow.up.forward.app")
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain).foregroundStyle(.tint)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .fixedSize(horizontal: true, vertical: false)
                 .help("打开用量详情")
-                Spacer()
-                Text("本机统计")
-                    .font(.caption2).foregroundStyle(DashboardPalette.popoverSecondaryInk)
-            }.font(.callout)
+            }
         }
         .padding(16)
         .frame(width: 320, alignment: .leading)
@@ -359,7 +357,7 @@ private struct HealthMenuPopover: View {
 
     private func openDashboard() {
         NotificationCenter.default.post(name: .codexHealthDashboardWillOpen, object: nil)
-        openWindow(id: "dashboard")
+        openWindow(id: DashboardWindow.id, value: DashboardWindow.main)
     }
 }
 
@@ -444,13 +442,16 @@ struct ReplySpeedView: View {
             case .row:
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text("平均回复速度").foregroundStyle(secondaryInk)
+                        Text(speed == nil ? "近 15 分钟回复速度" : "平均回复速度")
+                            .foregroundStyle(secondaryInk)
                         Spacer()
                         Text(speed.map { UsageFormatters.replySpeed($0.tokensPerSecond) } ?? "暂无样本")
                             .monospacedDigit()
                     }.font(.callout)
-                    Text(speed.map { "近 15 分钟 · \($0.sampleCount) 个有效轮次" + ($0.sampleCount == 1 ? " · 样本较少" : "") } ?? "近 15 分钟无有效完成轮次")
-                        .font(.caption2).foregroundStyle(secondaryInk)
+                    if let speed {
+                        Text("近 15 分钟 · \(speed.sampleCount) 个有效轮次" + (speed.sampleCount == 1 ? " · 样本较少" : ""))
+                            .font(.caption2).foregroundStyle(secondaryInk)
+                    }
                 }
             case .detail:
                 VStack(alignment: .leading, spacing: 4) {

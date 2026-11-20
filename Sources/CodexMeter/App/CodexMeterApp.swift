@@ -96,6 +96,12 @@ extension Notification.Name {
     static let codexHealthDashboardWillOpen = Notification.Name("CodexHealth.dashboardWillOpen")
 }
 
+enum DashboardWindow: String, Codable, Hashable {
+    case main
+
+    static let id = "dashboard"
+}
+
 @main
 struct CodexMeterApp: App {
     @State private var store = UsageStore.shared
@@ -107,11 +113,16 @@ struct CodexMeterApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Codex Health", id: "dashboard") {
+        WindowGroup("Codex Health", id: DashboardWindow.id, for: DashboardWindow.self) { _ in
             AnalyticsDashboardView(store: store)
                 .frame(minWidth: 980, minHeight: 640)
                 .task { menuBar.configure(with: store) }
                 .onAppear { menuBar.dashboardDidAppear() }
+        } defaultValue: {
+            .main
+        }
+        .commands {
+            CommandGroup(replacing: .newItem) {}
         }
         .windowToolbarStyle(.unified)
         .defaultSize(width: 1_080, height: 740)

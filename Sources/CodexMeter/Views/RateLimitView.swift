@@ -29,7 +29,7 @@ struct QuotaSampleView: View {
                 if let remaining = sample.recordedRemaining {
                     ProgressView(value: Double(remaining), total: 100)
                         .tint(DashboardPalette.progress)
-                    if sample.isStale {
+                    if sample.isStale && !compactMetadata {
                         Text("等待新采样").font(.caption2).foregroundStyle(secondaryInk)
                     }
                 }
@@ -56,12 +56,11 @@ struct QuotaSampleView: View {
     }
 
     private func sampleDescription(_ sample: QuotaSampleState, at now: Date) -> String {
-        guard compactMetadata, !sample.isStale, sample.recordedRemaining != nil,
-              let sampledAt, sampledAt <= now else { return sample.description }
+        guard compactMetadata, sample.recordedRemaining != nil, let sampledAt else { return sample.description }
         let timestamp = Calendar.current.isDate(sampledAt, inSameDayAs: now)
             ? sampledAt.formatted(.dateTime.hour().minute())
             : sampledAt.formatted(.dateTime.month().day().hour().minute())
-        return "额度采样 · \(timestamp) · 非实时"
+        return "采样于 \(timestamp) · 非实时"
     }
 }
 

@@ -15,55 +15,20 @@ struct AnalyticsDashboardView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        HStack(alignment: .top, spacing: 0) {
             DashboardSidebar(selection: $selectedSection)
-                .navigationSplitViewColumnWidth(min: 180, ideal: 190, max: 220)
-        } detail: {
+                .padding(.leading, 16)
+                .padding(.top, 24)
             ScrollView {
-                Group {
-                    switch selectedSection ?? "健康报告" {
-                    case "健康报告":
-                        DashboardContent(
-                            snapshot: store.snapshot,
-                            errorMessage: store.errorMessage,
-                            isRefreshing: store.isRefreshing,
-                            measuredVelocity: store.measuredVelocity?.percentPerHour,
-                            quotaMessage: store.quotaWaitingMessage,
-                            chooseFolder: { store.chooseCodexFolder() },
-                            retry: { Task { await store.refresh(userInitiated: true) } }
-                        )
-                            .padding(28)
-                            .frame(maxWidth: 1_100, alignment: .leading)
-                    case "项目与用量":
-                        ProjectsUsageView(store: store, pathStore: projectPathStore, viewState: viewState)
-                    case "使用趋势":
-                        UsageTrendsView(store: store, viewState: viewState)
-                    case "模型与效率":
-                        ModelEfficiencyView(store: store)
-                    case "预测与风险":
-                        ForecastRiskView(store: store)
-                    case "历史记录":
-                        HistoryRecordsView(store: store, viewState: viewState)
-                    case "API 用量与费用":
-                        APIBillingView()
-                    case "DeepSeek 余额":
-                        DeepSeekBalanceView()
-                    default:
-                        FeaturePlaceholderView(section: selectedSection ?? "健康报告")
-                            .frame(minHeight: 500)
-                    }
-                }
-                .transition(.opacity)
+                detail
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: selectedSection)
+            .id(selectedSection)
+            .transition(.opacity)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(DashboardPalette.canvas)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            UsageRefreshStatusView(store: store)
-                .padding(.horizontal, 16).padding(.vertical, 4)
-                .background(.bar)
-        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: selectedSection)
+        .background(DashboardPalette.canvas)
         .foregroundStyle(DashboardPalette.ink)
         .tint(DashboardPalette.ink)
         .progressViewStyle(FlatProgressStyle())
@@ -77,6 +42,11 @@ struct AnalyticsDashboardView: View {
         }
         .navigationTitle("Codex Health")
         .toolbar {
+            if #available(macOS 26.0, *) {
+                refreshStatusItem.sharedBackgroundVisibility(.hidden)
+            } else {
+                refreshStatusItem
+            }
             ToolbarItem(placement: .primaryAction) {
                 WeeklyReceiptButton(snapshot: store.snapshot)
             }
@@ -110,6 +80,48 @@ struct AnalyticsDashboardView: View {
             }
         }
         .task { await store.refreshIfNeeded() }
+    }
+
+    private var refreshStatusItem: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            UsageRefreshStatusView(store: store)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 8)
+        }
+    }
+
+    @ViewBuilder private var detail: some View {
+        switch selectedSection ?? "健康报告" {
+        case "健康报告":
+            DashboardContent(
+                snapshot: store.snapshot,
+                errorMessage: store.errorMessage,
+                isRefreshing: store.isRefreshing,
+                measuredVelocity: store.measuredVelocity?.percentPerHour,
+                quotaMessage: store.quotaWaitingMessage,
+                chooseFolder: { store.chooseCodexFolder() },
+                retry: { Task { await store.refresh(userInitiated: true) } }
+            )
+            .padding(28)
+            .frame(maxWidth: 1_100, alignment: .leading)
+        case "项目与用量":
+            ProjectsUsageView(store: store, pathStore: projectPathStore, viewState: viewState)
+        case "使用趋势":
+            UsageTrendsView(store: store, viewState: viewState)
+        case "模型与效率":
+            ModelEfficiencyView(store: store)
+        case "预测与风险":
+            ForecastRiskView(store: store)
+        case "历史记录":
+            HistoryRecordsView(store: store, viewState: viewState)
+        case "API 用量与费用":
+            APIBillingView()
+        case "DeepSeek 余额":
+            DeepSeekBalanceView()
+        default:
+            FeaturePlaceholderView(section: selectedSection ?? "健康报告")
+                .frame(minHeight: 500)
+        }
     }
 }
 

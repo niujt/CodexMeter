@@ -68,9 +68,9 @@ struct UsageRefreshStatusView: View {
                 Image(systemName: symbol).frame(width: 14)
             }
             Text(message).lineLimit(1).truncationMode(.tail)
-            Spacer(minLength: 0)
             if !compact, !store.isRefreshing,
                let checkedAt = feedback?.checkedAt ?? store.lastSuccessfulRefresh {
+                Text("·")
                 Text(checkedAt.formatted(.dateTime.hour().minute()))
                     .monospacedDigit()
             }
@@ -151,46 +151,48 @@ struct DashboardSidebar: View {
     ]
 
     var body: some View {
-        List {
-            Section("用量") {
-                ForEach(Array(items.enumerated()), id: \.element.0) { index, item in
-                    Button { selection = item.0 } label: {
-                        Label(item.0, systemImage: item.1)
-                            .font(.callout.weight(selection == item.0 ? .semibold : .regular))
-                            .foregroundStyle(DashboardPalette.ink)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 10).padding(.vertical, 9)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(DashboardNavigationButtonStyle(selected: selection == item.0))
-                    .listItemTint(.monochrome)
-                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
-                    .help("\(item.0) · ⌘\(index + 1)")
-                    .accessibilityAddTraits(selection == item.0 ? .isSelected : [])
+        VStack(spacing: 4) {
+            ForEach(Array(items.enumerated()), id: \.element.0) { index, item in
+                let selected = selection == item.0
+                Button { selection = item.0 } label: {
+                    Label(item.0, systemImage: item.1)
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 17, weight: selected ? .semibold : .medium))
+                        .foregroundStyle(selected ? DashboardPalette.ink : DashboardPalette.secondaryInk)
+                        .frame(width: 40, height: 40)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(DashboardNavigationButtonStyle(selected: selected))
+                .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+                .help("\(item.0) · ⌘\(index + 1)")
+                .accessibilityLabel(item.0)
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom) {
-            Label("本机统计", systemImage: "lock.shield")
-                .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-        }
+        .padding(8)
+        .modifier(PeripheralGlass(cornerRadius: 22))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("用量导航")
     }
 }
 
 private struct DashboardNavigationButtonStyle: ButtonStyle {
     let selected: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var hovered = false
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        let shape = RoundedRectangle(cornerRadius: 12)
+        let highlighted = hovered || configuration.isPressed
+        return configuration.label
             .background {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(selected ? DashboardPalette.ink.opacity(0.09)
-                          : hovered || configuration.isPressed ? DashboardPalette.hover : .clear)
+                shape.fill(DashboardPalette.ink.opacity(selected ? 0.15 : highlighted ? 0.08 : 0))
+            }
+            .overlay {
+                if selected && contrast == .increased {
+                    shape.strokeBorder(DashboardPalette.ink, lineWidth: 1)
+                }
             }
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
             .onHover { hovered = $0 }

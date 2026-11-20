@@ -20,13 +20,11 @@ struct DashboardContent: View {
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("健康报告").font(.system(size: 26, weight: .semibold))
-                    Text("本机 Token 记录与账户额度")
-                        .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
-                    Text(snapshot.lastUpdated.map { "本机记录更新于 \($0.formatted(.relative(presentation: .named)))" } ?? "等待本机用量")
+                    Text(headerDetail)
                         .font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 Spacer()
@@ -38,10 +36,10 @@ struct DashboardContent: View {
             }
 
             DashboardPanel {
-                HStack(alignment: .top, spacing: 32) {
+                HStack(alignment: .top, spacing: 24) {
                     QuotaSummary(snapshot: snapshot, quotaMessage: quotaMessage)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 20) {
                         HStack(alignment: .top, spacing: 24) {
                             SummaryMetric(
                                 title: "本机今日 Token", value: UsageFormatters.tokens(snapshot.today.total),
@@ -82,6 +80,12 @@ struct DashboardContent: View {
             MetricsCard(snapshot: snapshot)
                 .padding(.horizontal, 4)
         }
+    }
+
+    private var headerDetail: String {
+        let scope = "本机 Token 与账户额度"
+        guard let lastUpdated = snapshot.lastUpdated else { return scope }
+        return "\(scope) · 最近记录 \(lastUpdated.formatted(.relative(presentation: .named)))"
     }
 
     private var recoveryPanel: some View {
