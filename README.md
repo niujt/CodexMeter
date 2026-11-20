@@ -12,7 +12,7 @@
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS 15+（Intel / Apple Silicon） | [1.0.22 安装包](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.22)，打开后将 `Codex Health.app` 拖入 Applications |
+| macOS 15+（Intel / Apple Silicon） | [下载 1.0.30 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.30/CodexMeter-1.0.30-macos.dmg)，打开后将 `Codex Health.app` 拖入 Applications。[版本说明](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.30) |
 | Windows x64 | [0.1.5 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-x64-setup.exe) |
 | Windows ARM64 | [0.1.5 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-arm64-setup.exe) |
 
@@ -20,7 +20,17 @@
 
 当前发布包使用本机开发签名以确保 WidgetKit 扩展能被 macOS 识别；macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
 
-截图更新于 2026-10-13，基于当前源码（macOS `35a2825`、Windows 0.1.2）。macOS 截取独立演示应用中的真实 SwiftUI 页面，Windows 截取前端演示界面；全部使用虚构数据，不包含真实项目、会话、账户记录或 Token 用量。截图展示源码版本，下载区仍指向已发布安装包。
+新版 macOS 操作演示使用独立演示应用和虚构数据。下方其他界面截图摄于 2026-10-13（macOS `35a2825`、Windows 0.1.2），也都使用演示数据。
+
+## macOS 演示
+
+今天的本机 Token 用量涨了？点击菜单栏里的同期对比，可以查看增量最大的项目、模型和小时，以及非缓存输入、缓存输入和输出分别变了多少。
+
+![从菜单栏用量突增提示打开项目同期对比（演示数据）](docs/screenshots/macos-usage-comparison.gif)
+
+同期对比使用今天和昨天各自从零点开始、截至同一已结束整点的本机会话统计。有昨天基线且净增量达到 100 万 Token、增幅达到 25% 时，菜单栏摘要会显示提示。「项目与用量 → 用量对比」也可直接打开同期对比。账户额度与本机 Token 各自独立统计。
+
+菜单栏和桌面小组件可显示 7 天额度预计能否撑到下次重置。估算使用近期额度变化或当前周期均速，采样失效后暂停预测。
 
 ## 健康报告
 
@@ -140,6 +150,7 @@ Windows 版沿用黑白灰 Dashboard，支持悬浮球和摘要卡片两种样�
 - 模型占比、有效轮次样本数与端到端平均轮次耗时
 - 菜单栏摘要与健康报告显示近 15 分钟平均回复速度（tokens/s）和有效轮次数
 - 按日 / 按小时趋势，可按模型或项目筛选
+- macOS 本机用量突增提示，可下钻到项目、模型、时段和用量构成
 - 低额度、预计提前耗尽、即将重置提醒；阈值和同日去重均可配置
 - Codex `PermissionRequest` 权限提醒：系统通知、提示音、菜单栏需要关注数量与最近请求列表
 - WidgetKit 桌面小组件：小号展示额度概览，中号展示三段用量、额度与上下文

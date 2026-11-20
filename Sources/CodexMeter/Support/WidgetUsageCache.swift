@@ -40,6 +40,51 @@ struct QuotaSampleState {
     }
 }
 
+enum QuotaRunway: Equatable {
+    case waiting, insufficient, depleted, estimated(hours: Double, beforeReset: Bool)
+
+    var summary: String {
+        switch self {
+        case .waiting: "等待新额度采样"
+        case .insufficient: "样本不足，暂不预测"
+        case .depleted: "本周期额度已用完"
+        case .estimated(_, true): "可能在重置前用完"
+        case .estimated(_, false): "预计可撑到重置"
+        }
+    }
+
+    var hours: Double? {
+        switch self {
+        case .estimated(let hours, _): hours
+        case .depleted: 0
+        default: nil
+        }
+    }
+
+    static func evaluate(sample: QuotaSampleState, windowMinutes: Int?, measuredVelocity: Double?) -> Self {
+        guard windowMinutes == 10_080, let used = sample.currentPercent, let reset = sample.resetsAt else {
+            return .waiting
+        }
+        if used == 100 { return .depleted }
+        guard let speed = velocity(usedPercent: used, windowMinutes: 10_080,
+                                   resetsAt: reset, measured: measuredVelocity, now: sample.now) else {
+            return .insufficient
+        }
+        let hours = (100 - used) / speed
+        guard hours.isFinite else { return .insufficient }
+        return .estimated(hours: hours, beforeReset: hours < reset.timeIntervalSince(sample.now) / 3_600)
+    }
+
+    static func velocity(usedPercent: Double, windowMinutes: Int, resetsAt: Date,
+                         measured: Double?, now: Date) -> Double? {
+        if let measured, measured.isFinite, measured > 0 { return measured }
+        guard resetsAt > now, usedPercent.isFinite, usedPercent > 0 else { return nil }
+        let elapsed = Double(windowMinutes) / 60 - resetsAt.timeIntervalSince(now) / 3_600
+        guard elapsed > 0 else { return nil }
+        return usedPercent / max(0.1, elapsed)
+    }
+}
+
 struct WidgetUsageData: Codable, Sendable, Equatable {
     let todayTokens: Int
     let weekTokens: Int
@@ -54,6 +99,7 @@ struct WidgetUsageData: Codable, Sendable, Equatable {
     var rateResetsAt: Date? = nil
     var sourceIncomplete: Bool? = nil
     var contextID: String? = nil
+    var quotaVelocity: Double? = nil
 
     func isStale(at now: Date) -> Bool {
         now.timeIntervalSince(updatedAt) > 30 * 60
@@ -69,6 +115,11 @@ struct WidgetUsageData: Codable, Sendable, Equatable {
 
     func quotaSample(at now: Date) -> QuotaSampleState {
         QuotaSampleState(percent: ratePercent, sampledAt: sampledAt, resetsAt: rateResetsAt, now: now)
+    }
+
+    func quotaRunway(at now: Date) -> QuotaRunway {
+        QuotaRunway.evaluate(sample: quotaSample(at: now), windowMinutes: rateWindowMinutes,
+                             measuredVelocity: quotaVelocity)
     }
 }
 
@@ -128,6 +179,7 @@ enum WidgetUsageCache {
             && lhs.rateResetsAt == rhs.rateResetsAt
             && lhs.sourceIncomplete == rhs.sourceIncomplete
             && lhs.contextID == rhs.contextID
+            && lhs.quotaVelocity == rhs.quotaVelocity
     }
 }
 

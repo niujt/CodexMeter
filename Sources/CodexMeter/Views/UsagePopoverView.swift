@@ -14,7 +14,11 @@ struct UsagePopoverView: View {
     @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
 
     var body: some View {
-        TimelineView(.explicit([Date.now] + store.snapshot.quotaDisplayDeadlines)) { _ in content }
+        let now = Date.now
+        let comparisonExpiry = store.snapshot.currentUsageComparison(at: now)
+            .flatMap { Calendar.current.date(byAdding: .day, value: 1, to: $0.today.start) }
+        let dates = [now] + store.snapshot.quotaDisplayDeadlines + [comparisonExpiry].compactMap { $0 }
+        TimelineView(.explicit(dates.sorted())) { _ in content }
     }
 
     private var content: some View {
@@ -249,6 +253,13 @@ private struct HealthMenuPopover: View {
                 sampledAt: store.snapshot.mainRateSampledAt, numberSize: 32,
                 secondaryInk: DashboardPalette.popoverSecondaryInk, showsResetTime: true, compactMetadata: true
             )
+            if store.snapshot.sevenDayRate?.windowMinutes == 10_080 {
+                let runway = store.snapshot.quotaRunway(measuredVelocity: store.measuredVelocity?.percentPerHour)
+                Label(runway.summary, systemImage: "clock")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(DashboardPalette.popoverSecondaryInk)
+                    .help("按近期额度消耗速度或当前周期的平均速度估算。")
+            }
             if let spark = store.snapshot.sparkRate {
                 QuotaSampleView(
                     title: "Spark 剩余额度", window: spark,
@@ -269,6 +280,29 @@ private struct HealthMenuPopover: View {
             .font(.callout)
             .help("本机今日记录 · 非缓存输入 \(UsageFormatters.tokens(store.snapshot.today.uncachedInput)) · 缓存输入 \(UsageFormatters.tokens(store.snapshot.today.cachedInputPortion)) · 输出 \(UsageFormatters.tokens(store.snapshot.today.output))。缓存仍消耗 Token，已包含在输入和合计中。")
 
+            if let report = store.snapshot.currentUsageComparison(), report.isSpike, let project = report.leadingProject {
+                Button {
+                    UsageComparisonPresentation.shared.show(report, in: store)
+                    openDashboard()
+                } label: {
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("本机用量较昨日同期 +\(UsageFormatters.tokens(report.totals.change))")
+                                .font(.callout.weight(.semibold))
+                            Text("\(project.name) +\(UsageFormatters.tokens(project.totals.change)) · 截至 \(report.cutoffLabel)")
+                                .font(.caption).foregroundStyle(DashboardPalette.popoverSecondaryInk)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 4)
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                    }
+                    .padding(8)
+                    .background(DashboardPalette.hover, in: RoundedRectangle(cornerRadius: 8))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("查看本机 Token 用量变化最大的项目、模型和时段")
+            }
             if permissionStore.newCount > 0 || showPermissionHistory {
                 FlatDivider()
                 DisclosureGroup(isExpanded: $permissionsExpanded) {

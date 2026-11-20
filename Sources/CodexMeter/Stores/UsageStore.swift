@@ -265,7 +265,8 @@ final class UsageStore {
             contextLimit: snapshot.contextWindow, ratePercent: snapshot.sevenDayRate?.usedPercent,
             rateWindowMinutes: snapshot.sevenDayRate?.windowMinutes, updatedAt: clock(),
             sampledAt: snapshot.mainRateSampledAt, rateResetsAt: snapshot.sevenDayRate?.resetsAt,
-            sourceIncomplete: !hasCompleteSnapshot || snapshot.readWarning != nil, contextID: context?.id)
+            sourceIncomplete: !hasCompleteSnapshot || snapshot.readWarning != nil, contextID: context?.id,
+            quotaVelocity: measuredVelocity?.percentPerHour)
         do {
             try WidgetUsageCache.publish(usage, forceReload: forceReload) {
                 if forceReload,

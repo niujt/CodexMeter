@@ -4,16 +4,10 @@ struct ForecastRiskView: View {
     let store: UsageStore
     @AppStorage(ForecastDurationUnit.preferenceKey) private var durationUnit = ForecastDurationUnit.hours.rawValue
     private var rate: RateWindow? { store.snapshot.currentSevenDayRate() }
-    private var remaining: Int { max(0, 100 - Int((rate?.usedPercent ?? 0).rounded())) }
-    private var resetHours: Double? { rate.map { max(0, $0.resetsAt.timeIntervalSinceNow / 3_600) } }
     private var hourlyRate: Double? {
         QuotaHealth.velocity(rate: rate, measured: store.measuredVelocity?.percentPerHour)
     }
-    private var remainingHours: Double? {
-        guard let hourlyRate, hourlyRate > 0 else { return nil }
-        return Double(remaining) / hourlyRate
-    }
-    private var willExhaust: Bool { (remainingHours ?? .infinity) < (resetHours ?? 0) }
+    private var runway: QuotaRunway { store.snapshot.quotaRunway(measuredVelocity: store.measuredVelocity?.percentPerHour) }
     private var health: QuotaHealth { .evaluate(rate: rate, percentPerHour: hourlyRate) }
     private var color: Color { health.color }
 
@@ -42,9 +36,9 @@ struct ForecastRiskView: View {
                                 }
                                 .pickerStyle(.segmented).labelsHidden().frame(width: 110)
                             }
-                            Text(remainingHours.map { UsageFormatters.duration(hours: $0, unit: ForecastDurationUnit(rawValue: durationUnit) ?? .hours) } ?? "样本不足")
+                            Text(runway.hours.map { UsageFormatters.duration(hours: $0, unit: ForecastDurationUnit(rawValue: durationUnit) ?? .hours) } ?? "—")
                                 .font(.system(size: 32, weight: .medium)).foregroundStyle(color)
-                            Text(remainingHours == nil ? "继续使用一段时间后会形成预测" : (willExhaust ? "可能在重置前耗尽" : "预计可支撑到重置"))
+                            Text(runway.summary)
                                 .foregroundStyle(DashboardPalette.ink)
                             Text("当前平均消耗 \(hourlyRate.map { String(format: "%.2f%% / 小时", $0) } ?? "—")").font(.caption).foregroundStyle(DashboardPalette.secondaryInk)
                         }

@@ -99,6 +99,7 @@ struct CodexMeterWidgetView: View {
             VStack(spacing: 2) {
                 resetTime(usage)
                 sampleTime(usage)
+                runwaySummary(usage)
                 if incomplete { sourceIncompleteNotice }
             }
             .font(.system(size: 10))
@@ -120,7 +121,7 @@ struct CodexMeterWidgetView: View {
                 }
                 .lineLimit(1).minimumScaleFactor(0.85)
 
-                quotaRing(usage, size: 72)
+                quotaRing(usage, size: status == .recorded || status == .low ? 66 : 72)
 
                 VStack(spacing: 2) {
                     if status == .waitingForCycle {
@@ -130,6 +131,7 @@ struct CodexMeterWidgetView: View {
                         if usage.recordedRatePercent(at: entry.date) != nil {
                             sampleTime(usage)
                         }
+                        runwaySummary(usage)
                     }
                 }
                 .font(.system(size: 10))
@@ -156,6 +158,19 @@ struct CodexMeterWidgetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    @ViewBuilder
+    private func runwaySummary(_ usage: WidgetUsageData) -> some View {
+        if !usage.isStale(at: entry.date) {
+            let runway = usage.quotaRunway(at: entry.date)
+            if runway != .waiting {
+                Text(runway.summary)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1).minimumScaleFactor(0.85)
+            }
+        }
     }
 
     private var emptyContent: some View {

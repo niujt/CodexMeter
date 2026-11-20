@@ -63,7 +63,24 @@ struct ModelUsage: Sendable, Equatable {
     let cacheHitRate: Double?
 }
 struct DailyUsage: Sendable, Equatable { let date: Date; let tokens: Int }
-struct UsageRecord: Sendable, Equatable { let date: Date; let project: String; let model: String; let tokens: Int }
+struct UsageRecord: Sendable, Equatable {
+    let date: Date
+    let project: String
+    let model: String
+    let usage: TokenUsage
+    var tokens: Int { usage.total }
+
+    init(date: Date, project: String, model: String, usage: TokenUsage) {
+        self.date = date
+        self.project = project
+        self.model = model
+        self.usage = usage
+    }
+
+    init(date: Date, project: String, model: String, tokens: Int) {
+        self.init(date: date, project: project, model: model, usage: TokenUsage(total: tokens))
+    }
+}
 /// Output throughput over a completed local turn, including thinking/tools/waiting.
 struct ReplySpeedSample: Sendable, Equatable, Codable {
     let completedAt: Date
@@ -123,6 +140,7 @@ struct UsageSnapshot: Sendable, Equatable {
     var panelModels: [ModelUsage] = []
     var dailyUsage: [DailyUsage] = []
     var recentRecords: [UsageRecord] = []
+    var usageComparison: UsageComparison?
     var replySpeedSamples: [ReplySpeedSample] = []
     var rateTimeline: [RateTimelineEvent] = []
     var today = TokenUsage()
@@ -161,6 +179,13 @@ struct UsageSnapshot: Sendable, Equatable {
             + QuotaSampleState.deadlines(sampledAt: primaryRateSampledAt, resetsAt: primaryRate?.resetsAt)
             + QuotaSampleState.deadlines(sampledAt: sparkRateSampledAt, resetsAt: sparkRate?.resetsAt)
     }
+
+    func quotaRunway(measuredVelocity: Double?, at now: Date = .now) -> QuotaRunway {
+        let rate = sevenDayRate
+        let sample = QuotaSampleState(percent: rate?.usedPercent, sampledAt: mainRateSampledAt,
+                                      resetsAt: rate?.resetsAt, now: now)
+        return QuotaRunway.evaluate(sample: sample, windowMinutes: rate?.windowMinutes, measuredVelocity: measuredVelocity)
+    }
 }
 
 /// Shared interpretation for the dashboard headline and forecast cards.
@@ -178,10 +203,9 @@ enum QuotaHealth: Equatable {
 
     static func velocity(rate: RateWindow?, measured: Double?, now: Date = .now) -> Double? {
         if let measured, measured.isFinite, measured > 0 { return measured }
-        guard let rate, rate.resetsAt > now, rate.usedPercent > 0 else { return nil }
-        let elapsed = Double(rate.windowMinutes) / 60 - rate.resetsAt.timeIntervalSince(now) / 3_600
-        guard elapsed > 0 else { return nil }
-        return rate.usedPercent / max(0.1, elapsed)
+        guard let rate else { return nil }
+        return QuotaRunway.velocity(usedPercent: rate.usedPercent, windowMinutes: rate.windowMinutes,
+                                    resetsAt: rate.resetsAt, measured: nil, now: now)
     }
 
     var title: String {

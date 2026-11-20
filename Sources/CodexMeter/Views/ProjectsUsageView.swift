@@ -37,6 +37,11 @@ struct ProjectsUsageView: View {
                         .font(.subheadline).foregroundStyle(DashboardPalette.secondaryInk)
                 }
                 Spacer()
+                if let report = store.snapshot.currentUsageComparison() {
+                    Button("用量对比", systemImage: "chart.bar.xaxis") {
+                        UsageComparisonPresentation.shared.show(report, in: store)
+                    }
+                }
                 Button("添加项目目录", systemImage: "folder.badge.plus") { pathStore.addFolder() }
                     .buttonStyle(.bordered)
                 Button { Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }

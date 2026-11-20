@@ -68,6 +68,8 @@
 		3141C1578432818E4531087B /* ForecastRiskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403F2024120E5BDBD50143D3 /* ForecastRiskView.swift */; };
 		702166D7CA40429566050A51 /* DashboardComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E1F92290E78D8BE4B708964 /* DashboardComponents.swift */; };
 		08E3BC9988E1498AB15D1696 /* DashboardContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50513A86B4D3B2CF549F68D1 /* DashboardContent.swift */; };
+		C0DECF00000000000000006A /* UsageComparison.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF00000000000000006B /* UsageComparison.swift */; };
+		C0DECF00000000000000006C /* UsageComparisonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECF00000000000000006D /* UsageComparisonView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -148,6 +150,8 @@
 		403F2024120E5BDBD50143D3 /* ForecastRiskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ForecastRiskView.swift; path = Views/ForecastRiskView.swift; sourceTree = "<group>"; };
 		9E1F92290E78D8BE4B708964 /* DashboardComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DashboardComponents.swift; path = Views/DashboardComponents.swift; sourceTree = "<group>"; };
 		50513A86B4D3B2CF549F68D1 /* DashboardContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DashboardContent.swift; path = Views/DashboardContent.swift; sourceTree = "<group>"; };
+		C0DECF00000000000000006B /* UsageComparison.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UsageComparison.swift; path = Support/UsageComparison.swift; sourceTree = "<group>"; };
+		C0DECF00000000000000006D /* UsageComparisonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UsageComparisonView.swift; path = Views/UsageComparisonView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -253,6 +257,8 @@
 				23669D91CEE235BCCEAD52C4 /* WidgetUsageCache.swift */,
 				F5CFCBAD6DC3C71D1A3144DA /* AnalyticsDashboardView.swift */,
 				50513A86B4D3B2CF549F68D1 /* DashboardContent.swift */,
+				C0DECF00000000000000006B /* UsageComparison.swift */,
+				C0DECF00000000000000006D /* UsageComparisonView.swift */,
 				C0DECF000000000000000061 /* UsageTrendChart.swift */,
 				C0DECF000000000000000052 /* DashboardViewState.swift */,
 				C0DECF000000000000000053 /* TrendSeries.swift */,
@@ -428,6 +434,8 @@
 				A6D17D0CE64A7642254FB7EC /* WidgetUsageCache.swift in Sources */,
 				7AE1469C2B21BA2C8B7CC90D /* AnalyticsDashboardView.swift in Sources */,
 				08E3BC9988E1498AB15D1696 /* DashboardContent.swift in Sources */,
+				C0DECF00000000000000006A /* UsageComparison.swift in Sources */,
+				C0DECF00000000000000006C /* UsageComparisonView.swift in Sources */,
 				C0DECF000000000000000060 /* UsageTrendChart.swift in Sources */,
 				C0DECF000000000000000050 /* DashboardViewState.swift in Sources */,
 				C0DECF000000000000000051 /* TrendSeries.swift in Sources */,

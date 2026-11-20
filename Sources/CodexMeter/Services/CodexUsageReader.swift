@@ -399,7 +399,7 @@ actor CodexUsageReader {
                     monthTokens += usage.total
                     monthDate = max(monthDate ?? .distantPast, bucket.lastActive)
                     if usage.total > 0 {
-                        snapshot.recentRecords.append(UsageRecord(date: key.hour, project: projectPath, model: key.model, tokens: usage.total))
+                        snapshot.recentRecords.append(UsageRecord(date: key.hour, project: projectPath, model: key.model, usage: usage))
                     }
                 }
                 if let monthInterval, monthInterval.contains(key.hour) {
@@ -480,7 +480,10 @@ actor CodexUsageReader {
         }
 
         finalizedSnapshotCount += 1
-        let result = finalizedSnapshot()
+        var result = finalizedSnapshot()
+        if result.readWarning == nil {
+            result.usageComparison = UsageComparison.make(records: result.recentRecords, now: now, calendar: calendar)
+        }
         await onActivity?(parsedFileCount, reusedFileCount)
         await onFileProgress?(files.count, files.count)
         await onProgress?(result, files.count, files.count)

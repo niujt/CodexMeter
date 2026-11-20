@@ -8,6 +8,7 @@ struct AnalyticsDashboardView: View {
     @State private var selectedSection: String? = "健康报告"
     @State private var projectPathStore = ProjectPathStore()
     @State private var viewState = DashboardViewState()
+    @Bindable private var comparison = UsageComparisonPresentation.shared
     @AppStorage(AppAppearance.preferenceKey) private var appearance = AppAppearance.system.rawValue
 
     private var appearanceMode: AppAppearance {
@@ -36,6 +37,16 @@ struct AnalyticsDashboardView: View {
         .onChange(of: appearance) { _, _ in AppIconStyle.applyDockIcon() }
         .onChange(of: store.context?.id, initial: true) { _, contextID in
             viewState.synchronizeHistoryContext(contextID)
+        }
+        .onChange(of: store.context?.id) { _, _ in comparison.request = nil }
+        .onDisappear { comparison.request = nil }
+        .sheet(item: $comparison.request) { request in
+            if request.contextID == store.context?.id {
+                UsageComparisonView(report: request.report)
+            } else {
+                ContentUnavailableView("数据来源已变更", systemImage: "folder")
+                    .padding(30)
+            }
         }
         .onChange(of: store.snapshot.recentRecords, initial: true) { _, records in
             viewState.reconcileHistoryFilters(with: records)
