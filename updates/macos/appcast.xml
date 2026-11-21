@@ -3,6 +3,16 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <item>
+      <title>Codex Health 1.0.31</title>
+      <sparkle:version>41</sparkle:version>
+      <sparkle:shortVersionString>1.0.31</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
+      <pubDate>Sat, 21 Nov 2026 09:32:05 +0000</pubDate>
+      <description>- 「项目与用量」按模型显示各项目的 Token 占比，随今天、近 7 天和近 30 天切换。
+- 会话中途切换模型时，各模型按实际记录的 Token 增量计入占比。</description>
+      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.31/CodexMeter-1.0.31-macos.dmg" length="11239167" type="application/octet-stream" sparkle:edSignature="23vrTnoQWPgpBxaxGxIYw3pl/b4HWAWpIuaz1feGTSb88ALeEYvR2q+MzQJ/+ptzj5Ygjyk0i5urEiZoYxW+BQ=="></enclosure>
+    </item>
+    <item>
       <title>Codex Health 1.0.30</title>
       <sparkle:version>40</sparkle:version>
       <sparkle:shortVersionString>1.0.30</sparkle:shortVersionString>
@@ -13,22 +23,12 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 - README 更新 macOS 安装包链接和用量对比演示。</description>
       <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.30/CodexMeter-1.0.30-macos.dmg" length="11212834" type="application/octet-stream" sparkle:edSignature="emKH9ZpXaiPBGUkQxJmYFVm8XiwxwDVBEOytfRJQWmGKaWKKZQpOT1qBybHZE9ZnoGcQgn60awgB3/QaeIijCQ=="></enclosure>
     </item>
-    <item>
-      <title>Codex Health 1.0.29</title>
-      <sparkle:version>39</sparkle:version>
-      <sparkle:shortVersionString>1.0.29</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0.0</sparkle:minimumSystemVersion>
-      <pubDate>Fri, 20 Nov 2026 14:26:02 +0000</pubDate>
-      <description>- 中号桌面小组件把采样和重置时间集中到额度环下方。旧采样、额度偏低和等待新周期的提示随额度一起显示。
-- 上下文进度条新增占用百分比，并列显示已用 Token 和上限。</description>
-      <enclosure url="https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.29/CodexMeter-1.0.29-macos.dmg" length="11055489" type="application/octet-stream" sparkle:edSignature="bqfB3a+j3Dn3BeQQjb6mbvG/sUBVc6Gz8kfMywxwAbS4UM1zEEJ6BwJdRMdw4363lml2rTfOzEJVt5BSLC3cBw=="></enclosure>
-    </item>
     <title>Codex Health macOS</title>
     <link>https://github.com/niujt/CodexMeter</link>
     <description>Codex Health signed macOS updates.</description>
     <language>zh-cn</language>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: cvl3D9HgIuVm4ISj/4Rn5wntJtCzpz+3wJRQfVooT4Liny5g9oGqtUB2ah46SXbvibeWus/0xQE6nFf/mDDsCA==
-length: 2406
+edSignature: GJ9Ml9+ZbL6ig7wUi5qeLhqOFmxSjzC0Idt+mfaLI5xOXVkDJ/vsYn46pTzUz/yM7e1/afIIveu68YvnDaBYCg==
+length: 2372
 -->
