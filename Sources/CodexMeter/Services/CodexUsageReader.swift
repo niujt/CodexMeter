@@ -378,25 +378,24 @@ actor CodexUsageReader {
                 $0.completedAt > now.addingTimeInterval(-RecentReplySpeed.windowSeconds) && $0.completedAt <= now
             }
             let projectPath = summary.project
-            var weekTokens = 0, todayTokens = 0, monthTokens = 0
             var weekDate: Date?, todayDate: Date?, monthDate: Date?
             for (key, bucket) in summary.buckets where key.hour <= now {
                 aggregatedBucketCount += 1
                 let usage = bucket.usage
                 if key.hour >= sevenDaysAgo {
-                    weekTokens += usage.total
+                    projects[projectPath, default: .empty].add(tokens: usage.total, model: key.model)
                     weekDate = max(weekDate ?? .distantPast, bucket.lastActive)
                     daily[calendar.startOfDay(for: key.hour), default: 0] += usage.total
                     models[key.model, default: .empty].add(bucket)
                     snapshot.lastSevenDays = snapshot.lastSevenDays + usage
                 }
                 if key.hour >= startOfToday {
-                    todayTokens += usage.total
+                    todayProjects[projectPath, default: .empty].add(tokens: usage.total, model: key.model)
                     todayDate = max(todayDate ?? .distantPast, bucket.lastActive)
                     snapshot.today = snapshot.today + usage
                 }
                 if key.hour >= thirtyDaysAgo {
-                    monthTokens += usage.total
+                    monthProjects[projectPath, default: .empty].add(tokens: usage.total, model: key.model)
                     monthDate = max(monthDate ?? .distantPast, bucket.lastActive)
                     if usage.total > 0 {
                         snapshot.recentRecords.append(UsageRecord(date: key.hour, project: projectPath, model: key.model, usage: usage))
@@ -406,9 +405,9 @@ actor CodexUsageReader {
                     snapshot.thisMonth = snapshot.thisMonth + usage
                 }
             }
-            if let weekDate { projects[projectPath, default: .empty].add(tokens: weekTokens, date: weekDate) }
-            if let todayDate { todayProjects[projectPath, default: .empty].add(tokens: todayTokens, date: todayDate) }
-            if let monthDate { monthProjects[projectPath, default: .empty].add(tokens: monthTokens, date: monthDate) }
+            if let weekDate { projects[projectPath, default: .empty].addSession(date: weekDate) }
+            if let todayDate { todayProjects[projectPath, default: .empty].addSession(date: todayDate) }
+            if let monthDate { monthProjects[projectPath, default: .empty].addSession(date: monthDate) }
             if let event = summary.latestEvent, event.timestamp > latestContextTimestamp {
                 latestContextTimestamp = event.timestamp
                 snapshot.currentContextUsed = event.currentContextUsed
@@ -504,7 +503,10 @@ actor CodexUsageReader {
     }
 
     private func ranked(_ values: [String: ProjectAccumulator]) -> [ProjectUsage] {
-        values.map { ProjectUsage(path: $0.key, tokens: $0.value.tokens, sessions: $0.value.sessions, lastActive: $0.value.lastActive) }
+        values.map { path, project in
+            ProjectUsage(path: path, tokens: project.tokens, sessions: project.sessions,
+                         lastActive: project.lastActive, modelTokens: project.modelTokens)
+        }
             .sorted {
                 if $0.tokens != $1.tokens { return $0.tokens > $1.tokens }
                 if $0.lastActive != $1.lastActive { return ($0.lastActive ?? .distantPast) > ($1.lastActive ?? .distantPast) }
@@ -892,11 +894,16 @@ private struct ProjectAccumulator {
     var tokens = 0
     var sessions = 0
     var lastActive: Date?
+    var modelTokens: [String: Int] = [:]
 
     static let empty = Self()
 
-    mutating func add(tokens: Int, date: Date) {
+    mutating func add(tokens: Int, model: String) {
         self.tokens += tokens
+        if tokens > 0 { modelTokens[model, default: 0] += tokens }
+    }
+
+    mutating func addSession(date: Date) {
         sessions += 1
         if lastActive == nil || date > lastActive! { lastActive = date }
     }

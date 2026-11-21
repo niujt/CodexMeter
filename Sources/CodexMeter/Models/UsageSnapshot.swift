@@ -44,13 +44,15 @@ struct ProjectUsage: Sendable, Equatable {
     let tokens: Int
     let sessions: Int
     let lastActive: Date?
+    let modelTokens: [String: Int]
 
-    init(path: String, tokens: Int, sessions: Int = 0, lastActive: Date? = nil) {
+    init(path: String, tokens: Int, sessions: Int = 0, lastActive: Date? = nil, modelTokens: [String: Int] = [:]) {
         self.path = path
         self.name = path.isEmpty ? "未归属路径" : URL(fileURLWithPath: path).lastPathComponent
         self.tokens = tokens
         self.sessions = sessions
         self.lastActive = lastActive
+        self.modelTokens = modelTokens
     }
 }
 struct ModelUsage: Sendable, Equatable {

@@ -420,19 +420,23 @@ struct UsageOptimizationTests {
         let root = try fixture()
         let lines = [
             "{\"type\":\"session_meta\",\"payload\":{\"cwd\": \"/work/中文项目\"}}",
-            model("model-a"), token("2026-07-31T23:00:00Z", total: 100_000),
-            model("model-b"), token("2026-08-01T01:00:00Z", total: 110_000)
+            model("model-c"), token("2026-07-25T01:00:00Z", total: 30_000),
+            model("model-a"), token("2026-07-31T23:00:00Z", total: 130_000),
+            model("model-b"), token("2026-08-01T01:00:00Z", total: 140_000)
         ]
         try lines.joined(separator: "\n").write(to: root.appendingPathComponent("session.jsonl"), atomically: true, encoding: .utf8)
         let snapshot = try await CodexUsageReader(calendar: calendar).load(now: date("2026-08-01T12:00:00Z"), codexHome: root)
         #expect(snapshot.today.total == 10_000)
         #expect(snapshot.thisMonth.total == 10_000)
         #expect(snapshot.lastSevenDays.total == 110_000)
-        #expect(snapshot.allTime.total == 110_000)
+        #expect(snapshot.allTime.total == 140_000)
         #expect(snapshot.dailyUsage.map(\.tokens) == [100_000, 10_000])
         #expect(snapshot.topModels.first(where: { $0.name == "model-a" })?.tokens == 100_000)
         #expect(snapshot.topModels.first(where: { $0.name == "model-b" })?.tokens == 10_000)
         #expect(snapshot.todayProjects.first?.path == "/work/中文项目")
+        #expect(snapshot.todayProjects.first?.modelTokens == ["model-b": 10_000])
+        #expect(snapshot.allProjects.first?.modelTokens == ["model-a": 100_000, "model-b": 10_000])
+        #expect(snapshot.monthProjects.first?.modelTokens == ["model-a": 100_000, "model-b": 10_000, "model-c": 30_000])
         #expect(snapshot.allProjects.first?.sessions == 1)
     }
 

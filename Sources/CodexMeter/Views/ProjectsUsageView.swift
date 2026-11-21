@@ -115,7 +115,20 @@ private struct ProjectUsageRow: View {
     let showDetails: () -> Void
     let remove: () -> Void
 
+    private var modelShares: String {
+        guard project.tokens > 0 else { return "" }
+        return project.modelTokens.sorted { first, second in
+            if first.value != second.value { return first.value > second.value }
+            return first.key < second.key
+        }.map { model, tokens in
+            let share = Double(tokens) / Double(project.tokens)
+            let percent = share < 0.001 ? "<0.1%" : UsageFormatters.percentage(share)
+            return "\(model) \(percent)"
+        }.joined(separator: " · ")
+    }
+
     var body: some View {
+        let modelShares = modelShares
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 14) {
                 Button(action: showDetails) {
@@ -147,6 +160,15 @@ private struct ProjectUsageRow: View {
                         .buttonStyle(.plain).help("移除关注目录")
                         .accessibilityLabel("移除关注目录 \(project.name)")
                 }
+            }
+            if !modelShares.isEmpty {
+                Text(modelShares)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(DashboardPalette.secondaryInk)
+                    .lineLimit(2)
+                    .padding(.leading, 42)
+                    .help("模型 Token 占比\n\(modelShares)")
+                    .accessibilityLabel("模型 Token 占比，\(modelShares)")
             }
             ProgressView(value: Double(project.tokens), total: Double(max(1, total)))
                 .tint(DashboardPalette.progress)
