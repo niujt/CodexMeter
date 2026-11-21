@@ -5,7 +5,7 @@ struct ProjectsUsageView: View {
     let store: UsageStore
     let pathStore: ProjectPathStore
     @Bindable var viewState: DashboardViewState
-    @State private var selectedPath: String?
+    @State private var selection: ProjectSelection?
 
     init(store: UsageStore, pathStore: ProjectPathStore, viewState: DashboardViewState? = nil) {
         self.store = store
@@ -78,7 +78,8 @@ struct ProjectsUsageView: View {
                             total: totalTokens,
                             showFullPath: viewState.showsFullProjectPaths,
                             isFollowed: pathStore.followedPaths.contains(project.path),
-                            showDetails: { selectedPath = project.path },
+                            showDetails: { selection = ProjectSelection(path: project.path) },
+                            showModel: { selection = ProjectSelection(path: project.path, model: $0) },
                             remove: { pathStore.remove(project.path) }
                         )
                     }
@@ -89,22 +90,30 @@ struct ProjectsUsageView: View {
         .tint(DashboardPalette.ink)
         .progressViewStyle(FlatProgressStyle())
         .frame(maxWidth: 1_100, alignment: .leading)
-        .sheet(item: Binding(
-            get: { selectedPath.map(ProjectSelection.init) },
-            set: { selectedPath = $0?.path }
-        )) { selection in
-            ProjectDetailSheet(
-                project: projects.first { $0.path == selection.path } ?? ProjectUsage(path: selection.path, tokens: 0),
-                range: viewState.projectRange,
-                records: viewState.projectRange.records(store.snapshot.recentRecords, projectPath: selection.path)
-            )
+        .sheet(item: $selection) { selection in
+            let project = projects.first { $0.path == selection.path } ?? ProjectUsage(path: selection.path, tokens: 0)
+            if let model = selection.model {
+                ProjectModelSessionsSheet(
+                    project: project,
+                    model: model,
+                    range: viewState.projectRange,
+                    codexHome: store.context?.source.home
+                )
+            } else {
+                ProjectDetailSheet(
+                    project: project,
+                    range: viewState.projectRange,
+                    records: viewState.projectRange.records(store.snapshot.recentRecords, projectPath: selection.path)
+                )
+            }
         }
     }
 }
 
-private struct ProjectSelection: Identifiable {
+private struct ProjectSelection: Identifiable, Hashable {
     let path: String
-    var id: String { path }
+    var model: String? = nil
+    var id: Self { self }
 }
 
 private struct ProjectUsageRow: View {
@@ -113,18 +122,19 @@ private struct ProjectUsageRow: View {
     let showFullPath: Bool
     let isFollowed: Bool
     let showDetails: () -> Void
+    let showModel: (String) -> Void
     let remove: () -> Void
 
-    private var modelShares: String {
-        guard project.tokens > 0 else { return "" }
-        return project.modelTokens.sorted { first, second in
+    private var modelShares: [(key: String, value: Int)] {
+        project.modelTokens.sorted { first, second in
             if first.value != second.value { return first.value > second.value }
             return first.key < second.key
-        }.map { model, tokens in
-            let share = Double(tokens) / Double(project.tokens)
-            let percent = share < 0.001 ? "<0.1%" : UsageFormatters.percentage(share)
-            return "\(model) \(percent)"
-        }.joined(separator: " · ")
+        }
+    }
+
+    private func percentage(_ tokens: Int) -> String {
+        let share = Double(tokens) / Double(max(1, project.tokens))
+        return share < 0.001 ? "<0.1%" : UsageFormatters.percentage(share)
     }
 
     var body: some View {
@@ -162,19 +172,114 @@ private struct ProjectUsageRow: View {
                 }
             }
             if !modelShares.isEmpty {
-                Text(modelShares)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(DashboardPalette.secondaryInk)
-                    .lineLimit(2)
-                    .padding(.leading, 42)
-                    .help("模型 Token 占比\n\(modelShares)")
-                    .accessibilityLabel("模型 Token 占比，\(modelShares)")
+                ScrollView(.horizontal) {
+                    HStack(spacing: 6) {
+                        ForEach(modelShares, id: \.key) { model, tokens in
+                            let share = percentage(tokens)
+                            Button { showModel(model) } label: {
+                                Text("\(model) \(share)")
+                                    .font(.caption.monospacedDigit())
+                            }
+                            .help("查看 \(model) 的会话用量")
+                            .accessibilityLabel("查看 \(model) 的会话用量")
+                            .accessibilityValue(share)
+                        }
+                    }
+                    .padding(2)
+                }
+                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .padding(.leading, 40)
             }
             ProgressView(value: Double(project.tokens), total: Double(max(1, total)))
                 .tint(DashboardPalette.progress)
         }
         .padding(.vertical, 18)
         .overlay(alignment: .bottom) { FlatDivider() }
+    }
+}
+
+private struct ProjectModelSessionsSheet: View {
+    let project: ProjectUsage
+    let model: String
+    let range: ProjectRange
+    let codexHome: URL?
+    @Environment(\.dismiss) private var dismiss
+    @State private var titles: [String: String] = [:]
+
+    private var sessions: [ProjectModelSessionUsage] { project.modelSessions[model, default: []] }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model).font(.title2.bold()).textSelection(.enabled)
+                    Text("\(project.name) · \(range.title)")
+                        .foregroundStyle(DashboardPalette.secondaryInk)
+                }
+                Spacer()
+                Button("完成") { dismiss() }.keyboardShortcut(.cancelAction)
+            }
+            HStack(spacing: 18) {
+                Label("\(project.modelTokens[model, default: 0].formatted()) Token", systemImage: "number")
+                    .monospacedDigit()
+                Label("\(sessions.count) 个会话", systemImage: "bubble.left.and.bubble.right")
+            }
+            .font(.callout.weight(.medium))
+            FlatDivider()
+            if sessions.isEmpty {
+                ContentUnavailableView("所选范围内暂无会话用量", systemImage: "clock.badge.questionmark")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(sessions) { session in
+                    HStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(titles[session.id] ?? session.label)
+                                    .font(.callout.weight(.medium))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                if session.status == .deleted {
+                                    Text("（会话已删除）")
+                                        .font(.caption)
+                                        .foregroundStyle(DashboardPalette.secondaryInk)
+                                        .fixedSize()
+                                } else if session.status == .archived {
+                                    Text("已归档")
+                                        .font(.caption)
+                                        .foregroundStyle(DashboardPalette.secondaryInk)
+                                        .fixedSize()
+                                }
+                            }
+                            if titles[session.id] != nil {
+                                Text(session.label)
+                                    .lineLimit(1)
+                                    .font(.caption)
+                                    .foregroundStyle(DashboardPalette.secondaryInk)
+                            }
+                        }
+                        .textSelection(.enabled)
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("\(session.tokens.formatted()) Token").monospacedDigit()
+                            Text(session.lastActive.formatted(.dateTime.month().day().hour().minute()))
+                                .font(.caption)
+                                .foregroundStyle(DashboardPalette.secondaryInk)
+                        }
+                        .fixedSize()
+                    }
+                    .padding(.vertical, 5)
+                }
+            }
+        }
+        .padding(22)
+        .frame(width: 650, height: 460)
+        .task(id: [codexHome?.path ?? ""] + sessions.map(\.id)) {
+            titles = [:]
+            let loaded = await CodexUsageReader.sessionTitles(for: Set(sessions.map(\.id)), codexHome: codexHome)
+            if !Task.isCancelled { titles = loaded }
+        }
     }
 }
 

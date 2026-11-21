@@ -97,6 +97,29 @@ actor CodexUsageReader {
             .appendingPathComponent("CodexHealth/usage-summaries-v1", isDirectory: true)
     }
 
+    static func sessionTitles(for ids: Set<String>, codexHome: URL?) async -> [String: String] {
+        struct Entry: Decodable {
+            let id: String
+            let thread_name: String
+        }
+
+        guard !ids.isEmpty, let url = codexHome?.appendingPathComponent("session_index.jsonl"),
+              let attributes = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
+              attributes.isRegularFile == true, attributes.isSymbolicLink != true else { return [:] }
+        var titles: [String: String] = [:]
+        let decoder = JSONDecoder()
+        do {
+            for try await line in url.lines {
+                if Task.isCancelled { return [:] }
+                guard let entry = try? decoder.decode(Entry.self, from: Data(line.utf8)),
+                      ids.contains(entry.id.lowercased()) else { continue }
+                let title = entry.thread_name.trimmingCharacters(in: .whitespacesAndNewlines)
+                titles[entry.id.lowercased()] = title.isEmpty ? nil : title
+            }
+        } catch {}
+        return titles
+    }
+
     private func cacheURL(for root: String) -> URL? {
         let key = SHA256.hash(data: Data(root.utf8)).map { String(format: "%02x", $0) }.joined()
         return cacheDirectory?.appendingPathComponent(key + ".plist")
@@ -205,8 +228,38 @@ actor CodexUsageReader {
         if force { directoryCache = [:] }
         let files = try jsonlFiles(in: root)
         let paths = Set(files.map(\.path))
-        var cacheChanged = fileCache.keys.contains { !paths.contains($0) }
-        fileCache = fileCache.filter { paths.contains($0.key) }
+        let startOfToday = calendar.startOfDay(for: now)
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -6, to: startOfToday) ?? startOfToday
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday
+        // Directory enumeration can return the physical path (such as /private/var)
+        // even when the configured root uses its system alias.
+        var rootPaths = [root.path]
+        if let physicalPath = realpath(root.path, nil) {
+            rootPaths.append(String(cString: physicalPath))
+            free(physicalPath)
+        }
+        let rootIsArchive = root.pathComponents.contains("archived_sessions")
+        let archivePrefixes = rootPaths.map { path in
+            let rootPrefix = path.hasSuffix("/") ? path : path + "/"
+            return rootIsArchive ? rootPrefix : rootPrefix + "archived_sessions/"
+        }
+        func isArchived(_ path: String) -> Bool {
+            archivePrefixes.contains { path.hasPrefix($0) }
+        }
+
+        var cacheChanged = false
+        var missingArchives: [String: CachedFile] = [:]
+        for path in Set(fileCache.keys).subtracting(paths) {
+            guard let cached = fileCache[path] else { continue }
+            let summary = cached.fragmentSummary ?? cached.summary
+            // Keep recent project usage from previously read archives, including across app restarts.
+            if isArchived(path), summary.buckets.contains(where: { $0.key.hour >= thirtyDaysAgo && $0.value.usage.total > 0 }) {
+                missingArchives[path] = cached
+            } else {
+                fileCache[path] = nil
+                cacheChanged = true
+            }
+        }
         if cacheChanged { cacheManifestChanged = true }
         parsedFileCount = 0
         reusedFileCount = 0
@@ -238,7 +291,6 @@ actor CodexUsageReader {
         }
         // Any incomplete refresh must not leave a reusable aggregate behind.
         aggregateSnapshot = nil
-        let startOfToday = calendar.startOfDay(for: now)
 
         var snapshot = UsageSnapshot.empty
         snapshot.dataPath = root.path
@@ -254,9 +306,41 @@ actor CodexUsageReader {
         var monthProjects: [String: ProjectAccumulator] = [:]
         var models: [String: ModelAccumulator] = [:]
         var daily: [Date: Int] = [:]
-        let sevenDaysAgo = calendar.date(byAdding: .day, value: -6, to: startOfToday) ?? startOfToday
-        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday
         let monthInterval = calendar.dateInterval(of: .month, for: now)
+        var presentSessionIDs = Set<String>()
+
+        func accumulateUsage(_ summary: SessionSummary, session: ProjectSessionIdentity,
+                             status: ProjectModelSessionUsage.Status) {
+            let projectPath = summary.project
+            var week = ProjectSessionRange(), today = ProjectSessionRange(), month = ProjectSessionRange()
+            for (key, bucket) in summary.buckets where key.hour <= now {
+                aggregatedBucketCount += 1
+                let usage = bucket.usage
+                if key.hour >= sevenDaysAgo {
+                    week.add(bucket, model: key.model)
+                    daily[calendar.startOfDay(for: key.hour), default: 0] += usage.total
+                    models[key.model, default: .empty].add(bucket)
+                    snapshot.lastSevenDays = snapshot.lastSevenDays + usage
+                }
+                if key.hour >= startOfToday {
+                    today.add(bucket, model: key.model)
+                    snapshot.today = snapshot.today + usage
+                }
+                if key.hour >= thirtyDaysAgo {
+                    month.add(bucket, model: key.model)
+                    if status == .deleted { snapshot.allTime = snapshot.allTime + usage }
+                    if usage.total > 0 {
+                        snapshot.recentRecords.append(UsageRecord(date: key.hour, project: projectPath, model: key.model, usage: usage))
+                    }
+                }
+                if let monthInterval, monthInterval.contains(key.hour), status != .deleted || key.hour >= thirtyDaysAgo {
+                    snapshot.thisMonth = snapshot.thisMonth + usage
+                }
+            }
+            if week.lastActive != nil { projects[projectPath, default: .empty].add(week, session: session, status: status) }
+            if today.lastActive != nil { todayProjects[projectPath, default: .empty].add(today, session: session, status: status) }
+            if month.lastActive != nil { monthProjects[projectPath, default: .empty].add(month, session: session, status: status) }
+        }
 
         var failedFiles = 0
         var malformedLines = 0
@@ -366,10 +450,15 @@ actor CodexUsageReader {
                 throw CancellationError()
             } catch {
                 failedFiles += 1
-                guard let cached = fileCache[file.path] else { continue }
+                guard let cached = fileCache[file.path] else {
+                    presentSessionIDs.insert(ProjectSessionIdentity(path: file.path, sessionID: nil).id)
+                    continue
+                }
                 summary = displayedSummary(cached)
                 reusedFileCount += 1
             }
+            let session = ProjectSessionIdentity(path: file.path, sessionID: summary.sessionID)
+            presentSessionIDs.insert(session.id)
             malformedLines += summary.malformedLines
             guard summary.latestEvent != nil || summary.latestQuotaEvent != nil else { continue }
             snapshot.sessionCount += 1
@@ -377,37 +466,7 @@ actor CodexUsageReader {
             snapshot.replySpeedSamples += summary.replySpeedSamples.filter {
                 $0.completedAt > now.addingTimeInterval(-RecentReplySpeed.windowSeconds) && $0.completedAt <= now
             }
-            let projectPath = summary.project
-            var weekDate: Date?, todayDate: Date?, monthDate: Date?
-            for (key, bucket) in summary.buckets where key.hour <= now {
-                aggregatedBucketCount += 1
-                let usage = bucket.usage
-                if key.hour >= sevenDaysAgo {
-                    projects[projectPath, default: .empty].add(tokens: usage.total, model: key.model)
-                    weekDate = max(weekDate ?? .distantPast, bucket.lastActive)
-                    daily[calendar.startOfDay(for: key.hour), default: 0] += usage.total
-                    models[key.model, default: .empty].add(bucket)
-                    snapshot.lastSevenDays = snapshot.lastSevenDays + usage
-                }
-                if key.hour >= startOfToday {
-                    todayProjects[projectPath, default: .empty].add(tokens: usage.total, model: key.model)
-                    todayDate = max(todayDate ?? .distantPast, bucket.lastActive)
-                    snapshot.today = snapshot.today + usage
-                }
-                if key.hour >= thirtyDaysAgo {
-                    monthProjects[projectPath, default: .empty].add(tokens: usage.total, model: key.model)
-                    monthDate = max(monthDate ?? .distantPast, bucket.lastActive)
-                    if usage.total > 0 {
-                        snapshot.recentRecords.append(UsageRecord(date: key.hour, project: projectPath, model: key.model, usage: usage))
-                    }
-                }
-                if let monthInterval, monthInterval.contains(key.hour) {
-                    snapshot.thisMonth = snapshot.thisMonth + usage
-                }
-            }
-            if let weekDate { projects[projectPath, default: .empty].addSession(date: weekDate) }
-            if let todayDate { todayProjects[projectPath, default: .empty].addSession(date: todayDate) }
-            if let monthDate { monthProjects[projectPath, default: .empty].addSession(date: monthDate) }
+            accumulateUsage(summary, session: session, status: isArchived(file.path) ? .archived : .active)
             if let event = summary.latestEvent, event.timestamp > latestContextTimestamp {
                 latestContextTimestamp = event.timestamp
                 snapshot.currentContextUsed = event.currentContextUsed
@@ -474,6 +533,18 @@ actor CodexUsageReader {
         if !files.isEmpty, failedFiles == files.count {
             throw UsageReadError.unavailable("所有会话文件均读取失败，已保留上次成功结果。")
         }
+        for (path, cached) in missingArchives {
+            let summary = cached.fragmentSummary ?? cached.summary
+            let session = ProjectSessionIdentity(path: path, sessionID: summary.sessionID)
+            if presentSessionIDs.contains(session.id) {
+                // A restored or moved rollout still contributes through its current path.
+                fileCache[path] = nil
+                cacheManifestChanged = true
+                cacheChanged = true
+            } else {
+                accumulateUsage(summary, session: session, status: .deleted)
+            }
+        }
         if failedFiles > 0 || malformedLines > 0 {
             snapshot.readWarning = "部分数据不完整：\(failedFiles) 个文件读取失败，\(malformedLines) 条记录无法解析；读取失败的文件优先沿用缓存。"
         }
@@ -494,7 +565,7 @@ actor CodexUsageReader {
             aggregateFingerprints = scannedFingerprints
             aggregateDate = now
             aggregateQuotaSince = quotaSince
-            nextFutureCompletion = fileCache.values.flatMap {
+            nextFutureCompletion = files.compactMap { fileCache[$0.path] }.flatMap {
                 let summary = displayedSummary($0)
                 return summary.replySpeedSamples.map(\.completedAt) + summary.quotaSamples.values.map { $0.event.timestamp } + summary.quotaUsage.keys.map(\.date)
             }.filter { $0 > now }.min()
@@ -505,7 +576,13 @@ actor CodexUsageReader {
     private func ranked(_ values: [String: ProjectAccumulator]) -> [ProjectUsage] {
         values.map { path, project in
             ProjectUsage(path: path, tokens: project.tokens, sessions: project.sessions,
-                         lastActive: project.lastActive, modelTokens: project.modelTokens)
+                         lastActive: project.lastActive, modelSessions: project.modelSessions.mapValues {
+                            $0.values.sorted {
+                                if $0.tokens != $1.tokens { return $0.tokens > $1.tokens }
+                                if $0.lastActive != $1.lastActive { return $0.lastActive > $1.lastActive }
+                                return $0.id < $1.id
+                            }
+                         })
         }
             .sorted {
                 if $0.tokens != $1.tokens { return $0.tokens > $1.tokens }
@@ -687,7 +764,10 @@ actor CodexUsageReader {
         guard let payload = json["payload"] as? [String: Any] else { return }
         let type = json["type"] as? String
         let payloadType = payload["type"] as? String
-        if type == "session_meta", let cwd = payload["cwd"] as? String { summary.project = cwd }
+        if type == "session_meta" {
+            if let cwd = payload["cwd"] as? String { summary.project = cwd }
+            if summary.sessionID == nil, let id = payload["id"] as? String, !id.isEmpty { summary.sessionID = id }
+        }
         if type == "turn_context", let model = payload["model"] as? String, !model.isEmpty { summary.model = model }
         if type == "event_msg", payloadType == "thread_settings_applied",
            let settings = payload["thread_settings"] as? [String: Any],
@@ -890,22 +970,64 @@ private struct TokenEvent: Codable {
 
 }
 
+private struct ProjectSessionIdentity {
+    let id: String
+    let label: String
+
+    init(path: String, sessionID: String?) {
+        let fileName = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+        let fileID = UUID(uuidString: String(fileName.suffix(36)))?.uuidString
+        let knownID = (sessionID ?? fileID)?.lowercased()
+        id = knownID ?? path
+        label = knownID ?? fileName
+    }
+}
+
+private struct ProjectSessionRange {
+    struct ModelTotal {
+        var tokens: Int
+        var lastActive: Date
+    }
+
+    var tokens = 0
+    var lastActive: Date?
+    var models: [String: ModelTotal] = [:]
+
+    mutating func add(_ bucket: UsageBucket, model: String) {
+        let count = bucket.usage.total
+        tokens += count
+        lastActive = max(lastActive ?? .distantPast, bucket.lastActive)
+        guard count > 0 else { return }
+        var total = models[model, default: ModelTotal(tokens: 0, lastActive: bucket.lastActive)]
+        total.tokens += count
+        total.lastActive = max(total.lastActive, bucket.lastActive)
+        models[model] = total
+    }
+}
+
 private struct ProjectAccumulator {
     var tokens = 0
     var sessions = 0
     var lastActive: Date?
-    var modelTokens: [String: Int] = [:]
+    var modelSessions: [String: [String: ProjectModelSessionUsage]] = [:]
 
     static let empty = Self()
 
-    mutating func add(tokens: Int, model: String) {
-        self.tokens += tokens
-        if tokens > 0 { modelTokens[model, default: 0] += tokens }
-    }
-
-    mutating func addSession(date: Date) {
+    mutating func add(_ range: ProjectSessionRange, session: ProjectSessionIdentity,
+                      status: ProjectModelSessionUsage.Status) {
+        guard let date = range.lastActive else { return }
+        tokens += range.tokens
         sessions += 1
-        if lastActive == nil || date > lastActive! { lastActive = date }
+        lastActive = max(lastActive ?? .distantPast, date)
+        for (model, total) in range.models {
+            var usage = modelSessions[model]?[session.id]
+                ?? ProjectModelSessionUsage(id: session.id, label: session.label, tokens: 0,
+                                            lastActive: total.lastActive, status: status)
+            usage.tokens += total.tokens
+            usage.lastActive = max(usage.lastActive, total.lastActive)
+            if status == .active { usage.status = .active }
+            modelSessions[model, default: [:]][session.id] = usage
+        }
     }
 }
 
@@ -979,6 +1101,7 @@ private struct PendingTurn: Codable {
 
 private struct SessionSummary: Codable {
     var project = ""
+    var sessionID: String?
     var model = "其他"
     var previousUsage: TokenUsage?
     var previousHasCacheUsage = false

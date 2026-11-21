@@ -12,7 +12,7 @@
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS 15+（Intel / Apple Silicon） | [下载 1.0.31 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.31/CodexMeter-1.0.31-macos.dmg)，打开后将 `Codex Health.app` 拖入 Applications。[版本说明](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.31) |
+| macOS 15+（Intel / Apple Silicon） | [下载 1.0.32 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.32/CodexMeter-1.0.32-macos.dmg)，打开后将 `Codex Health.app` 拖入 Applications。[版本说明](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.32) |
 | Windows x64 | [0.1.5 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-x64-setup.exe) |
 | Windows ARM64 | [0.1.5 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-arm64-setup.exe) |
 

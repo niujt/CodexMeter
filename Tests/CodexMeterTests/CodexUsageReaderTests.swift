@@ -438,6 +438,8 @@ struct UsageOptimizationTests {
         #expect(snapshot.allProjects.first?.modelTokens == ["model-a": 100_000, "model-b": 10_000])
         #expect(snapshot.monthProjects.first?.modelTokens == ["model-a": 100_000, "model-b": 10_000, "model-c": 30_000])
         #expect(snapshot.allProjects.first?.sessions == 1)
+        #expect(snapshot.allProjects.first?.modelSessions["model-a"]?.map(\.tokens) == [100_000])
+        #expect(snapshot.todayProjects.first?.modelSessions["model-a"] == nil)
     }
 
     @Test func handlesCounterResetAndDuplicateSamples() async throws {

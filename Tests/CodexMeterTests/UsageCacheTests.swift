@@ -55,6 +55,82 @@ struct UsageCacheTests {
         #expect(loaded == reference)
     }
 
+    @Test func archivedModelUsageSurvivesDeletionAndClearsTheMarkerWhenRestored() async throws {
+        let base = TestFixtureDirectory.root.appendingPathComponent(UUID().uuidString)
+        let root = base.appendingPathComponent(".codex")
+        let active = root.appendingPathComponent("sessions")
+        let archived = root.appendingPathComponent("archived_sessions")
+        let cache = base.appendingPathComponent("cache")
+        for directory in [active, archived] {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+        let id = "01a1df5a-3dc1-71b2-8b3a-a03de0a3ddb9"
+        let activeId = "01a1df5a-3dc1-71b2-8b3a-a03de0a3ddba"
+        let project = "/demo/workbench"
+        let archiveFile = archived.appendingPathComponent("rollout-2026-11-15T21-16-47-\(id).jsonl")
+        let activeFile = active.appendingPathComponent("active.jsonl")
+        let heldFile = base.appendingPathComponent(archiveFile.lastPathComponent)
+        let archiveLines = [
+            line(offset: -150, type: "session_meta", payload: ["cwd": project]),
+            line(offset: -140, type: "turn_context", payload: ["model": "gpt-6-astra"]),
+            token(offset: -130, output: 100),
+            line(offset: -110, type: "turn_context", payload: ["model": "gpt-6.1-sol"]),
+            token(offset: -100, output: 130)
+        ]
+        let activeLines = [
+            line(offset: -90, type: "session_meta", payload: ["cwd": project, "id": activeId]),
+            line(offset: -80, type: "turn_context", payload: ["model": "gpt-6-astra"]),
+            token(offset: -70, output: 75)
+        ]
+        try (archiveLines.joined(separator: "\n") + "\n").write(to: archiveFile, atomically: true, encoding: .utf8)
+        try (activeLines.joined(separator: "\n") + "\n").write(to: activeFile, atomically: true, encoding: .utf8)
+        let original = try await CodexUsageReader(calendar: calendar, cacheDirectory: cache).load(now: now, codexHome: root)
+        let rows = try #require(original.allProjects.first?.modelSessions["gpt-6-astra"])
+        #expect(rows.map(\.id) == [id, activeId])
+        #expect(rows.map(\.tokens) == [200, 175])
+        #expect(rows.map(\.status) == [.archived, .active])
+        #expect(original.allProjects.first?.modelSessions["gpt-6.1-sol"]?.map(\.tokens) == [30])
+
+        // Move the synthetic input out of the scan root to simulate deletion without removing a file.
+        try FileManager.default.moveItem(at: archiveFile, to: heldFile)
+        let restarted = CodexUsageReader(calendar: calendar, cacheDirectory: cache)
+        let deleted = try await restarted.load(now: now, codexHome: root, force: true)
+        #expect(deleted.fileCount == 1)
+        #expect(deleted.allProjects.first?.modelTokens == ["gpt-6-astra": 375, "gpt-6.1-sol": 30])
+        #expect(deleted.allProjects.first?.modelSessions["gpt-6-astra"]?.map(\.status) == [.deleted, .active])
+        #expect(deleted.lastSevenDays == original.lastSevenDays)
+
+        let restoredPath = active.appendingPathComponent(archiveFile.lastPathComponent)
+        try FileManager.default.moveItem(at: heldFile, to: restoredPath)
+        let revived = try await restarted.load(now: now, codexHome: root, force: true)
+        #expect(revived.allProjects.first?.modelSessions["gpt-6-astra"]?.map(\.status) == [.active, .active])
+        #expect(revived.allProjects.first?.modelSessions["gpt-6-astra"]?.map(\.tokens) == [200, 175])
+
+        try FileManager.default.moveItem(at: restoredPath, to: archiveFile)
+        _ = try await restarted.load(now: now, codexHome: root, force: true)
+        try FileManager.default.moveItem(at: archiveFile, to: heldFile)
+        let nextWeek = calendar.date(byAdding: .day, value: 7, to: now)!
+        let older = try await restarted.load(now: nextWeek, codexHome: root)
+        #expect(older.allProjects.isEmpty)
+        #expect(older.monthProjects.first?.modelSessions["gpt-6-astra"]?.first?.status == .deleted)
+        let nextMonth = calendar.date(byAdding: .day, value: 30, to: now)!
+        #expect(try await restarted.load(now: nextMonth, codexHome: root).monthProjects.isEmpty)
+    }
+
+    @Test func resolvesLatestSessionNamesFromTheLocalTitleIndex() async throws {
+        let base = TestFixtureDirectory.root.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        let index = base.appendingPathComponent("session_index.jsonl")
+        let text = """
+        {"id":"a","thread_name":"原名称"}
+        {"id":"b","thread_name":"无关会话"}
+        {"id":"a","thread_name":"新名称"}
+        {"id":"a","thread_name":
+        """
+        try text.write(to: index, atomically: true, encoding: .utf8)
+        #expect(await CodexUsageReader.sessionTitles(for: Set(["a", "unknown"]), codexHome: base) == ["a": "新名称"])
+    }
+
     @Test func corruptSingleSummaryRebuildsOnlyThatSession() async throws {
         let fixture = try makeFixture()
         let original = try await reader(fixture).load(now: now, codexHome: fixture.root)

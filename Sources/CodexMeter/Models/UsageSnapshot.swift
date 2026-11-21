@@ -45,16 +45,32 @@ struct ProjectUsage: Sendable, Equatable {
     let sessions: Int
     let lastActive: Date?
     let modelTokens: [String: Int]
+    let modelSessions: [String: [ProjectModelSessionUsage]]
 
-    init(path: String, tokens: Int, sessions: Int = 0, lastActive: Date? = nil, modelTokens: [String: Int] = [:]) {
+    init(path: String, tokens: Int, sessions: Int = 0, lastActive: Date? = nil,
+         modelSessions: [String: [ProjectModelSessionUsage]] = [:]) {
         self.path = path
         self.name = path.isEmpty ? "未归属路径" : URL(fileURLWithPath: path).lastPathComponent
         self.tokens = tokens
         self.sessions = sessions
         self.lastActive = lastActive
-        self.modelTokens = modelTokens
+        self.modelSessions = modelSessions
+        self.modelTokens = modelSessions.mapValues { sessions in sessions.reduce(0) { $0 + $1.tokens } }
     }
 }
+
+struct ProjectModelSessionUsage: Identifiable, Sendable, Equatable {
+    enum Status: Sendable, Equatable {
+        case active, archived, deleted
+    }
+
+    let id: String
+    let label: String
+    var tokens: Int
+    var lastActive: Date
+    var status: Status
+}
+
 struct ModelUsage: Sendable, Equatable {
     let name: String
     let tokens: Int
