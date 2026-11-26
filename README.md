@@ -1,6 +1,8 @@
 # Codex Health
 
-一个从本机 Codex 会话记录中查看 Token 用量与 7 天额度的桌面工具：macOS 提供原生菜单栏应用和桌面小组件，Windows 提供 Dashboard、额度悬浮球与摘要卡片。
+Codex Health 是查看 Codex 用量与 7 天额度的桌面工具。可按项目、模型和会话追踪本机 Token 消耗，比较今天与昨天同期的用量，并查看当前账户额度的重置时间和预计续航。
+
+macOS 提供原生菜单栏、健康报告和 WidgetKit 桌面小组件。Windows 提供 Dashboard、额度悬浮球和摘要卡片。
 
 界面采用「外围 Liquid Glass + 内部极简 Flat Content」：侧栏和工具栏使用系统材质，数据、图表和列表保持黑白灰扁平布局。支持浅色、深色和跟随系统外观；macOS 26 及以上使用 Liquid Glass，较早版本使用系统材质。
 
@@ -13,14 +15,14 @@
 | 平台 | 安装包 |
 | --- | --- |
 | macOS 15+（Intel / Apple Silicon） | [下载 1.0.33 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.33/CodexMeter-1.0.33-macos.dmg)，打开后将 `Codex Health.app` 拖入 Applications。[版本说明](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.33) |
-| Windows x64 | [0.1.5 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-x64-setup.exe) |
-| Windows ARM64 | [0.1.5 安装包](https://github.com/niujt/CodexMeter/releases/download/windows-v0.1.5/Codex-Health-0.1.5-windows-arm64-setup.exe) |
+| macOS 上一版 | [下载 1.0.32 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.32/CodexMeter-1.0.32-macos.dmg) |
+| Windows x64 / ARM64 | [Windows 构建与打包说明](windows/README.md#开发与打包) |
 
-[Windows 发布说明与校验文件](https://github.com/niujt/CodexMeter/releases/tag/windows-v0.1.5)。Windows 安装包含应用内更新签名，未配置 Authenticode；实际安装升级、原生拖动、置顶和不同 DPI 效果仍待目标机器实测。
+Windows 0.1.5 的 GitHub Release 已下架。Windows 安装包支持应用内更新签名，实际安装升级、原生拖动、置顶和不同 DPI 效果仍待目标机器实测。
 
 当前发布包使用本机开发签名以确保 WidgetKit 扩展能被 macOS 识别；macOS 首次打开时可能提示无法验证开发者。请前往“系统设置 → 隐私与安全性”，在页面底部找到 Codex Health 的提示后选择“仍要打开”。
 
-新版 macOS 操作演示使用独立演示应用和虚构数据。下方其他界面截图摄于 2026-10-13（macOS `35a2825`、Windows 0.1.2），也都使用演示数据。
+macOS 主要界面截图来自 1.0.33 的独立演示应用。同期对比动图、悬浮摘要预览和 Windows 截图也使用虚构数据。
 
 ## macOS 演示
 
@@ -57,9 +59,7 @@
 
 ## 菜单栏摘要
 
-macOS 1.0.22（32）在手动刷新和定时刷新时直接查询当前账户额度，账户重置后无需等待新的本地会话记录。查询失败会保留上次采样并显示原因；旧会话记录不会覆盖更新的账户采样。只选择会话目录或未登录 ChatGPT 时不发起账户请求。
-
-Mac 1.0.9 的手动刷新会明确显示新额度采样、暂无新采样、读取不完整或失败，并区分检查时间与额度采样时间。已配置更新器的 1.0.8（17）可在「偏好设置 → 关于 → 检查更新」升级；本次发布为开发签名、未公证的升级验证包。
+手动或定时刷新会查询当前账户额度，账户重置后无需等待本地新增会话。查询失败会保留上次采样并显示原因。仅选择会话目录或未登录 ChatGPT 时，应用只读取本机用量。
 
 菜单栏会显示当前 7 天额度剩余比例；点击后可快速查看额度、重置时间、平均回复速度、今日用量和权限提醒，并打开完整详情。
 
@@ -93,7 +93,16 @@ Mac 1.0.9 的手动刷新会明确显示新额度采样、暂无新采样、读�
 
 ## 项目与用量
 
+按今天、近 7 天或近 30 天查看项目用量和模型占比。点击某个模型的占比，可查看该模型在所选项目和日期范围内的会话明细，包括 Token、最后活动时间和归档状态。
+
 ![Codex Health 项目与用量（演示数据）](docs/screenshots/projects-usage.png)
+
+<details>
+<summary>查看项目模型会话明细</summary>
+
+![项目内的模型会话明细（演示数据）](docs/screenshots/project-model-sessions.png)
+
+</details>
 
 ## 预测与风险
 
@@ -146,7 +155,7 @@ Windows 版沿用黑白灰 Dashboard，支持悬浮球和摘要卡片两种样�
 - 今日、近 7 天、本月 Token 用量，以及输入、输出、缓存和推理 Token 分类
 - 当前会话上下文进度与 7 天额度重置倒计时
 - 用量预测：按近 1 / 6 / 24 小时额度变化加权估算
-- 项目排名支持今日、7 天、30 天切换
+- 项目排名、模型占比与会话用量支持今日、7 天、30 天切换
 - 模型占比、有效轮次样本数与端到端平均轮次耗时
 - 菜单栏摘要与健康报告显示近 15 分钟平均回复速度（tokens/s）和有效轮次数
 - 按日 / 按小时趋势，可按模型或项目筛选
