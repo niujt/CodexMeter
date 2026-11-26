@@ -37,6 +37,43 @@ enum AppIconStyle: String, CaseIterable, Identifiable {
 }
 
 @MainActor
+private struct SettingsLogo: View {
+    let assetName: String
+    let size: CGFloat
+    @Environment(\.displayScale) private var displayScale
+
+    private static let thumbnails = NSCache<NSString, CGImage>()
+
+    var body: some View {
+        let scale = max(2, displayScale)
+        let pixels = Int((size * scale).rounded(.up))
+        let image = Self.thumbnail(named: assetName, pixels: pixels)
+            .map { Image(decorative: $0, scale: scale) } ?? Image(assetName)
+        image.resizable()
+            .interpolation(.high)
+            .scaledToFit()
+            .frame(width: size, height: size)
+    }
+
+    private static func thumbnail(named name: String, pixels: Int) -> CGImage? {
+        let key = "\(name):\(pixels)" as NSString
+        if let image = thumbnails.object(forKey: key) { return image }
+        guard let source = NSImage(named: name)?.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8,
+                                      bytesPerRow: 0, space: colorSpace,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+
+        // Prefilter the square asset before SwiftUI lays it out in points.
+        context.interpolationQuality = .high
+        context.draw(source, in: CGRect(x: 0, y: 0, width: pixels, height: pixels))
+        guard let image = context.makeImage() else { return nil }
+        thumbnails.setObject(image, forKey: key)
+        return image
+    }
+}
+
+@MainActor
 struct SettingsView: View {
     static let selectedTabKey = "codexMeter.settings.selectedTab"
     let store: UsageStore
@@ -102,8 +139,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     HStack(spacing: 12) {
-                        Image(selectedIcon.assetName(for: colorScheme))
-                            .resizable().scaledToFit().frame(width: 44, height: 44)
+                        SettingsLogo(assetName: selectedIcon.assetName(for: colorScheme), size: 44)
                             .accessibilityLabel(selectedIcon.title)
                         Picker("应用 Logo", selection: $iconStyle) {
                             ForEach(AppIconStyle.allCases) { style in
@@ -143,8 +179,7 @@ struct SettingsView: View {
                 .tag("api")
 
             VStack(spacing: 10) {
-                Image(selectedIcon.assetName(for: colorScheme))
-                    .resizable().scaledToFit().frame(width: 48, height: 48)
+                SettingsLogo(assetName: selectedIcon.assetName(for: colorScheme), size: 64)
                 Text("Codex Health").font(.title2.weight(.bold))
                 Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · 本地优先的 Codex 用量健康中心")
                     .foregroundStyle(DashboardPalette.secondaryInk)

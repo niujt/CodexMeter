@@ -14,8 +14,8 @@ macOS 提供原生菜单栏、健康报告和 WidgetKit 桌面小组件。Window
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS 15+（Intel / Apple Silicon） | [下载 1.0.33 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.33/CodexMeter-1.0.33-macos.dmg)，打开后将 `Codex Health.app` 拖入 Applications。[版本说明](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.33) |
-| macOS 上一版 | [下载 1.0.32 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.32/CodexMeter-1.0.32-macos.dmg) |
+| macOS 15+（Intel / Apple Silicon） | [下载 1.0.34 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.34/CodexMeter-1.0.34-macos.dmg)，打开后将 `Codex Health.app` 拖入 Applications。[版本说明](https://github.com/niujt/CodexMeter/releases/tag/macos-v1.0.34) |
+| macOS 上一版 | [下载 1.0.33 DMG](https://github.com/niujt/CodexMeter/releases/download/macos-v1.0.33/CodexMeter-1.0.33-macos.dmg) |
 | Windows x64 / ARM64 | [Windows 构建与打包说明](windows/README.md#开发与打包) |
 
 Windows 0.1.5 的 GitHub Release 已下架。Windows 安装包支持应用内更新签名，实际安装升级、原生拖动、置顶和不同 DPI 效果仍待目标机器实测。
