@@ -182,13 +182,68 @@ struct IncrementalUsageTests {
         try append(String(repeating: "x", count: 17 * 1024 * 1024), to: fixture.file)
         let reader = reader(fixture)
         let first = try await reader.load(now: now, codexHome: fixture.root)
-        #expect(first.readWarning != nil)
+        #expect(first.readWarning?.contains("1 条记录无法解析") == true)
         try append("\n" + token(-10, output: 200) + "\n", to: fixture.file)
         let recovered = try await reader.load(now: now, codexHome: fixture.root)
         #expect(await reader.incrementalFileCount == 1)
         #expect(await reader.readByteCount < 2 * 1024 * 1024)
         #expect(recovered.allTime.output == 200)
         #expect(recovered == (try await reference(fixture: fixture, at: now)))
+    }
+
+    @Test func oversizedCompactionIsIgnoredAcrossRestartAndAppend() async throws {
+        let fixture = try fixture()
+        let timestamp = now.addingTimeInterval(-60).ISO8601Format()
+        let compaction = """
+        {"timestamp":"\(timestamp)","ordinal":12,"type":"compacted","payload":{"message":"
+        """
+        try write([token(-100, output: 100), compaction + String(repeating: "x", count: 17 * 1024 * 1024)],
+                  to: fixture.file)
+        let first = try await reader(fixture).load(now: now, codexHome: fixture.root)
+        #expect(first.readWarning == nil)
+        #expect(first.allTime.output == 100)
+
+        try append("\"}}\n" + token(-10, output: 200) + "\n", to: fixture.file)
+        let restarted = reader(fixture)
+        let grown = try await restarted.load(now: now, codexHome: fixture.root)
+        #expect(await restarted.incrementalFileCount == 1)
+        #expect(await restarted.readByteCount < 20_000)
+        #expect(grown.readWarning == nil)
+        #expect(grown.allTime.output == 200)
+        #expect(grown == (try await reference(fixture: fixture, at: now)))
+    }
+
+    @Test func reparsesOnlyOldSummariesWithWarnings() async throws {
+        let fixture = try fixture()
+        let other = fixture.root.appendingPathComponent("other.jsonl")
+        try write([token(-100, output: 100)], to: fixture.file, newline: true)
+        try write([token(-50, output: 200)], to: other, newline: true)
+        let first = try await reader(fixture).load(now: now, codexHome: fixture.root)
+        let files = try #require(FileManager.default.enumerator(at: fixture.cache, includingPropertiesForKeys: nil))
+        var seededWarning = false
+        for url in files.allObjects.compactMap({ $0 as? URL }) where url.pathExtension == "plist" {
+            var plist = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: url), format: nil) as? [String: Any])
+            guard var file = plist["file"] as? [String: Any] else { continue }
+            file["parserVersion"] = nil
+            let fingerprint = try #require(file["fingerprint"] as? [String: Any])
+            let path = try #require(fingerprint["path"] as? String)
+            if URL(fileURLWithPath: path).lastPathComponent == fixture.file.lastPathComponent {
+                var summary = try #require(file["summary"] as? [String: Any])
+                summary["malformedLines"] = 1
+                file["summary"] = summary
+                seededWarning = true
+            }
+            plist["file"] = file
+            try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
+                .write(to: url, options: .atomic)
+        }
+        try #require(seededWarning)
+
+        let restarted = reader(fixture)
+        let recovered = try await restarted.load(now: now, codexHome: fixture.root)
+        #expect(await restarted.parsedFileCount == 1)
+        #expect(await restarted.reusedFileCount == 1)
+        #expect(recovered == first)
     }
 
     private struct Fixture { let root: URL; let file: URL; let cache: URL }

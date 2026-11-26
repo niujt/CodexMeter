@@ -3,6 +3,8 @@ import CryptoKit
 
 actor CodexUsageReader {
     private static let cacheVersion = 6
+    private static let parserVersion = 1
+    private static let maximumRecordBytes = 16 * 1024 * 1024
     private struct FileFingerprint: Equatable, Codable {
         let path: String
         let modifiedAt: Date
@@ -19,6 +21,12 @@ actor CodexUsageReader {
         let summary: SessionSummary
         let fragmentSummary: SessionSummary?
         let checkpoint: AppendCheckpoint
+        let parserVersion: Int?
+
+        var needsReparse: Bool {
+            parserVersion != CodexUsageReader.parserVersion
+                && (fragmentSummary ?? summary).malformedLines > 0
+        }
     }
     private struct AppendCheckpoint: Codable {
         let offset: Int
@@ -425,7 +433,7 @@ actor CodexUsageReader {
             let summary: SessionSummary
             do {
                 let fingerprint = try scannedFingerprints[file.path] ?? fileFingerprint(for: file)
-                if !force, let cached = fileCache[file.path], cached.fingerprint == fingerprint {
+                if !force, let cached = fileCache[file.path], !cached.needsReparse, cached.fingerprint == fingerprint {
                     summary = displayedSummary(cached)
                     reusedFileCount += 1
                 } else {
@@ -684,7 +692,7 @@ actor CodexUsageReader {
         var summary = SessionSummary(replySpeedStart: speedWindowStart)
         var offset = 0
         var droppingOversizedLine = false
-        if let cached, fingerprint.size > cached.fingerprint.size,
+        if let cached, !cached.needsReparse, fingerprint.size > cached.fingerprint.size,
            fingerprint.identity == cached.fingerprint.identity,
            fingerprint.createdAt == cached.fingerprint.createdAt,
            fingerprint.modifiedAt >= cached.fingerprint.modifiedAt,
@@ -731,8 +739,8 @@ actor CodexUsageReader {
                 completedOffset = position - buffer.count
             }
             scannedBytes = buffer.count
-            if buffer.count > 16 * 1024 * 1024 {
-                if !droppingOversizedLine { summary.malformedLines += 1 }
+            if droppingOversizedLine || buffer.count > Self.maximumRecordBytes {
+                if !droppingOversizedLine, !isCompactedRecord(buffer) { summary.malformedLines += 1 }
                 droppingOversizedLine = true
                 buffer.removeAll(keepingCapacity: true)
                 scannedBytes = 0
@@ -752,7 +760,18 @@ actor CodexUsageReader {
         let checkpoint = AppendCheckpoint(offset: completedOffset, droppingOversizedLine: droppingOversizedLine,
             prefixDigest: try digest(handle, offset: 0, count: length),
             tailDigest: try digest(handle, offset: fingerprint.size - length, count: length))
-        return CachedFile(fingerprint: fingerprint, summary: summary, fragmentSummary: fragmentSummary, checkpoint: checkpoint)
+        return CachedFile(fingerprint: fingerprint, summary: summary, fragmentSummary: fragmentSummary,
+                          checkpoint: checkpoint, parserVersion: Self.parserVersion)
+    }
+
+    private func isCompactedRecord(_ line: Data) -> Bool {
+        // Codex writes the timestamp, optional ordinal, and record type before the payload.
+        // Compaction payloads contain conversation history and do not contribute usage.
+        let header = String(decoding: line.prefix(256), as: UTF8.self)
+        return header.range(
+            of: #"^\s*\{\s*"timestamp"\s*:\s*"[^"\\]*"\s*,\s*(?:"ordinal"\s*:\s*\d+\s*,\s*)?"type"\s*:\s*"compacted"\s*,\s*"payload"\s*:\s*\{"#,
+            options: .regularExpression
+        ) != nil
     }
 
     private func consume(_ line: Data, into summary: inout SessionSummary, isFinalFragment: Bool) {
